@@ -1,0 +1,12 @@
+meta:
+  environment: jvm
+  toolchain:
+    name: maven
+    version: 17
+build:
+  artifacts:
+    target/*.jar: /
+run:
+  jarName: '"target/DiscordBot-1.0-SNAPSHOT-jar-with-dependencies.jar"'
+  persistenceMount: /data
+  containerPort: 80
