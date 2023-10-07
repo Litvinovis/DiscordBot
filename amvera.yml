@@ -7,6 +7,6 @@ build:
   artifacts:
     target/*.jar: /
 run:
-  jarName: '"target/DiscordBot-1.0-SNAPSHOT.jar"'
+  jarName: '"DiscordBot-1.0-SNAPSHOT.jar"'
   persistenceMount: /data
   containerPort: 80
