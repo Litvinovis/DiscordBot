@@ -40,7 +40,7 @@
                     </descriptorRefs>
                     <archive>
                         <manifest>
-                            <mainClass>App.java</mainClass>
+                            <mainClass>App</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
