@@ -76,6 +76,8 @@ public class MessageHandler extends ListenerAdapter {
       }
     } catch (Exception e) {
       log.trace("Ошибка {}", e.getMessage());
+      System.out.println(e.getMessage());
+      System.out.println(e);
       return "Сорян я глючу " + e.getMessage();
     }
     return builder.toString();
