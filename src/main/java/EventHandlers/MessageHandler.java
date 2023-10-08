@@ -64,7 +64,6 @@ public class MessageHandler extends ListenerAdapter {
     try {
       System.out.println(1);
       List<Share> shares = api.getInstrumentsService().getAllSharesSync().stream()
-              .filter(Share::getBuyAvailableFlag)
               .filter(share -> share.getName().toLowerCase().contains(sharesName.toLowerCase()))
               .toList();
       System.out.println(2);
