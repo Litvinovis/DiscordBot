@@ -4,18 +4,20 @@ import lombok.extern.slf4j.Slf4j;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ru.tinkoff.piapi.contract.v1.Currency;
 import ru.tinkoff.piapi.contract.v1.LastPrice;
 import ru.tinkoff.piapi.contract.v1.Share;
 import ru.tinkoff.piapi.core.InvestApi;
 
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 @Slf4j
 public class MessageHandler extends ListenerAdapter {
   private final InvestApi api;
+  private final Logger logger = LoggerFactory.getLogger("default-logger");
 
   public MessageHandler(InvestApi api) {
     this.api = api;
@@ -34,24 +36,13 @@ public class MessageHandler extends ListenerAdapter {
         }
       }
     } catch (Exception e) {
-      log.error(Constants.LOG_MESSAGE, e.getMessage());
+      logger.error(Constants.LOG_MESSAGE, e.getMessage());
     }
   }
 
   public String getCurrencyInfo(String currency) {
     StringBuilder builder = new StringBuilder("Информация о валюте ").append(currency).append(":\n");
-    List<Currency> currencies = null;
-    try {
-      currencies = api.getInstrumentsService().getAllCurrencies().get();
-    } catch (InterruptedException e) {
-      System.out.println(e.getCause());
-      System.out.println(e.getMessage());
-      throw new RuntimeException(e);
-    } catch (ExecutionException e) {
-      System.out.println(e.getCause());
-      System.out.println(e.getMessage());
-      throw new RuntimeException(e);
-    }
+    List<Currency> currencies = api.getInstrumentsService().getAllCurrenciesSync();
     List<String> filtered = currencies.stream()
               .filter(currency1 -> currency1.getIsoCurrencyName().equalsIgnoreCase(currency))
               .map(Currency::getFigi)
@@ -80,7 +71,7 @@ public class MessageHandler extends ListenerAdapter {
                 .append(" ").append(shares.get(i).getCurrency().toUpperCase()).append("\n");
       }
     } catch (Exception e) {
-      System.out.println(e.getMessage());
+      logger.trace(e.getMessage());
       return "Сорян я глючу " + e.getMessage();
     }
     return builder.toString();
