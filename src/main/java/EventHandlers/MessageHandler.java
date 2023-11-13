@@ -51,7 +51,7 @@ public class MessageHandler extends ListenerAdapter {
             .map(Currency::getFigi)
             .toList();
     var lastPrices = api.getMarketDataService().getLastPricesSync(filtered);
-    if (lastPrices.size() == 0) {
+    if (lastPrices.isEmpty()) {
       builder.setLength(0);
       return "По запросу ".concat(currency).concat(" ничего не нашлось");
     }
@@ -73,7 +73,7 @@ public class MessageHandler extends ListenerAdapter {
               .toList();
       List<LastPrice> lastPrices = api.getMarketDataService().getLastPricesSync(
               shares.stream().map(Share::getFigi).collect(Collectors.toList()));
-      if (lastPrices.size() == 0) {
+      if (lastPrices.isEmpty()) {
         builder.setLength(0);
         return "По запросу ".concat(sharesName).concat(" ничего не нашлось");
       }
