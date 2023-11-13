@@ -1,5 +1,6 @@
 package EventHandlers;
 
+import com.codahale.metrics.Counter;
 import lombok.extern.slf4j.Slf4j;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
@@ -18,7 +19,9 @@ import java.util.stream.Collectors;
 public class MessageHandler extends ListenerAdapter {
   private final InvestApi api;
   private final Logger logger = LoggerFactory.getLogger("default-logger");
+  private final List<String> badCode = List.of("SPEQ", "SMAL", "SPBXM_OTC", "FQBR");
 
+  public static final Counter JOB_COPY_SUCCESS = new Counter();
   public MessageHandler(InvestApi api) {
     this.api = api;
   }
@@ -44,16 +47,20 @@ public class MessageHandler extends ListenerAdapter {
     StringBuilder builder = new StringBuilder("Информация о валюте ").append(currency).append(":\n");
     List<Currency> currencies = api.getInstrumentsService().getAllCurrenciesSync();
     List<String> filtered = currencies.stream()
-              .filter(currency1 -> currency1.getIsoCurrencyName().equalsIgnoreCase(currency))
-              .map(Currency::getFigi)
-              .toList();
-      var lastPrices = api.getMarketDataService().getLastPricesSync(filtered);
-      builder.append("Курс = ")
-              .append(lastPrices.get(0).getPrice().getUnits())
-              .append(",")
-              .append(String.valueOf(lastPrices.get(0).getPrice().getNano()), 0, 2)
-              .append(" рублей за 1 ")
-              .append(currency);
+            .filter(currency1 -> currency1.getIsoCurrencyName().equalsIgnoreCase(currency))
+            .map(Currency::getFigi)
+            .toList();
+    var lastPrices = api.getMarketDataService().getLastPricesSync(filtered);
+    if (lastPrices.size() == 0) {
+      builder.setLength(0);
+      return "По запросу ".concat(currency).concat(" ничего не нашлось");
+    }
+    builder.append("Курс = ")
+            .append(lastPrices.get(0).getPrice().getUnits())
+            .append(",")
+            .append(String.valueOf(lastPrices.get(0).getPrice().getNano()), 0, 2)
+            .append(" рублей за 1 ")
+            .append(currency);
     return builder.toString();
   }
 
@@ -61,13 +68,21 @@ public class MessageHandler extends ListenerAdapter {
     StringBuilder builder = new StringBuilder("Информация о подходящих акциях: \n");
     try {
       List<Share> shares = api.getInstrumentsService().getAllSharesSync().stream()
+              .filter(share -> checkClassCode(share.getClassCode()))
               .filter(share -> share.getName().toLowerCase().contains(sharesName.toLowerCase()))
               .toList();
-      List<LastPrice> lastPrices = api.getMarketDataService().getLastPricesSync(shares.stream().map(Share::getFigi).collect(Collectors.toList()));
+      List<LastPrice> lastPrices = api.getMarketDataService().getLastPricesSync(
+              shares.stream().map(Share::getFigi).collect(Collectors.toList()));
+      if (lastPrices.size() == 0) {
+        builder.setLength(0);
+        return "По запросу ".concat(sharesName).concat(" ничего не нашлось");
+      }
       for (int i = 0; i < shares.size(); i++) {
         builder.append("\n").append("Название: ").append(shares.get(i).getName()).append("\n")
                 .append("Стоимость = ").append(lastPrices.get(i).getPrice().getUnits()).append(",")
-                .append(lastPrices.get(i).getPrice().getNano() > 100 ? String.valueOf(lastPrices.get(i).getPrice().getNano()).substring(0, 2) : lastPrices.get(i).getPrice().getNano())
+                .append(lastPrices.get(i).getPrice().getNano() > 100 ?
+                        String.valueOf(lastPrices.get(i).getPrice().getNano()).substring(0, 2) :
+                        lastPrices.get(i).getPrice().getNano())
                 .append(" ").append(shares.get(i).getCurrency().toUpperCase()).append("\n");
       }
     } catch (Exception e) {
@@ -79,5 +94,9 @@ public class MessageHandler extends ListenerAdapter {
 
   private boolean isBotAsking(MessageReceivedEvent event) {
     return event.getMessage().getContentDisplay().startsWith("+");
+  }
+
+  private boolean checkClassCode(String classCode) {
+    return !badCode.contains(classCode);
   }
 }
