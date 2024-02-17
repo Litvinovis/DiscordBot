@@ -13,7 +13,7 @@ public class App {
     public static void main(String[] args) {
         Logger start = LoggerFactory.getLogger("default-logger");
         start.trace("Стартуем приложение");
-        InvestApi api = InvestApi.createReadonly("t.6DmZ8iDa0Fn4MrdYUSf7k6LEr_xwzZ20hKEiwi6ilRPcnmlynE9fXsKmiZl7HE4visr5h17aDjpIzd9alz2usQ");
+        InvestApi api = InvestApi.createReadonly("t.b9dYWqkM3vzPjFvjdRtUYDprjQutsGDS5x8O846HuDuLFRBI_Dk6MNdXci__B8UKEH5Y04s5VLoDvVMZ1UHwFQ");
         JDA jda = JDABuilder.createDefault("MTE1NzA1MjkxOTkwOTIwMzk5OQ.GW2drl.k086vq1RgkU9zCqor7S7ePkcI-WoCSJL0czWW0")
                 .enableIntents(GatewayIntent.MESSAGE_CONTENT)
                 .addEventListeners(new MessageHandler(api))

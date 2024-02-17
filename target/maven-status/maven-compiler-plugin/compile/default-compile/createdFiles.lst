@@ -1,3 +1,4 @@
+services\StatisticsSenderService.class
 App.class
 EventHandlers\MessageHandler.class
-EventHandlers\Constants.class
+services\statTask\CurrencyStatTask.class

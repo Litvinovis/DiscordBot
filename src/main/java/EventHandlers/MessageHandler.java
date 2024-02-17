@@ -11,10 +11,12 @@ import ru.tinkoff.piapi.core.InvestApi;
 import services.CurrencyInfoService;
 import services.HelpInfoService;
 import services.SharesInfoService;
+import services.StatisticsSenderService;
 import utils.Constants;
 
 @Slf4j
 public class MessageHandler extends ListenerAdapter {
+  private final InvestApi api;
   private final CurrencyInfoService currencyInfoService;
   private final SharesInfoService sharesInfoService;
   private final HelpInfoService helpInfoService;
@@ -22,6 +24,7 @@ public class MessageHandler extends ListenerAdapter {
   public static final Counter JOB_COPY_SUCCESS = new Counter();
 
   public MessageHandler(InvestApi api) {
+    this.api = api;
     this.currencyInfoService = new CurrencyInfoService(api);
     this.sharesInfoService = new SharesInfoService(api);
     this.helpInfoService = new HelpInfoService(api);
@@ -29,6 +32,7 @@ public class MessageHandler extends ListenerAdapter {
 
   @Override
   public void onMessageReceived(@NotNull MessageReceivedEvent event) {
+    runTasks(event);
     try {
       if (isBotAsking(event)) {
         if (event.getMessage().getContentDisplay().contains("+валюта")) {
@@ -50,5 +54,9 @@ public class MessageHandler extends ListenerAdapter {
 
   private boolean isBotAsking(MessageReceivedEvent event) {
     return event.getMessage().getContentDisplay().startsWith("+");
+  }
+
+  private void runTasks(MessageReceivedEvent event) {
+      new StatisticsSenderService(api, event);
   }
 }
