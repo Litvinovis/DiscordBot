@@ -15,7 +15,7 @@ public class SharesInfoService {
     private final InvestApi api;
     private final StringBuilder builder = new StringBuilder();
     private final Logger logger = LoggerFactory.getLogger("default-logger");
-    private final List<String> badCode = List.of("SPEQ", "SMAL", "SPBXM_OTC", "FQBR");
+    private final List<String> badCode = List.of("SPEQ", "SMAL", "SPBXM_OTC", "FQBR", "A29", "A30");
 
     public SharesInfoService(InvestApi api) {
         this.api = api;
