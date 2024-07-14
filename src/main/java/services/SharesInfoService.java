@@ -7,7 +7,9 @@ import ru.tinkoff.piapi.contract.v1.LastPrice;
 import ru.tinkoff.piapi.contract.v1.Share;
 import ru.tinkoff.piapi.core.InvestApi;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -32,16 +34,15 @@ public class SharesInfoService {
             List<LastPrice> lastPrices = api.getMarketDataService().getLastPricesSync(
                     shares.stream().map(Share::getFigi).collect(Collectors.toList()));
             if (lastPrices.isEmpty()) {
-                builder.setLength(0);
                 return "По запросу ".concat(sharesName).concat(" ничего не нашлось");
-            }
-            for (int i = 0; i < shares.size(); i++) {
-                builder.append("\n").append("Название: ").append(shares.get(i).getName()).append("\n")
-                        .append("Стоимость = ").append(lastPrices.get(i).getPrice().getUnits()).append(",")
-                        .append(lastPrices.get(i).getPrice().getNano() > 100 ?
-                                String.valueOf(lastPrices.get(i).getPrice().getNano()).substring(0, 2) :
-                                lastPrices.get(i).getPrice().getNano())
-                        .append(" ").append(shares.get(i).getCurrency().toUpperCase()).append("\n");
+            } else {
+                Map<Share, LastPrice> sharesMap = new HashMap<>(shares.size());
+                for (int i = 0; i < shares.size(); i++) {
+                    if (lastPrices.get(i).getPrice().getUnits() != 0 && lastPrices.get(i).getPrice().getNano() != 0) {
+                        sharesMap.put(shares.get(i), lastPrices.get(i));
+                    }
+                }
+                createShareInfo(sharesMap);
             }
         } catch (Exception e) {
             logger.trace(e.getMessage());
@@ -52,5 +53,16 @@ public class SharesInfoService {
 
     private boolean checkClassCode(String classCode) {
         return !badCode.contains(classCode);
+    }
+
+    private void createShareInfo(Map<Share, LastPrice> shares) {
+        for (Map.Entry<Share, LastPrice> entry : shares.entrySet()) {
+            builder.append("\n").append("Название: ").append(entry.getKey().getName()).append("\n")
+                    .append("Стоимость = ").append(entry.getValue().getPrice().getUnits()).append(",")
+                    .append(entry.getValue().getPrice().getNano() > 100 ?
+                            String.valueOf(entry.getValue().getPrice().getNano()).substring(0, 2) :
+                            entry.getValue().getPrice().getNano())
+                    .append(" ").append(entry.getKey().getCurrency().toUpperCase()).append("\n");
+        }
     }
 }
