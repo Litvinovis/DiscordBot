@@ -1,6 +1,5 @@
 package services;
 
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import ru.tinkoff.piapi.core.InvestApi;
 
 public class HelpInfoService {
@@ -16,6 +15,9 @@ public class HelpInfoService {
         "+акция (имя или часть имени компании) - информация о стоимости акции\n\n" +
         "+валюта (тикер валюты например USD) - информация о курсе валюты к рублю\n\n" +
         "+помощь - вывод информации о доступных командах\n\n" +
+        "+таверна список - список доступных таверных игр\n\n" +
+        "+таверна [игра] [параметры] - играть в таверную игру\n" +
+        "  Доступные игры: кости, монетка, угадай число, камень ножницы бумага\n\n" +
         "\nСоздатель бота - L4rover";
     }
 }
