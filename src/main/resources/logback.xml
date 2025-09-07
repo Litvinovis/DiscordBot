@@ -11,9 +11,9 @@
 
     <!-- Файловый аппендер для записи логов в файл -->
     <appender name="MAIN-LOG" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>main-log.log</file>
+        <file>logs/main-log.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>main-log.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <fileNamePattern>logs/main-log.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
             <!-- каждый архивный файл, максимальный размер 10МБ -->
             <maxFileSize>10MB</maxFileSize>
             <!-- общий размер всех архивных файлов, если общий размер > 100МБ, старые файлы будут удаляться -->

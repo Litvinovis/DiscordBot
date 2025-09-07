@@ -77,7 +77,6 @@ config/application.properties
 
 # Logs
 logs/
-*.log
 main-log.*
 
 # OS generated files
