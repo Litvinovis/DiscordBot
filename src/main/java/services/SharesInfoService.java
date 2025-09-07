@@ -37,8 +37,8 @@ public class SharesInfoService {
                 return "По запросу ".concat(sharesName).concat(" ничего не нашлось");
             } else {
                 Map<Share, LastPrice> sharesMap = new HashMap<>(shares.size());
-                for (int i = 0; i < shares.size(); i++) {
-                    if (lastPrices.get(i).getPrice().getUnits() != 0 && lastPrices.get(i).getPrice().getNano() != 0) {
+                for (int i = 0; i < shares.size() && i < lastPrices.size(); i++) {
+                    if (lastPrices.get(i).getPrice().getUnits() != 0 || lastPrices.get(i).getPrice().getNano() != 0) {
                         sharesMap.put(shares.get(i), lastPrices.get(i));
                     }
                 }
@@ -58,10 +58,8 @@ public class SharesInfoService {
     private void createShareInfo(Map<Share, LastPrice> shares) {
         for (Map.Entry<Share, LastPrice> entry : shares.entrySet()) {
             builder.append("\n").append("Название: ").append(entry.getKey().getName()).append("\n")
-                    .append("Стоимость = ").append(entry.getValue().getPrice().getUnits()).append(",")
-                    .append(entry.getValue().getPrice().getNano() > 100 ?
-                            String.valueOf(entry.getValue().getPrice().getNano()).substring(0, 2) :
-                            entry.getValue().getPrice().getNano())
+                    .append("Стоимость = ").append(entry.getValue().getPrice().getUnits()).append(".")
+                    .append(String.format("%09d", entry.getValue().getPrice().getNano()))
                     .append(" ").append(entry.getKey().getCurrency().toUpperCase()).append("\n");
         }
     }

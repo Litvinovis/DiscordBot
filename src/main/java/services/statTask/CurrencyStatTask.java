@@ -38,34 +38,51 @@ public class CurrencyStatTask implements Runnable {
         List<LastPrice> lastPrices = api.getMarketDataService().getLastPricesSync(figiList);
         for (int i = 0; i < lastPrices.size(); i++) {
             price.setLength(0);
-            price.append(lastPrices.get(i).getPrice().getUnits()).append(",")
-                    .append(lastPrices.get(i).getPrice().getNano());
-            newData.put(currencies.get(i).getName(), Double.valueOf(price.toString()));
+            price.append(lastPrices.get(i).getPrice().getUnits()).append(".")
+                    .append(String.format("%09d", lastPrices.get(i).getPrice().getNano()));
+            newData.put(currencies.get(i).getName(), Double.parseDouble(price.toString()));
         }
         if (oldData.isEmpty()) {
-            oldData = newData;
+            oldData = new HashMap<>(newData);
             return null;
         } else {
             Map<String, Double> changes = new HashMap<>();
             for (Map.Entry<String, Double> e : newData.entrySet()) {
-                changes.put(e.getKey(), e.getValue() / oldData.get(e.getKey()) * 100);
+                // Calculate percentage change correctly
+                double oldValue = oldData.get(e.getKey());
+                double newValue = e.getValue();
+                double change = ((newValue - oldValue) / oldValue) * 100;
+                changes.put(e.getKey(), change);
             }
+            // Sort by value (change percentage)
             Map<String, Double> sortedMap = changes.entrySet()
                     .stream()
-                    .sorted(Map.Entry.comparingByValue())
+                    .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
                     .collect(Collectors.toMap(
                             Map.Entry::getKey,
                             Map.Entry::getValue,
-                            (oldValue, newValue) -> oldValue, HashMap::new));
+                            (oldValue, newValue) -> oldValue, LinkedHashMap::new));
+            
             builder.append("Топ 5 лучших валют к рублю сегодня:\n");
-            String[] keys = (String[]) sortedMap.keySet().toArray();
-            Double[] values = (Double[]) sortedMap.values().toArray();
-            for (int i = 0; i < 5; i++) {
-                builder.append(keys[i]).append(" : ").append(values[i]).append("%\n");
+            List<Map.Entry<String, Double>> entryList = new ArrayList<>(sortedMap.entrySet());
+            
+            // Top 5 best performers
+            int count = 0;
+            for (Map.Entry<String, Double> entry : entryList) {
+                if (count >= 5) break;
+                builder.append(entry.getKey()).append(" : ").append(String.format("%.2f", entry.getValue())).append("%\n");
+                count++;
             }
+            
             builder.append("\n\nТоп 5 худших валют к рублю сегодня:\n");
-            for (int i = (keys.length - 1); i > (keys.length - 5); i--) {
-                builder.append(keys[i]).append(" : ").append(values[i]).append("%\n");
+            
+            // Bottom 5 worst performers (reverse order)
+            count = 0;
+            for (int i = entryList.size() - 1; i >= 0; i--) {
+                if (count >= 5) break;
+                Map.Entry<String, Double> entry = entryList.get(i);
+                builder.append(entry.getKey()).append(" : ").append(String.format("%.2f", entry.getValue())).append("%\n");
+                count++;
             }
         }
         newData.clear();

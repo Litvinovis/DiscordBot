@@ -28,8 +28,8 @@ public class CurrencyInfoService {
         }
         builder.append("Курс = ")
                 .append(lastPrices.get(0).getPrice().getUnits())
-                .append(",")
-                .append(String.valueOf(lastPrices.get(0).getPrice().getNano()), 0, 2)
+                .append(".")
+                .append(String.format("%09d", lastPrices.get(0).getPrice().getNano()))
                 .append(" рублей за 1 ")
                 .append(currency);
         return builder.toString();

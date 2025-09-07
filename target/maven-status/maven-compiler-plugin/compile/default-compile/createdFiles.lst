@@ -1,4 +1,9 @@
 services\StatisticsSenderService.class
-App.class
+utils\Constants.class
+main\App.class
+services\SharesInfoService.class
 EventHandlers\MessageHandler.class
+services\HelpInfoService.class
+services\CurrencyInfoService.class
 services\statTask\CurrencyStatTask.class
+utils\ConfigLoader.class
