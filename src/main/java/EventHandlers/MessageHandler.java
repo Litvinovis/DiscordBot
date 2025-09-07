@@ -13,7 +13,6 @@ import services.HelpInfoService;
 import services.SharesInfoService;
 import services.StatisticsSenderService;
 import utils.Constants;
-import games.GameService;
 
 import java.util.List;
 
@@ -23,7 +22,6 @@ public class MessageHandler extends ListenerAdapter {
   private final CurrencyInfoService currencyInfoService;
   private final SharesInfoService sharesInfoService;
   private final HelpInfoService helpInfoService;
-  private final GameService gameService;
   private final Logger logger = LoggerFactory.getLogger("default-logger");
   private static final List<String> ALLOW_CHANNELS = List.of("основной", "криптоканал", "ботный");
   public static final Counter JOB_COPY_SUCCESS = new Counter();
@@ -33,7 +31,6 @@ public class MessageHandler extends ListenerAdapter {
     this.currencyInfoService = new CurrencyInfoService(api);
     this.sharesInfoService = new SharesInfoService(api);
     this.helpInfoService = new HelpInfoService(api);
-    this.gameService = new GameService();
   }
 
   @Override
@@ -41,42 +38,20 @@ public class MessageHandler extends ListenerAdapter {
     runTasks(event);
     try {
       if (isBotAsking(event)) {
-        String messageContent = event.getMessage().getContentDisplay();
-        if (messageContent.contains("+валюта")) {
-          event.getChannel().sendMessage(currencyInfoService.getCurrencyInfo(messageContent.substring(8)))
+        if (event.getMessage().getContentDisplay().contains("+валюта")) {
+          event.getChannel().sendMessage(currencyInfoService.getCurrencyInfo(event.getMessage().getContentDisplay().substring(8)))
                   .submit();
-        } else if (messageContent.contains("+акция")) {
-          event.getChannel().sendMessage(sharesInfoService.getSharesInfo(messageContent.substring(7)))
+        } else if (event.getMessage().getContentDisplay().contains("+акция")) {
+          event.getChannel().sendMessage(sharesInfoService.getSharesInfo(event.getMessage().getContentDisplay().substring(7)))
                   .submit();
-        } else if (messageContent.contains("+помощь")) {
+        } else if (event.getMessage().getContentDisplay().contains("+помощь")) {
           event.getChannel().sendMessage(helpInfoService.getHelpInfo()).submit();
-        } else if (messageContent.contains("+таверна")) {
-          handleTavernCommand(event, messageContent);
         } else {
           event.getChannel().sendMessage("неизвестная команда, напишите \"+помощь\" для вывода списка доступных команд").submit();
         }
       }
     } catch (Exception e) {
       logger.error(Constants.LOG_MESSAGE, e.getMessage());
-    }
-  }
-
-  private void handleTavernCommand(MessageReceivedEvent event, String messageContent) {
-    String[] parts = messageContent.split(" ");
-    if (parts.length < 2) {
-      event.getChannel().sendMessage("Использование: +таверна [команда] [параметры]\nДоступные команды: список, [название игры]").submit();
-      return;
-    }
-    
-    String subCommand = parts[1].toLowerCase();
-    
-    if (subCommand.equals("список")) {
-      event.getChannel().sendMessage(gameService.listGames()).submit();
-    } else {
-      // Assume it's a game name
-      String[] gameArgs = new String[parts.length - 2];
-      System.arraycopy(parts, 2, gameArgs, 0, gameArgs.length);
-      event.getChannel().sendMessage(gameService.playGame(subCommand, gameArgs)).submit();
     }
   }
 

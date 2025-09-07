@@ -26,19 +26,10 @@ public class CurrencyInfoService {
             builder.setLength(0);
             return "По запросу ".concat(currency).concat(" ничего не нашлось");
         }
-        // Format nano value properly
-        String nanoStr = String.valueOf(Math.abs(lastPrices.get(0).getPrice().getNano()));
-        // Pad with leading zeros if necessary
-        while (nanoStr.length() < 9) {
-            nanoStr = "0" + nanoStr;
-        }
-        // Take only first 2 digits
-        nanoStr = nanoStr.substring(0, 2);
-        
         builder.append("Курс = ")
                 .append(lastPrices.get(0).getPrice().getUnits())
                 .append(",")
-                .append(nanoStr)
+                .append(String.valueOf(lastPrices.get(0).getPrice().getNano()), 0, 2)
                 .append(" рублей за 1 ")
                 .append(currency);
         return builder.toString();
