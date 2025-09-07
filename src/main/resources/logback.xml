@@ -1,26 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
+    <!-- Консольный аппендер для немедленного вывода -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="ch.qos.logback.core.encoder.LayoutWrappingEncoder">
+            <layout class="ch.qos.logback.classic.PatternLayout">
+                <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+            </layout>
+        </encoder>
+    </appender>
+
+    <!-- Файловый аппендер для записи логов в файл -->
     <appender name="MAIN-LOG" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>main-log.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
             <fileNamePattern>main-log.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
-            <!-- each archived file, size max 10MB -->
+            <!-- каждый архивный файл, максимальный размер 10МБ -->
             <maxFileSize>10MB</maxFileSize>
-            <!-- total size of all archive files, if total size > 20GB, it will delete old archived file -->
+            <!-- общий размер всех архивных файлов, если общий размер > 100МБ, старые файлы будут удаляться -->
             <totalSizeCap>100MB</totalSizeCap>
-            <!-- 60 days to keep -->
-            <maxHistory>2</maxHistory>
+            <!-- хранить 60 дней -->
+            <maxHistory>60</maxHistory>
         </rollingPolicy>
         <encoder>
-            <pattern> %d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n</pattern>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+            <charset>UTF-8</charset>
         </encoder>
     </appender>
 
+    <!-- Корневой логгер -->
     <root level="DEBUG">
-        <appender-ref ref="MAIN-LOG" />
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="MAIN-LOG"/>
     </root>
 
+    <!-- Логгер по умолчанию -->
     <logger name="default-logger" level="DEBUG" additivity="false">
+        <appender-ref ref="CONSOLE"/>
         <appender-ref ref="MAIN-LOG"/>
     </logger>
 

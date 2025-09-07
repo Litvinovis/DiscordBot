@@ -28,6 +28,7 @@ hs_err_pid*
 *.iml
 *.ipr
 out/
+target/
 
 # Eclipse
 *.pydevproject
@@ -56,6 +57,8 @@ dist/
 # Maven
 target/
 .mvn/
+mvnw
+mvnw.cmd
 
 # Gradle
 .gradle/
@@ -64,6 +67,8 @@ build/
 # Application configuration files
 application.yml
 application.properties
+config/application.yml
+config/application.properties
 
 # Environment files
 .env
@@ -73,6 +78,7 @@ application.properties
 # Logs
 logs/
 *.log
+main-log.*
 
 # OS generated files
 .DS_Store
@@ -88,4 +94,10 @@ Thumbs.db
 
 # Application data
 /data/
-main-log.*
+
+# Temp files
+*.tmp
+*.temp
+
+# IDE specific files
+*.recommenders
