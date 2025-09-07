@@ -7,13 +7,13 @@ public class ConfigLoaderTest {
 
     @Test
     public void testConfigLoader() {
-        // Test that the config loader can load the configuration
+        // Проверка, что загрузчик конфигурации может загрузить конфигурацию
         assertDoesNotThrow(() -> {
             String discordToken = ConfigLoader.getDiscordToken();
             String tinkoffToken = ConfigLoader.getTinkoffToken();
             String apiMode = ConfigLoader.getTinkoffApiMode();
             
-            // These should not be null
+            // Эти значения не должны быть null
             assertNotNull(discordToken);
             assertNotNull(tinkoffToken);
             assertNotNull(apiMode);

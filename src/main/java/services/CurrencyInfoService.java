@@ -27,9 +27,9 @@ public class CurrencyInfoService {
             return "По запросу ".concat(currency).concat(" ничего не нашлось");
         }
         builder.append("Курс = ")
-                .append(lastPrices.get(0).getPrice().getUnits())
-                .append(".")
-                .append(String.format("%09d", lastPrices.get(0).getPrice().getNano()))
+                .append(String.format("%.2f", 
+                    lastPrices.get(0).getPrice().getUnits() + 
+                    (double) lastPrices.get(0).getPrice().getNano() / 1_000_000_000))
                 .append(" рублей за 1 ")
                 .append(currency);
         return builder.toString();

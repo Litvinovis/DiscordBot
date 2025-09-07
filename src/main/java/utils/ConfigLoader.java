@@ -1,34 +1,95 @@
 package utils;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.InputStream;
 import java.util.Map;
+import java.util.Optional;
 
 public class ConfigLoader {
+    private static final Logger logger = LoggerFactory.getLogger(ConfigLoader.class);
     private static final Map<String, Object> config = loadConfig();
 
+    @SuppressWarnings("unchecked")
     private static Map<String, Object> loadConfig() {
-        Yaml yaml = new Yaml();
-        InputStream inputStream = ConfigLoader.class.getClassLoader().getResourceAsStream("application.yml");
-        return yaml.load(inputStream);
+        try {
+            Yaml yaml = new Yaml();
+            InputStream inputStream = ConfigLoader.class.getClassLoader().getResourceAsStream("application.yml");
+            if (inputStream == null) {
+                logger.error("Не удалось найти файл application.yml");
+                throw new RuntimeException("Не удалось найти файл application.yml");
+            }
+            return yaml.load(inputStream);
+        } catch (Exception e) {
+            logger.error("Ошибка загрузки конфигурации", e);
+            throw new RuntimeException("Ошибка загрузки конфигурации", e);
+        }
     }
 
     @SuppressWarnings("unchecked")
     public static String getDiscordToken() {
-        Map<String, Object> discord = (Map<String, Object>) config.get("discord");
-        return (String) discord.get("token");
+        try {
+            Map<String, Object> discord = (Map<String, Object>) config.get("discord");
+            String token = (String) discord.get("token");
+            // Обработка подстановки переменных окружения
+            if (token != null && token.startsWith("${DISCORD_TOKEN:")) {
+                // Извлечение значения по умолчанию
+                int start = token.indexOf(":") + 1;
+                int end = token.length() - 1; // Удаление закрывающей скобки
+                token = token.substring(start, end);
+            }
+            // Удаление кавычек, если они есть
+            if (token != null && token.startsWith("\"") && token.endsWith("\"")) {
+                token = token.substring(1, token.length() - 1);
+            }
+            return token;
+        } catch (Exception e) {
+            logger.error("Ошибка получения токена Discord из конфигурации", e);
+            throw new RuntimeException("Ошибка получения токена Discord из конфигурации", e);
+        }
     }
 
     @SuppressWarnings("unchecked")
     public static String getTinkoffToken() {
-        Map<String, Object> tinkoff = (Map<String, Object>) config.get("tinkoff");
-        return (String) tinkoff.get("token");
+        try {
+            Map<String, Object> tinkoff = (Map<String, Object>) config.get("tinkoff");
+            String token = (String) tinkoff.get("token");
+            // Обработка подстановки переменных окружения
+            if (token != null && token.startsWith("${TINKOFF_TOKEN:")) {
+                // Извлечение значения по умолчанию
+                int start = token.indexOf(":") + 1;
+                int end = token.length() - 1; // Удаление закрывающей скобки
+                token = token.substring(start, end);
+            }
+            // Удаление кавычек, если они есть
+            if (token != null && token.startsWith("\"") && token.endsWith("\"")) {
+                token = token.substring(1, token.length() - 1);
+            }
+            return token;
+        } catch (Exception e) {
+            logger.error("Ошибка получения токена Tinkoff из конфигурации", e);
+            throw new RuntimeException("Ошибка получения токена Tinkoff из конфигурации", e);
+        }
     }
 
     @SuppressWarnings("unchecked")
     public static String getTinkoffApiMode() {
-        Map<String, Object> tinkoff = (Map<String, Object>) config.get("tinkoff");
-        return (String) tinkoff.get("api-mode");
+        try {
+            Map<String, Object> tinkoff = (Map<String, Object>) config.get("tinkoff");
+            String apiMode = (String) tinkoff.get("api-mode");
+            // Обработка подстановки переменных окружения
+            if (apiMode != null && apiMode.startsWith("${TINKOFF_API_MODE:")) {
+                // Извлечение значения по умолчанию
+                int start = apiMode.indexOf(":") + 1;
+                int end = apiMode.length() - 1; // Удаление закрывающей скобки
+                apiMode = apiMode.substring(start, end);
+            }
+            return apiMode != null ? apiMode : "readonly"; // Резервный вариант
+        } catch (Exception e) {
+            logger.error("Ошибка получения режима API Tinkoff из конфигурации", e);
+            return "readonly"; // Резервный вариант
+        }
     }
 }

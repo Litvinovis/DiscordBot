@@ -17,19 +17,40 @@ public class App {
         Logger start = LoggerFactory.getLogger("default-logger");
         start.trace("Стартуем приложение");
         
-        // Load configuration
+        // Загрузка конфигурации
         String discordToken = ConfigLoader.getDiscordToken();
         String tinkoffToken = ConfigLoader.getTinkoffToken();
         String apiMode = ConfigLoader.getTinkoffApiMode();
         
-        // Create Invest API instance
+        // Логирование токенов для отладки (но будьте осторожны, не раскрывайте их в production)
+        start.info("Длина токена Discord: {}", discordToken != null ? discordToken.length() : 0);
+        start.info("Длина токена Tinkoff: {}", tinkoffToken != null ? tinkoffToken.length() : 0);
+        start.info("Режим API: {}", apiMode);
+        
+        // Проверка токенов
+        if (discordToken == null || discordToken.isEmpty()) {
+            start.error("Токен Discord отсутствует или пуст");
+            return;
+        }
+        
+        if (tinkoffToken == null || tinkoffToken.isEmpty()) {
+            start.error("Токен Tinkoff отсутствует или пуст");
+            return;
+        }
+        
+        // Создание экземпляра Invest API
         InvestApi api = InvestApi.createReadonly(tinkoffToken);
         
-        // Create JDA instance
-        JDA jda = JDABuilder.createDefault(discordToken)
-                .enableIntents(GatewayIntent.MESSAGE_CONTENT)
-                .addEventListeners(new MessageHandler(api))
-                .setActivity(Activity.playing("NASDAQ"))
-                .build();
+        // Создание экземпляра JDA
+        try {
+            JDA jda = JDABuilder.createDefault(discordToken)
+                    .enableIntents(GatewayIntent.MESSAGE_CONTENT)
+                    .addEventListeners(new MessageHandler(api))
+                    .setActivity(Activity.playing("NASDAQ"))
+                    .build();
+            start.info("Бот Discord успешно инициализирован");
+        } catch (Exception e) {
+            start.error("Ошибка инициализации бота Discord", e);
+        }
     }
 }

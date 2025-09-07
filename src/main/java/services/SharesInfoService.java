@@ -57,9 +57,12 @@ public class SharesInfoService {
 
     private void createShareInfo(Map<Share, LastPrice> shares) {
         for (Map.Entry<Share, LastPrice> entry : shares.entrySet()) {
+            // Format the price to show only 2 decimal places
+            double price = entry.getValue().getPrice().getUnits() + 
+                          (double) entry.getValue().getPrice().getNano() / 1_000_000_000;
+            
             builder.append("\n").append("Название: ").append(entry.getKey().getName()).append("\n")
-                    .append("Стоимость = ").append(entry.getValue().getPrice().getUnits()).append(".")
-                    .append(String.format("%09d", entry.getValue().getPrice().getNano()))
+                    .append("Стоимость = ").append(String.format("%.2f", price))
                     .append(" ").append(entry.getKey().getCurrency().toUpperCase()).append("\n");
         }
     }
