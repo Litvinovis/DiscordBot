@@ -11,7 +11,6 @@ import ru.tinkoff.piapi.core.InvestApi;
 import services.CurrencyInfoService;
 import services.HelpInfoService;
 import services.SharesInfoService;
-import services.StatisticsSenderService;
 import utils.Constants;
 
 import java.util.List;
@@ -35,7 +34,6 @@ public class MessageHandler extends ListenerAdapter {
 
   @Override
   public void onMessageReceived(@NotNull MessageReceivedEvent event) {
-    runTasks(event);
     try {
       if (isBotAsking(event)) {
         if (event.getMessage().getContentDisplay().contains("+валюта")) {
@@ -57,9 +55,5 @@ public class MessageHandler extends ListenerAdapter {
 
   private boolean isBotAsking(MessageReceivedEvent event) {
     return event.getMessage().getContentDisplay().startsWith("+") && ALLOW_CHANNELS.contains(event.getChannel().asTextChannel().getName());
-  }
-
-  private void runTasks(MessageReceivedEvent event) {
-      new StatisticsSenderService(api, event);
   }
 }

@@ -6,24 +6,24 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ru.tinkoff.piapi.contract.v1.Currency;
 import ru.tinkoff.piapi.contract.v1.LastPrice;
+import ru.tinkoff.piapi.contract.v1.Share;
 import ru.tinkoff.piapi.core.InvestApi;
 import utils.ConfigLoader;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class CurrencyStatTask implements Runnable {
-    private static final Logger logger = LoggerFactory.getLogger(CurrencyStatTask.class);
+public class SharesStatTask implements Runnable {
+    private static final Logger logger = LoggerFactory.getLogger(SharesStatTask.class);
     private final InvestApi api;
     private final JDA jda;
     private final StringBuilder builder = new StringBuilder();
-    private final StringBuilder price = new StringBuilder();
-    private Map<String, Double> oldData = new HashMap<>();
+    private final Map<String, Double> oldData = new HashMap<>();
     private final Map<String, Double> newData = new HashMap<>();
+    private final List<String> badCode = List.of("SPEQ", "SMAL", "SPBXM_OTC", "FQBR", "A29", "A30");
 
-    public CurrencyStatTask(InvestApi api, JDA jda) {
+    public SharesStatTask(InvestApi api, JDA jda) {
         this.api = api;
         this.jda = jda;
     }
@@ -36,7 +36,7 @@ public class CurrencyStatTask implements Runnable {
                 sendReport(message);
             }
         } catch (Exception e) {
-            logger.error("Ошибка при выполнении задачи валютного отчета", e);
+            logger.error("Ошибка при выполнении задачи отчета по акциям", e);
         }
     }
 
@@ -63,46 +63,56 @@ public class CurrencyStatTask implements Runnable {
             }
             
             channel.sendMessage(message).submit();
-            logger.info("Отчет по валютам успешно отправлен в канал {} на сервере {}", channelName, guild.getName());
+            logger.info("Отчет по акциям успешно отправлен в канал {} на сервере {}", channelName, guild.getName());
         } catch (Exception e) {
-            logger.error("Ошибка при отправке отчета по валютам", e);
+            logger.error("Ошибка при отправке отчета по акциям", e);
         }
     }
 
     private String createMessage() {
         builder.setLength(0);
         try {
-            List<Currency> currencies = api.getInstrumentsService().getAllCurrenciesSync();
-            List<String> figiList = currencies.stream().map(Currency::getFigi).toList();
+            // Get all shares
+            List<Share> shares = api.getInstrumentsService().getAllSharesSync().stream()
+                    .filter(share -> checkClassCode(share.getClassCode()))
+                    .toList();
+            
+            List<String> figiList = shares.stream().map(Share::getFigi).toList();
             List<LastPrice> lastPrices = api.getMarketDataService().getLastPricesSync(figiList);
             
-            for (int i = 0; i < lastPrices.size(); i++) {
-                price.setLength(0);
-                price.append(lastPrices.get(i).getPrice().getUnits()).append(".")
-                        .append(String.format("%09d", lastPrices.get(i).getPrice().getNano()));
-                newData.put(currencies.get(i).getName(), Double.parseDouble(price.toString()));
+            // Populate new data
+            for (int i = 0; i < shares.size() && i < lastPrices.size(); i++) {
+                Share share = shares.get(i);
+                LastPrice price = lastPrices.get(i);
+                
+                // Skip shares with zero price
+                if (price.getPrice().getUnits() == 0 && price.getPrice().getNano() == 0) {
+                    continue;
+                }
+                
+                double priceValue = price.getPrice().getUnits() + 
+                                   (double) price.getPrice().getNano() / 1_000_000_000;
+                newData.put(share.getName(), priceValue);
             }
             
             if (oldData.isEmpty()) {
-                oldData = new HashMap<>(newData);
-                return null; // First run, no data to compare
+                // First run, just store the data
+                oldData.putAll(newData);
+                return null;
             } else {
+                // Calculate percentage changes
                 Map<String, Double> changes = new HashMap<>();
-                for (Map.Entry<String, Double> e : newData.entrySet()) {
-                    String currencyName = e.getKey();
-                    // Skip comparing ruble with itself
-                    if ("Российский рубль".equals(currencyName)) {
-                        continue;
-                    }
+                for (Map.Entry<String, Double> entry : newData.entrySet()) {
+                    String shareName = entry.getKey();
                     
-                    // Calculate percentage change correctly
-                    if (oldData.containsKey(currencyName)) {
-                        double oldValue = oldData.get(currencyName);
-                        double newValue = e.getValue();
+                    if (oldData.containsKey(shareName)) {
+                        double oldValue = oldData.get(shareName);
+                        double newValue = entry.getValue();
+                        
                         // Avoid division by zero
                         if (oldValue != 0) {
                             double change = ((newValue - oldValue) / oldValue) * 100;
-                            changes.put(currencyName, change);
+                            changes.put(shareName, change);
                         }
                     }
                 }
@@ -116,7 +126,7 @@ public class CurrencyStatTask implements Runnable {
                                 Map.Entry::getValue,
                                 (oldValue, newValue) -> oldValue, LinkedHashMap::new));
                 
-                builder.append("Топ 5 лучших валют к рублю сегодня:\n");
+                builder.append("Топ 5 лучших акций сегодня:\n");
                 List<Map.Entry<String, Double>> entryList = new ArrayList<>(sortedMap.entrySet());
                 
                 // Top 5 best performers
@@ -127,7 +137,7 @@ public class CurrencyStatTask implements Runnable {
                     count++;
                 }
                 
-                builder.append("\nТоп 5 худших валют к рублю сегодня:\n");
+                builder.append("\nТоп 5 худших акций сегодня:\n");
                 
                 // Bottom 5 worst performers (reverse order)
                 count = 0;
@@ -140,13 +150,18 @@ public class CurrencyStatTask implements Runnable {
             }
             
             // Update oldData for next comparison
-            oldData = new HashMap<>(newData);
+            oldData.clear();
+            oldData.putAll(newData);
             newData.clear();
         } catch (Exception e) {
-            logger.error("Ошибка при создании сообщения с отчетом по валютам", e);
-            return "Ошибка при формировании отчета по валютам: " + e.getMessage();
+            logger.error("Ошибка при создании сообщения с отчетом по акциям", e);
+            return "Ошибка при формировании отчета по акциям: " + e.getMessage();
         }
         
         return builder.toString();
+    }
+    
+    private boolean checkClassCode(String classCode) {
+        return !badCode.contains(classCode);
     }
 }

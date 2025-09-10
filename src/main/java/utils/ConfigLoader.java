@@ -92,4 +92,49 @@ public class ConfigLoader {
             return "readonly"; // Резервный вариант
         }
     }
+    
+    // New methods for report configuration
+    @SuppressWarnings("unchecked")
+    public static String getReportGuildId() {
+        try {
+            Map<String, Object> reports = (Map<String, Object>) config.get("reports");
+            return (String) reports.get("guild-id");
+        } catch (Exception e) {
+            logger.error("Ошибка получения guild ID для отчетов из конфигурации", e);
+            return null;
+        }
+    }
+    
+    @SuppressWarnings("unchecked")
+    public static String getReportChannelName() {
+        try {
+            Map<String, Object> reports = (Map<String, Object>) config.get("reports");
+            return (String) reports.get("channel-name");
+        } catch (Exception e) {
+            logger.error("Ошибка получения названия канала для отчетов из конфигурации", e);
+            return null;
+        }
+    }
+    
+    @SuppressWarnings("unchecked")
+    public static String getCurrencyReportCron() {
+        try {
+            Map<String, Object> reports = (Map<String, Object>) config.get("reports");
+            return (String) reports.get("currency-cron");
+        } catch (Exception e) {
+            logger.error("Ошибка получения cron выражения для валютных отчетов из конфигурации", e);
+            return "0 0 21 * * *"; // Default: daily at 21:00
+        }
+    }
+    
+    @SuppressWarnings("unchecked")
+    public static String getSharesReportCron() {
+        try {
+            Map<String, Object> reports = (Map<String, Object>) config.get("reports");
+            return (String) reports.get("shares-cron");
+        } catch (Exception e) {
+            logger.error("Ошибка получения cron выражения для отчетов по акциям из конфигурации", e);
+            return "0 30 21 * * *"; // Default: daily at 21:30
+        }
+    }
 }

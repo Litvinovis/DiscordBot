@@ -1,5 +1,3 @@
-package main;
-
 import EventHandlers.MessageHandler;
 import lombok.extern.slf4j.Slf4j;
 import net.dv8tion.jda.api.JDA;
@@ -9,6 +7,7 @@ import net.dv8tion.jda.api.requests.GatewayIntent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.piapi.core.InvestApi;
+import services.StatisticsSenderService;
 import utils.ConfigLoader;
 
 @Slf4j
@@ -48,6 +47,11 @@ public class App {
                     .addEventListeners(new MessageHandler(api))
                     .setActivity(Activity.playing("NASDAQ"))
                     .build();
+            
+            // Initialize scheduled reports service after JDA is ready
+            jda.awaitReady();
+            new StatisticsSenderService(api, jda);
+            
             start.info("Бот Discord успешно инициализирован");
         } catch (Exception e) {
             start.error("Ошибка инициализации бота Discord", e);

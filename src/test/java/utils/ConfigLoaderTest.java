@@ -19,4 +19,21 @@ public class ConfigLoaderTest {
             assertNotNull(apiMode);
         });
     }
+    
+    @Test
+    public void testReportConfigLoader() {
+        // Проверка, что загрузчик конфигурации может загрузить параметры отчетов
+        assertDoesNotThrow(() -> {
+            String guildId = ConfigLoader.getReportGuildId();
+            String channelName = ConfigLoader.getReportChannelName();
+            String currencyCron = ConfigLoader.getCurrencyReportCron();
+            String sharesCron = ConfigLoader.getSharesReportCron();
+            
+            // Проверяем, что значения не null (могут быть пустыми, но не null)
+            assertNotNull(guildId);
+            assertNotNull(channelName);
+            assertNotNull(currencyCron);
+            assertNotNull(sharesCron);
+        });
+    }
 }

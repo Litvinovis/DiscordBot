@@ -1,42 +1,108 @@
 package services;
 
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.api.JDA;
 import ru.tinkoff.piapi.core.InvestApi;
 import services.statTask.CurrencyStatTask;
-import java.time.LocalTime;
+import services.statTask.SharesStatTask;
+import utils.ConfigLoader;
 
-import java.time.temporal.ChronoUnit;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class StatisticsSenderService {
-    private final CurrencyStatTask currencyStatTask;
+    private static final Logger logger = LoggerFactory.getLogger(StatisticsSenderService.class);
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
 
-    public StatisticsSenderService(InvestApi api, MessageReceivedEvent event) {
-        this.currencyStatTask = new CurrencyStatTask(api, event);
-        runCurrencyTask();
+    public StatisticsSenderService(InvestApi api, JDA jda) {
+        runCurrencyTask(api, jda);
+        runSharesTask(api, jda);
     }
 
-
-    private void runCurrencyTask() {
-        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
-
-        // Время, когда должна выполняться задача
-        LocalTime targetTime = LocalTime.of(21, 15);
-
-        // Текущее время
-        LocalTime now = LocalTime.now();
-
-        // Вычисляем задержку до следующего запуска
-        long initialDelay = ChronoUnit.SECONDS.between(now, targetTime);
-
-        // Если целевое время уже прошло, планируем на следующий день
-        if (initialDelay < 0) {
-            initialDelay += TimeUnit.DAYS.toSeconds(1); // Добавляем 24 часа в секундах
+    private void runCurrencyTask(InvestApi api, JDA jda) {
+        try {
+            CurrencyStatTask currencyStatTask = new CurrencyStatTask(api, jda);
+            String cronExpression = ConfigLoader.getCurrencyReportCron();
+            
+            // Parse cron expression (s m h d m w)
+            String[] parts = cronExpression.split(" ");
+            if (parts.length != 6) {
+                logger.error("Неверный формат cron выражения для валютных отчетов: {}", cronExpression);
+                return;
+            }
+            
+            int second = parseCronPart(parts[0], 0, 59);
+            int minute = parseCronPart(parts[1], 0, 59);
+            int hour = parseCronPart(parts[2], 0, 23);
+            
+            // For simplicity, we'll schedule it daily at the specified time
+            // A full cron implementation would be more complex
+            long initialDelay = calculateInitialDelay(hour, minute, second);
+            long period = 24 * 60 * 60; // 24 hours in seconds
+            
+            scheduler.scheduleAtFixedRate(currencyStatTask, initialDelay, period, java.util.concurrent.TimeUnit.SECONDS);
+            logger.info("Задача валютных отчетов запланирована на {}:{}:{}", hour, minute, second);
+        } catch (Exception e) {
+            logger.error("Ошибка при планировании задачи валютных отчетов", e);
         }
+    }
 
-        // Запускаем задачу каждые 24 часа после первого запуска
-        scheduler.scheduleAtFixedRate(currencyStatTask, initialDelay, TimeUnit.DAYS.toSeconds(1), TimeUnit.SECONDS);
+    private void runSharesTask(InvestApi api, JDA jda) {
+        try {
+            SharesStatTask sharesStatTask = new SharesStatTask(api, jda);
+            String cronExpression = ConfigLoader.getSharesReportCron();
+            
+            // Parse cron expression (s m h d m w)
+            String[] parts = cronExpression.split(" ");
+            if (parts.length != 6) {
+                logger.error("Неверный формат cron выражения для отчетов по акциям: {}", cronExpression);
+                return;
+            }
+            
+            int second = parseCronPart(parts[0], 0, 59);
+            int minute = parseCronPart(parts[1], 0, 59);
+            int hour = parseCronPart(parts[2], 0, 23);
+            
+            // For simplicity, we'll schedule it daily at the specified time
+            long initialDelay = calculateInitialDelay(hour, minute, second);
+            long period = 24 * 60 * 60; // 24 hours in seconds
+            
+            scheduler.scheduleAtFixedRate(sharesStatTask, initialDelay, period, java.util.concurrent.TimeUnit.SECONDS);
+            logger.info("Задача отчетов по акциям запланирована на {}:{}:{}", hour, minute, second);
+        } catch (Exception e) {
+            logger.error("Ошибка при планировании задачи отчетов по акциям", e);
+        }
+    }
+
+    private int parseCronPart(String part, int min, int max) {
+        try {
+            int value = Integer.parseInt(part);
+            if (value >= min && value <= max) {
+                return value;
+            }
+        } catch (NumberFormatException e) {
+            // Handle asterisk or other cron syntax
+            if ("*".equals(part)) {
+                return min; // Use minimum value as default
+            }
+        }
+        return min; // Default fallback
+    }
+
+    private long calculateInitialDelay(int targetHour, int targetMinute, int targetSecond) {
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        java.time.LocalDateTime targetTime = now.withHour(targetHour)
+                                               .withMinute(targetMinute)
+                                               .withSecond(targetSecond)
+                                               .withNano(0);
+        
+        // If target time has already passed today, schedule for tomorrow
+        if (targetTime.isBefore(now)) {
+            targetTime = targetTime.plusDays(1);
+        }
+        
+        return java.time.Duration.between(now, targetTime).getSeconds();
     }
 }
