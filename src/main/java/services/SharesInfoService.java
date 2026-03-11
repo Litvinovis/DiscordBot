@@ -17,7 +17,7 @@ public class SharesInfoService {
     private final InvestApi api;
     private final StringBuilder builder = new StringBuilder();
     private final Logger logger = LoggerFactory.getLogger("default-logger");
-    private final List<String> badCode = List.of("SPEQ", "SMAL", "SPBXM_OTC", "FQBR", "A29", "A30");
+    private final List<String> badCode = List.of("SPEQ", "SMAL", "SPBXM_OTC", "A29", "A30");
 
     public SharesInfoService(InvestApi api) {
         this.api = api;
@@ -27,10 +27,28 @@ public class SharesInfoService {
         builder.setLength(0);
         builder.append("Информация о подходящих акциях: \n");
         try {
-            List<Share> shares = api.getInstrumentsService().getAllSharesSync().stream()
+            String query = sharesName == null ? "" : sharesName.trim();
+            String qLower = query.toLowerCase();
+
+            List<Share> allShares = api.getInstrumentsService().getAllSharesSync().stream()
                     .filter(share -> checkClassCode(share.getClassCode()))
-                    .filter(share -> share.getName().toLowerCase().contains(sharesName.toLowerCase()))
                     .toList();
+
+            List<Share> shares = allShares.stream()
+                    .filter(share -> share.getTicker() != null && share.getTicker().equalsIgnoreCase(query))
+                    .toList();
+
+            if (shares.isEmpty()) {
+                shares = allShares.stream()
+                        .filter(share -> share.getName() != null && share.getName().toLowerCase().contains(qLower))
+                        .limit(50)
+                        .toList();
+            }
+
+            if (shares.isEmpty()) {
+                return "По запросу ".concat(sharesName).concat(" ничего не нашлось");
+            }
+
             List<LastPrice> lastPrices = api.getMarketDataService().getLastPricesSync(
                     shares.stream().map(Share::getFigi).collect(Collectors.toList()));
             if (lastPrices.isEmpty()) {
@@ -45,7 +63,7 @@ public class SharesInfoService {
                 createShareInfo(sharesMap);
             }
         } catch (Exception e) {
-            logger.trace(e.getMessage());
+            logger.error("Ошибка при получении данных по акциям '{}': {}", sharesName, e.getMessage(), e);
             return "Сорян я глючу " + e.getMessage();
         }
         return builder.toString();
