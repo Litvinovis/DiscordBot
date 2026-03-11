@@ -21,9 +21,9 @@ public class App {
         String tinkoffToken = ConfigLoader.getTinkoffToken();
         String apiMode = ConfigLoader.getTinkoffApiMode();
         
-        // Логирование токенов для отладки (но будьте осторожны, не раскрывайте их в production)
-        start.info("Длина токена Discord: {}", discordToken != null ? discordToken.length() : 0);
-        start.info("Длина токена Tinkoff: {}", tinkoffToken != null ? tinkoffToken.length() : 0);
+        // Логируем только факт наличия секретов, без деталей
+        start.info("Токен Discord задан: {}", discordToken != null && !discordToken.isBlank());
+        start.info("Токен Tinkoff задан: {}", tinkoffToken != null && !tinkoffToken.isBlank());
         start.info("Режим API: {}", apiMode);
         
         // Проверка токенов
