@@ -38,7 +38,9 @@ public class App {
         }
         
         // Создание экземпляра Invest API
-        InvestApi api = InvestApi.createReadonly(tinkoffToken);
+        InvestApi api = "readonly".equalsIgnoreCase(apiMode)
+                ? InvestApi.createReadonly(tinkoffToken)
+                : InvestApi.create(tinkoffToken);
         
         // Создание экземпляра JDA
         try {
