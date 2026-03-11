@@ -1,0 +1,12 @@
+discord:
+  token: ${DISCORD_BOT_TOKEN:test-discord-token}
+
+tinkoff:
+  token: ${TINKOFF_TOKEN:test-tinkoff-token}
+  api-mode: readonly
+
+reports:
+  guild-id: "1"
+  channel-name: "ботный"
+  currency-cron: "0 0 11 * * *"
+  shares-cron: "0 5 11 * * *"
