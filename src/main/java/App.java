@@ -37,6 +37,11 @@ public class App {
             return;
         }
         
+        // Явно фиксируем DNS target для grpc, чтобы избежать некорректного unix resolver
+        if (System.getProperty("invest.api.target") == null || System.getProperty("invest.api.target").isBlank()) {
+            System.setProperty("invest.api.target", "dns:///invest-public-api.tinkoff.ru:443");
+        }
+
         // Создание экземпляра Invest API
         InvestApi api = "readonly".equalsIgnoreCase(apiMode)
                 ? InvestApi.createReadonly(tinkoffToken)
