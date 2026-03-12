@@ -97,7 +97,7 @@
         <dependency>
             <groupId>ru.tinkoff.piapi</groupId>
             <artifactId>java-sdk-core</artifactId>
-            <version>1.48</version>
+            <version>1.5</version>
         </dependency>
 
         <!-- Lombok -->

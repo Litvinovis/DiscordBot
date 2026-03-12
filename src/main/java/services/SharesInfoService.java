@@ -62,9 +62,9 @@ public class SharesInfoService {
                 }
                 createShareInfo(sharesMap);
             }
-        } catch (Exception e) {
+        } catch (Throwable e) {
             logger.error("Ошибка при получении данных по акциям '{}': {}", sharesName, e.getMessage(), e);
-            return "Сорян я глючу " + e.getMessage();
+            return "Сервис котировок временно недоступен, попробуйте позже";
         }
         return builder.toString();
     }
