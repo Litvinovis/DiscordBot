@@ -1,0 +1,14 @@
+discord:
+  token: "${DISCORD_BOT_TOKEN}"
+  allowed-channel-ids:
+    - "1157258712138907700"
+
+tinkoff:
+  token: "${TINKOFF_TOKEN}"
+  api-mode: "readonly"
+
+reports:
+  guild-id: ""
+  channel-name: ""
+  currency-cron: "0 0 21 * * *"
+  shares-cron: "0 30 21 * * *"

@@ -13,7 +13,9 @@ import services.HelpInfoService;
 import services.SharesInfoService;
 import utils.Constants;
 
-import java.util.List;
+import java.util.Set;
+
+import utils.ConfigLoader;
 
 @Slf4j
 public class MessageHandler extends ListenerAdapter {
@@ -22,7 +24,7 @@ public class MessageHandler extends ListenerAdapter {
   private final SharesInfoService sharesInfoService;
   private final HelpInfoService helpInfoService;
   private final Logger logger = LoggerFactory.getLogger("default-logger");
-  private static final List<String> ALLOW_CHANNELS = List.of("основной", "криптоканал", "ботный");
+  private static final Set<String> ALLOW_CHANNEL_IDS = Set.copyOf(ConfigLoader.getAllowedChannelIds());
   public static final Counter JOB_COPY_SUCCESS = new Counter();
 
   public MessageHandler(InvestApi api) {
@@ -54,6 +56,7 @@ public class MessageHandler extends ListenerAdapter {
   }
 
   private boolean isBotAsking(MessageReceivedEvent event) {
-    return event.getMessage().getContentDisplay().startsWith("+") && ALLOW_CHANNELS.contains(event.getChannel().asTextChannel().getName());
+    return event.getMessage().getContentDisplay().startsWith("+")
+            && ALLOW_CHANNEL_IDS.contains(event.getChannel().getId());
   }
 }
