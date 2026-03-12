@@ -1,0 +1,87 @@
+package services;
+
+import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import ru.tinkoff.piapi.contract.v1.LastPrice;
+import ru.tinkoff.piapi.contract.v1.Share;
+import services.tbank.TInvestApi;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+@Slf4j
+public class SharesInfoService {
+    private final TInvestApi api;
+    private final StringBuilder builder = new StringBuilder();
+    private final Logger logger = LoggerFactory.getLogger("default-logger");
+    private final List<String> badCode = List.of("SPEQ", "SMAL", "SPBXM_OTC", "A29", "A30");
+
+    public SharesInfoService(TInvestApi api) {
+        this.api = api;
+    }
+
+    public String getSharesInfo(String sharesName) {
+        builder.setLength(0);
+        builder.append("Информация о подходящих акциях: \n");
+        try {
+            String query = sharesName == null ? "" : sharesName.trim();
+            String qLower = query.toLowerCase();
+
+            List<Share> allShares = api.getInstrumentsService().getAllSharesSync().stream()
+                    .filter(share -> checkClassCode(share.getClassCode()))
+                    .toList();
+
+            List<Share> shares = allShares.stream()
+                    .filter(share -> share.getTicker() != null && share.getTicker().equalsIgnoreCase(query))
+                    .toList();
+
+            if (shares.isEmpty()) {
+                shares = allShares.stream()
+                        .filter(share -> share.getName() != null && share.getName().toLowerCase().contains(qLower))
+                        .limit(50)
+                        .toList();
+            }
+
+            if (shares.isEmpty()) {
+                return "По запросу ".concat(sharesName).concat(" ничего не нашлось");
+            }
+
+            List<LastPrice> lastPrices = api.getMarketDataService().getLastPricesSync(
+                    shares.stream().map(Share::getFigi).collect(Collectors.toList()));
+            if (lastPrices.isEmpty()) {
+                return "По запросу ".concat(sharesName).concat(" ничего не нашлось");
+            } else {
+                Map<Share, LastPrice> sharesMap = new HashMap<>(shares.size());
+                for (int i = 0; i < shares.size() && i < lastPrices.size(); i++) {
+                    if (lastPrices.get(i).getPrice().getUnits() != 0 || lastPrices.get(i).getPrice().getNano() != 0) {
+                        sharesMap.put(shares.get(i), lastPrices.get(i));
+                    }
+                }
+                createShareInfo(sharesMap);
+            }
+        } catch (Throwable e) {
+            logger.error("Ошибка при получении данных по акциям '{}': {}", sharesName, e.getMessage(), e);
+            return "Сервис котировок временно недоступен, попробуйте позже";
+        }
+        return builder.toString();
+    }
+
+    private boolean checkClassCode(String classCode) {
+        return !badCode.contains(classCode);
+    }
+
+    private void createShareInfo(Map<Share, LastPrice> shares) {
+        for (Map.Entry<Share, LastPrice> entry : shares.entrySet()) {
+            // Format the price to show only 2 decimal places
+            double price = entry.getValue().getPrice().getUnits() + 
+                          (double) entry.getValue().getPrice().getNano() / 1_000_000_000;
+            
+            builder.append("\n").append("Название: ").append(entry.getKey().getName()).append("\n")
+                    .append("Стоимость = ").append(String.format("%.2f", price))
+                    .append(" ").append(entry.getKey().getCurrency().toUpperCase()).append("\n");
+        }
+    }
+}
