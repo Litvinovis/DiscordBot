@@ -89,7 +89,7 @@
         <dependency>
             <groupId>ru.tinkoff.piapi</groupId>
             <artifactId>java-sdk-core</artifactId>
-            <version>1.40</version>
+            <version>1.48</version>
         </dependency>
 
         <!-- Lombok -->
@@ -105,6 +105,13 @@
             <groupId>io.dropwizard.metrics</groupId>
             <artifactId>metrics-core</artifactId>
             <version>4.2.38</version>
+        </dependency>
+
+        <!-- Force protobuf runtime compatible with T-Bank SDK 1.48 generated stubs -->
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>4.33.0</version>
         </dependency>
 
         <!-- Testing -->
