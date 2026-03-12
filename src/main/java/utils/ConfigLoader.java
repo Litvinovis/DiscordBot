@@ -7,6 +7,8 @@ import org.yaml.snakeyaml.Yaml;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -115,6 +117,28 @@ public class ConfigLoader {
             value = value.substring(1, value.length() - 1);
         }
         return value;
+    }
+
+    @SuppressWarnings("unchecked")
+    public static List<String> getAllowedChannelIds() {
+        try {
+            Map<String, Object> discord = (Map<String, Object>) config.get("discord");
+            Object raw = discord != null ? discord.get("allowed-channel-ids") : null;
+            if (!(raw instanceof List<?> list)) {
+                return List.of();
+            }
+            List<String> result = new ArrayList<>();
+            for (Object item : list) {
+                if (item != null) {
+                    String s = item.toString().trim();
+                    if (!s.isEmpty()) result.add(s);
+                }
+            }
+            return result;
+        } catch (Exception e) {
+            logger.error("Ошибка получения списка разрешенных channel IDs", e);
+            return List.of();
+        }
     }
 
     @SuppressWarnings("unchecked")
