@@ -1,0 +1,62 @@
+package EventHandlers;
+
+import com.codahale.metrics.Counter;
+import lombok.extern.slf4j.Slf4j;
+import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import services.tbank.TInvestApi;
+import services.CurrencyInfoService;
+import services.HelpInfoService;
+import services.SharesInfoService;
+import utils.Constants;
+
+import java.util.Set;
+
+import utils.ConfigLoader;
+
+@Slf4j
+public class MessageHandler extends ListenerAdapter {
+  private final TInvestApi api;
+  private final CurrencyInfoService currencyInfoService;
+  private final SharesInfoService sharesInfoService;
+  private final HelpInfoService helpInfoService;
+  private final Logger logger = LoggerFactory.getLogger("default-logger");
+  private static final Set<String> ALLOW_CHANNEL_IDS = Set.copyOf(ConfigLoader.getAllowedChannelIds());
+  public static final Counter JOB_COPY_SUCCESS = new Counter();
+
+  public MessageHandler(TInvestApi api) {
+    this.api = api;
+    this.currencyInfoService = new CurrencyInfoService(api);
+    this.sharesInfoService = new SharesInfoService(api);
+    this.helpInfoService = new HelpInfoService(api);
+  }
+
+  @Override
+  public void onMessageReceived(@NotNull MessageReceivedEvent event) {
+    try {
+      if (isBotAsking(event)) {
+        if (event.getMessage().getContentDisplay().contains("+валюта")) {
+          event.getChannel().sendMessage(currencyInfoService.getCurrencyInfo(event.getMessage().getContentDisplay().substring(8)))
+                  .submit();
+        } else if (event.getMessage().getContentDisplay().contains("+акция")) {
+          event.getChannel().sendMessage(sharesInfoService.getSharesInfo(event.getMessage().getContentDisplay().substring(7)))
+                  .submit();
+        } else if (event.getMessage().getContentDisplay().contains("+помощь")) {
+          event.getChannel().sendMessage(helpInfoService.getHelpInfo()).submit();
+        } else {
+          event.getChannel().sendMessage("неизвестная команда, напишите \"+помощь\" для вывода списка доступных команд").submit();
+        }
+      }
+    } catch (Exception e) {
+      logger.error(Constants.LOG_MESSAGE, e.getMessage());
+    }
+  }
+
+  private boolean isBotAsking(MessageReceivedEvent event) {
+    return event.getMessage().getContentDisplay().startsWith("+")
+            && ALLOW_CHANNEL_IDS.contains(event.getChannel().getId());
+  }
+}
