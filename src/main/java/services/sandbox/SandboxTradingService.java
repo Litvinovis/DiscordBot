@@ -52,17 +52,17 @@ public class SandboxTradingService {
         this.users = manager.usersCache();
         this.positions = manager.positionsCache();
         this.trades = manager.tradesCache();
-        Set allowed = ConfigLoader.getSandboxAllowedTickers().stream().map(String::toUpperCase).collect(Collectors.toSet());
+        Set<String> allowed = ConfigLoader.getSandboxAllowedTickers().stream().map(String::toUpperCase).collect(Collectors.toSet());
         this.shareByTicker = api.getInstrumentsService().getAllSharesSync().stream().filter(s -> "rub".equalsIgnoreCase(s.getCurrency())).filter(s -> allowed.contains(s.getTicker().toUpperCase())).collect(Collectors.toMap(s -> s.getTicker().toUpperCase(), s -> s, (a, b) -> a));
     }
 
     public synchronized String register(String userId, String userName) {
-        SandboxUser existing = (SandboxUser)this.users.get((Object)userId);
+        SandboxUser existing = (SandboxUser)this.users.get(userId);
         if (existing != null) {
             return "\u0412\u044b \u0443\u0436\u0435 \u0437\u0430\u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0438\u0440\u043e\u0432\u0430\u043d\u044b \u0432 \u043f\u0435\u0441\u043e\u0447\u043d\u0438\u0446\u0435.";
         }
         SandboxUser user = new SandboxUser(userId, userName, this.startBalance);
-        this.users.put((Object)userId, (Object)user);
+        this.users.put(userId, user);
         return "\u2705 \u0420\u0435\u0433\u0438\u0441\u0442\u0440\u0430\u0446\u0438\u044f \u0443\u0441\u043f\u0435\u0448\u043d\u0430. \u0421\u0442\u0430\u0440\u0442\u043e\u0432\u044b\u0439 \u0431\u0430\u043b\u0430\u043d\u0441: " + this.fmt(this.startBalance) + " \u20bd";
     }
 
@@ -86,7 +86,7 @@ public class SandboxTradingService {
         if (qty <= 0) {
             return "\u041a\u043e\u043b\u0438\u0447\u0435\u0441\u0442\u0432\u043e \u0434\u043e\u043b\u0436\u043d\u043e \u0431\u044b\u0442\u044c > 0";
         }
-        SandboxUser user = (SandboxUser)this.users.get((Object)userId);
+        SandboxUser user = (SandboxUser)this.users.get(userId);
         if (user == null) {
             return "\u0421\u043d\u0430\u0447\u0430\u043b\u0430 \u0432\u044b\u043f\u043e\u043b\u043d\u0438\u0442\u0435 +\u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0430\u0446\u0438\u044f";
         }
@@ -101,7 +101,7 @@ public class SandboxTradingService {
             return "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0446\u0435\u043d\u0443 \u0434\u043b\u044f " + ticker;
         }
         String pKey = this.posKey(userId, ticker);
-        Position pos = (Position)this.positions.get((Object)pKey);
+        Position pos = (Position)this.positions.get(pKey);
         if (pos == null) {
             pos = new Position(userId, ticker, share.getUid(), 0, 0.0);
         }
@@ -116,14 +116,14 @@ public class SandboxTradingService {
             double newAvg = (pos.getAvgPrice() * (double)pos.getQuantity() + turnover) / (double)newQty;
             pos.setQuantity(newQty);
             pos.setAvgPrice(newAvg);
-            this.positions.put((Object)pKey, (Object)pos);
+            this.positions.put(pKey, pos);
         } else {
             user.setCash(user.getCash() + turnover - fee);
             pos.setQuantity(pos.getQuantity() - qty);
             if (pos.getQuantity() == 0) {
-                this.positions.remove((Object)pKey);
+                this.positions.remove(pKey);
             } else {
-                this.positions.put((Object)pKey, (Object)pos);
+                this.positions.put(pKey, pos);
             }
         }
         user.setTotalFees(user.getTotalFees() + fee);
@@ -131,8 +131,8 @@ public class SandboxTradingService {
         if (!this.checkRisk(user, userId)) {
             return "\u274c \u0421\u0434\u0435\u043b\u043a\u0430 \u043e\u0442\u043a\u043b\u043e\u043d\u0435\u043d\u0430: \u043f\u0440\u0435\u0432\u044b\u0448\u0435\u043d \u0440\u0438\u0441\u043a/\u043f\u043b\u0435\u0447\u043e.";
         }
-        this.users.put((Object)userId, (Object)user);
-        this.trades.put((Object)UUID.randomUUID().toString(), (Object)new TradeRecord(UUID.randomUUID().toString(), userId, ticker, buy ? "BUY" : "SELL", qty, price, fee, Instant.now()));
+        this.users.put(userId, user);
+        this.trades.put(UUID.randomUUID().toString(), new TradeRecord(UUID.randomUUID().toString(), userId, ticker, buy ? "BUY" : "SELL", qty, price, fee, Instant.now()));
         return (buy ? "\ud83d\udfe2 \u041a\u0443\u043f\u043b\u0435\u043d\u043e " : "\ud83d\udd34 \u041f\u0440\u043e\u0434\u0430\u043d\u043e ") + qty + " " + ticker + " \u043f\u043e " + this.fmt(price) + " \u20bd. \u041a\u043e\u043c\u0438\u0441\u0441\u0438\u044f " + this.fmt(fee) + " \u20bd";
     }
 
@@ -145,7 +145,7 @@ public class SandboxTradingService {
             user.setCash(user.getCash() - repay);
             user.setBorrowed(user.getBorrowed() - repay);
         }
-        this.users.put((Object)userId, (Object)user);
+        this.users.put(userId, user);
     }
 
     private boolean checkRisk(SandboxUser user, String userId) {
@@ -174,14 +174,14 @@ public class SandboxTradingService {
             double turnover = price * (double)p.getQuantity();
             double fee = Math.max(1.0, turnover * this.commissionRate);
             user.setCash(user.getCash() + turnover - fee);
-            this.positions.remove((Object)this.posKey(userId, p.getTicker()));
+            this.positions.remove(this.posKey(userId, p.getTicker()));
         }
         this.rebalanceDebt(user, userId);
-        this.users.put((Object)userId, (Object)user);
+        this.users.put(userId, user);
     }
 
     public synchronized String portfolio(String userId) {
-        SandboxUser user = (SandboxUser)this.users.get((Object)userId);
+        SandboxUser user = (SandboxUser)this.users.get(userId);
         if (user == null) {
             return "\u0421\u043d\u0430\u0447\u0430\u043b\u0430 \u0432\u044b\u043f\u043e\u043b\u043d\u0438\u0442\u0435 +\u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0430\u0446\u0438\u044f";
         }
@@ -198,7 +198,7 @@ public class SandboxTradingService {
     }
 
     public synchronized String balance(String userId) {
-        SandboxUser user = (SandboxUser)this.users.get((Object)userId);
+        SandboxUser user = (SandboxUser)this.users.get(userId);
         if (user == null) {
             return "\u0421\u043d\u0430\u0447\u0430\u043b\u0430 \u0432\u044b\u043f\u043e\u043b\u043d\u0438\u0442\u0435 +\u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0430\u0446\u0438\u044f";
         }
@@ -217,7 +217,7 @@ public class SandboxTradingService {
     }
 
     public synchronized String margin(String userId) {
-        SandboxUser user = (SandboxUser)this.users.get((Object)userId);
+        SandboxUser user = (SandboxUser)this.users.get(userId);
         if (user == null) {
             return "\u0421\u043d\u0430\u0447\u0430\u043b\u0430 \u0432\u044b\u043f\u043e\u043b\u043d\u0438\u0442\u0435 +\u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0430\u0446\u0438\u044f";
         }
@@ -265,7 +265,7 @@ public class SandboxTradingService {
                 u.setMonthlyBaselineDate(now);
                 u.setMonthlyBaselineEquity(eq);
             }
-            this.users.put((Object)u.getUserId(), (Object)u);
+            this.users.put(u.getUserId(), u);
         }
     }
 
