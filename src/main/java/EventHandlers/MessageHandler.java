@@ -122,4 +122,3 @@ extends ListenerAdapter {
         return event.getMessage().getContentDisplay().startsWith("+") && ALLOW_CHANNEL_IDS.contains(event.getChannel().getId());
     }
 }
-
