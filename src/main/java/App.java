@@ -6,6 +6,7 @@ import net.dv8tion.jda.api.entities.Activity;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import services.StatisticsSenderService;
 import services.sandbox.SandboxReportScheduler;
 import services.sandbox.SandboxTradingService;
 import services.tbank.TInvestApi;
@@ -43,6 +44,7 @@ public class App {
         try {
             JDA jda = JDABuilder.createDefault(discordToken).enableIntents(GatewayIntent.MESSAGE_CONTENT, new GatewayIntent[0]).addEventListeners(new MessageHandler(api, sandboxTradingService)).setActivity(Activity.playing("NASDAQ")).build();
             jda.awaitReady();
+            new StatisticsSenderService(api, jda);
             new SandboxReportScheduler(sandboxTradingService, jda);
             start.info("Бот Discord успешно инициализирован");
         } catch (Exception e) {
