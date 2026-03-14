@@ -1,6 +1,8 @@
+/*
+ * Decompiled with CFR 0.152.
+ */
 package services;
 
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import services.tbank.TInvestApi;
 
 public class HelpInfoService {
@@ -11,11 +13,7 @@ public class HelpInfoService {
     }
 
     public String getHelpInfo() {
-        return "Вас приветствует Stonks Bot!\n" +
-        "Вы можете использовать следующие команды: \n\n" +
-        "+акция (имя или часть имени компании) - информация о стоимости акции\n\n" +
-        "+валюта (тикер валюты например USD) - информация о курсе валюты к рублю\n\n" +
-        "+помощь - вывод информации о доступных командах\n\n" +
-        "\nСоздатель бота - L4rover";
+        return "\u0412\u0430\u0441 \u043f\u0440\u0438\u0432\u0435\u0442\u0441\u0442\u0432\u0443\u0435\u0442 Stonks Bot!\n\u0411\u0430\u0437\u043e\u0432\u044b\u0435 \u043a\u043e\u043c\u0430\u043d\u0434\u044b:\n+\u0430\u043a\u0446\u0438\u044f <\u0442\u0438\u043a\u0435\u0440/\u043d\u0430\u0437\u0432\u0430\u043d\u0438\u0435>\n+\u0432\u0430\u043b\u044e\u0442\u0430 <\u0442\u0438\u043a\u0435\u0440>\n+\u043f\u043e\u043c\u043e\u0449\u044c\n\n\u041f\u0435\u0441\u043e\u0447\u043d\u0438\u0446\u0430:\n+\u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0430\u0446\u0438\u044f\n+\u0430\u043a\u0442\u0438\u0432\u044b\n+\u0446\u0435\u043d\u0430 <TICKER>\n+\u043a\u0443\u043f\u0438\u0442\u044c <TICKER> <QTY>\n+\u043f\u0440\u043e\u0434\u0430\u0442\u044c <TICKER> <QTY>\n+\u043f\u043e\u0440\u0442\u0444\u0435\u043b\u044c\n+\u0431\u0430\u043b\u0430\u043d\u0441\n+\u043c\u0430\u0440\u0436\u0430\n+\u0442\u043e\u043f \u0434\u0435\u043d\u044c|\u043d\u0435\u0434\u0435\u043b\u044f|\u043c\u0435\u0441\u044f\u0446|\u0432\u0441\u0435";
     }
 }
+

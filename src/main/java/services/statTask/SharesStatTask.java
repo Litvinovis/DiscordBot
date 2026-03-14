@@ -1,6 +1,25 @@
+/*
+ * Decompiled with CFR 0.152.
+ * 
+ * Could not load the following classes:
+ *  com.google.common.base.Strings
+ *  net.dv8tion.jda.api.JDA
+ *  net.dv8tion.jda.api.entities.Guild
+ *  net.dv8tion.jda.api.entities.channel.concrete.TextChannel
+ *  org.slf4j.Logger
+ *  org.slf4j.LoggerFactory
+ *  ru.tinkoff.piapi.contract.v1.LastPrice
+ *  ru.tinkoff.piapi.contract.v1.Share
+ */
 package services.statTask;
 
 import com.google.common.base.Strings;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
@@ -11,16 +30,14 @@ import ru.tinkoff.piapi.contract.v1.Share;
 import services.tbank.TInvestApi;
 import utils.ConfigLoader;
 
-import java.util.*;
-import java.util.stream.Collectors;
-
-public class SharesStatTask implements Runnable {
+public class SharesStatTask
+implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(SharesStatTask.class);
     private final TInvestApi api;
     private final JDA jda;
     private final StringBuilder builder = new StringBuilder();
-    private final Map<String, Double> oldData = new HashMap<>();
-    private final Map<String, Double> newData = new HashMap<>();
+    private final Map<String, Double> oldData = new HashMap<String, Double>();
+    private final Map<String, Double> newData = new HashMap<String, Double>();
     private final List<String> badCode = List.of("SPEQ", "SMAL", "SPBXM_OTC", "FQBR", "A29", "A30");
     private static final int MAX_INSTRUMENTS_PER_REQUEST = 3000;
     private static final int MAX_SHARES_TO_PROCESS = 1000;
@@ -34,258 +51,169 @@ public class SharesStatTask implements Runnable {
     @Override
     public void run() {
         try {
-            String message = createMessage();
-            if (!Strings.isNullOrEmpty(message)) {
-                sendReport(message);
+            String message = this.createMessage();
+            if (!Strings.isNullOrEmpty((String)message)) {
+                this.sendReport(message);
             }
-        } catch (Exception e) {
-            logger.error("Ошибка при выполнении задачи отчета по акциям", e);
+        }
+        catch (Exception e) {
+            logger.error("\u041e\u0448\u0438\u0431\u043a\u0430 \u043f\u0440\u0438 \u0432\u044b\u043f\u043e\u043b\u043d\u0435\u043d\u0438\u0438 \u0437\u0430\u0434\u0430\u0447\u0438 \u043e\u0442\u0447\u0435\u0442\u0430 \u043f\u043e \u0430\u043a\u0446\u0438\u044f\u043c", (Throwable)e);
         }
     }
 
     private void sendReport(String message) {
         String guildId = ConfigLoader.getReportGuildId();
         String channelName = ConfigLoader.getReportChannelName();
-        
-        if (Strings.isNullOrEmpty(guildId) || Strings.isNullOrEmpty(channelName)) {
-            logger.error("Не заданы параметры guildId или channelName для отправки отчета");
+        if (Strings.isNullOrEmpty((String)guildId) || Strings.isNullOrEmpty((String)channelName)) {
+            logger.error("\u041d\u0435 \u0437\u0430\u0434\u0430\u043d\u044b \u043f\u0430\u0440\u0430\u043c\u0435\u0442\u0440\u044b guildId \u0438\u043b\u0438 channelName \u0434\u043b\u044f \u043e\u0442\u043f\u0440\u0430\u0432\u043a\u0438 \u043e\u0442\u0447\u0435\u0442\u0430");
             return;
         }
-        
         try {
-            Guild guild = jda.getGuildById(guildId);
+            Guild guild = this.jda.getGuildById(guildId);
             if (guild == null) {
-                logger.error("Не найден сервер с ID: {}", guildId);
+                logger.error("\u041d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d \u0441\u0435\u0440\u0432\u0435\u0440 \u0441 ID: {}", (Object)guildId);
                 return;
             }
-            
             TextChannel channel = guild.getTextChannelsByName(channelName, true).stream().findFirst().orElse(null);
             if (channel == null) {
-                logger.error("Не найден канал с именем: {} на сервере {}", channelName, guild.getName());
+                logger.error("\u041d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d \u043a\u0430\u043d\u0430\u043b \u0441 \u0438\u043c\u0435\u043d\u0435\u043c: {} \u043d\u0430 \u0441\u0435\u0440\u0432\u0435\u0440\u0435 {}", (Object)channelName, (Object)guild.getName());
                 return;
             }
-            
-            channel.sendMessage(message).submit();
-            logger.info("Отчет по акциям успешно отправлен в канал {} на сервере {}", channelName, guild.getName());
-        } catch (Exception e) {
-            logger.error("Ошибка при отправке отчета по акциям", e);
+            channel.sendMessage((CharSequence)message).submit();
+            logger.info("\u041e\u0442\u0447\u0435\u0442 \u043f\u043e \u0430\u043a\u0446\u0438\u044f\u043c \u0443\u0441\u043f\u0435\u0448\u043d\u043e \u043e\u0442\u043f\u0440\u0430\u0432\u043b\u0435\u043d \u0432 \u043a\u0430\u043d\u0430\u043b {} \u043d\u0430 \u0441\u0435\u0440\u0432\u0435\u0440\u0435 {}", (Object)channelName, (Object)guild.getName());
+        }
+        catch (Exception e) {
+            logger.error("\u041e\u0448\u0438\u0431\u043a\u0430 \u043f\u0440\u0438 \u043e\u0442\u043f\u0440\u0430\u0432\u043a\u0435 \u043e\u0442\u0447\u0435\u0442\u0430 \u043f\u043e \u0430\u043a\u0446\u0438\u044f\u043c", (Throwable)e);
         }
     }
 
     private String createMessage() {
-        builder.setLength(0);
+        this.builder.setLength(0);
         try {
-            // Получаем все акции и фильтруем ненужные классы
-            // getAllSharesSync() уже возвращает только акции, дополнительно фильтруем по классам
-            List<Share> allShares = api.getInstrumentsService().getAllSharesSync().stream()
-                    .filter(share -> checkClassCode(share.getClassCode()))
-                    .limit(MAX_SHARES_TO_PROCESS) // Ограничиваем количество для производительности
-                    .toList();
-            
-            // Разделяем акции на российские и иностранные
-            List<Share> russianShares = allShares.stream()
-                    .filter(this::isRussianShare)
-                    .toList();
-            
-            logger.info("Найдено {} акций для обработки, из них {} российских", allShares.size(), russianShares.size());
-            
-            // Разбиваем список FIGI на части по MAX_INSTRUMENTS_PER_REQUEST
-            List<List<String>> figiChunks = partitionList(
-                allShares.stream().map(Share::getFigi).toList(), 
-                MAX_INSTRUMENTS_PER_REQUEST
-            );
-            
-            // Собираем цены по всем частям
-            List<LastPrice> allLastPrices = new ArrayList<>();
-            for (int i = 0; i < figiChunks.size(); i++) {
+            List<Share> allShares = this.api.getInstrumentsService().getAllSharesSync().stream().filter(share -> this.checkClassCode(share.getClassCode())).limit(1000L).toList();
+            List<Share> russianShares = allShares.stream().filter(this::isRussianShare).toList();
+            logger.info("\u041d\u0430\u0439\u0434\u0435\u043d\u043e {} \u0430\u043a\u0446\u0438\u0439 \u0434\u043b\u044f \u043e\u0431\u0440\u0430\u0431\u043e\u0442\u043a\u0438, \u0438\u0437 \u043d\u0438\u0445 {} \u0440\u043e\u0441\u0441\u0438\u0439\u0441\u043a\u0438\u0445", (Object)allShares.size(), (Object)russianShares.size());
+            List<List<String>> figiChunks = this.partitionList(allShares.stream().map(Share::getFigi).toList(), 3000);
+            ArrayList<LastPrice> allLastPrices = new ArrayList<LastPrice>();
+            for (int i = 0; i < figiChunks.size(); ++i) {
                 List<String> chunk = figiChunks.get(i);
-                logger.debug("Запрашиваем цены для части {}/{} ({} инструментов)", 
-                           i + 1, figiChunks.size(), chunk.size());
-                
+                logger.debug("\u0417\u0430\u043f\u0440\u0430\u0448\u0438\u0432\u0430\u0435\u043c \u0446\u0435\u043d\u044b \u0434\u043b\u044f \u0447\u0430\u0441\u0442\u0438 {}/{} ({} \u0438\u043d\u0441\u0442\u0440\u0443\u043c\u0435\u043d\u0442\u043e\u0432)", new Object[]{i + 1, figiChunks.size(), chunk.size()});
                 try {
-                    List<LastPrice> chunkPrices = api.getMarketDataService().getLastPricesSync(chunk);
+                    List<LastPrice> chunkPrices = this.api.getMarketDataService().getLastPricesSync(chunk);
                     allLastPrices.addAll(chunkPrices);
-                } catch (Exception e) {
-                    logger.warn("Ошибка при получении цен для части {}/{}: {}", i + 1, figiChunks.size(), e.getMessage());
-                    // Продолжаем с другими частями
+                    continue;
+                }
+                catch (Exception e) {
+                    logger.warn("\u041e\u0448\u0438\u0431\u043a\u0430 \u043f\u0440\u0438 \u043f\u043e\u043b\u0443\u0447\u0435\u043d\u0438\u0438 \u0446\u0435\u043d \u0434\u043b\u044f \u0447\u0430\u0441\u0442\u0438 {}/{}: {}", new Object[]{i + 1, figiChunks.size(), e.getMessage()});
                 }
             }
-            
-            logger.info("Получено {} цен из {} запрошенных акций", allLastPrices.size(), allShares.size());
-            
-            // Заполняем новые данные для всех акций
-            Map<String, LastPrice> priceMap = new HashMap<>();
+            logger.info("\u041f\u043e\u043b\u0443\u0447\u0435\u043d\u043e {} \u0446\u0435\u043d \u0438\u0437 {} \u0437\u0430\u043f\u0440\u043e\u0448\u0435\u043d\u043d\u044b\u0445 \u0430\u043a\u0446\u0438\u0439", (Object)allLastPrices.size(), (Object)allShares.size());
+            HashMap<String, LastPrice> priceMap = new HashMap<String, LastPrice>();
             for (LastPrice price : allLastPrices) {
                 priceMap.put(price.getFigi(), price);
             }
-            
             int skippedCount = 0;
-            Map<String, Double> allSharesData = new HashMap<>();
-            Map<String, Double> russianSharesData = new HashMap<>();
-            
-            // Обрабатываем все акции
-            for (Share share : allShares) {
-                LastPrice price = priceMap.get(share.getFigi());
-                
-                // Пропускаем акции без цены или с нулевой ценой
-                if (price == null || (price.getPrice().getUnits() == 0 && price.getPrice().getNano() == 0)) {
-                    skippedCount++;
+            HashMap<String, Double> allSharesData = new HashMap<String, Double>();
+            HashMap<String, Double> russianSharesData = new HashMap<String, Double>();
+            for (Share share2 : allShares) {
+                LastPrice price = (LastPrice)priceMap.get(share2.getFigi());
+                if (price == null || price.getPrice().getUnits() == 0L && price.getPrice().getNano() == 0) {
+                    ++skippedCount;
                     continue;
                 }
-                
-                double priceValue = price.getPrice().getUnits() + 
-                                   (double) price.getPrice().getNano() / 1_000_000_000;
-                
-                allSharesData.put(share.getName(), priceValue);
-                
-                // Если это российская акция, добавляем в отдельную коллекцию
-                if (isRussianShare(share)) {
-                    russianSharesData.put(share.getName(), priceValue);
-                }
+                double priceValue = (double)price.getPrice().getUnits() + (double)price.getPrice().getNano() / 1.0E9;
+                allSharesData.put(share2.getName(), priceValue);
+                if (!this.isRussianShare(share2)) continue;
+                russianSharesData.put(share2.getName(), priceValue);
             }
-            
-            // Обновляем основные данные
-            newData.putAll(allSharesData);
-            
-            logger.info("Обработано {} акций, пропущено {} из-за отсутствия данных", 
-                       newData.size(), skippedCount);
-            
-            if (oldData.isEmpty()) {
-                // First run, just store the data
-                oldData.putAll(newData);
+            this.newData.putAll(allSharesData);
+            logger.info("\u041e\u0431\u0440\u0430\u0431\u043e\u0442\u0430\u043d\u043e {} \u0430\u043a\u0446\u0438\u0439, \u043f\u0440\u043e\u043f\u0443\u0449\u0435\u043d\u043e {} \u0438\u0437-\u0437\u0430 \u043e\u0442\u0441\u0443\u0442\u0441\u0442\u0432\u0438\u044f \u0434\u0430\u043d\u043d\u044b\u0445", (Object)this.newData.size(), (Object)skippedCount);
+            if (this.oldData.isEmpty()) {
+                this.oldData.putAll(this.newData);
                 return null;
-            } else {
-                // Calculate percentage changes for all shares
-                Map<String, Double> allChanges = calculateChanges(allSharesData);
-                Map<String, Double> russianChanges = calculateChanges(russianSharesData);
-                
-                // Create sorted maps
-                Map<String, Double> sortedAll = sortChanges(allChanges);
-                Map<String, Double> sortedRussian = sortChanges(russianChanges);
-                
-                // Общий зачет (топ 5 лучших и худших среди всех акций)
-                builder.append("**Общий зачет - Топ 5 лучших акций:**\n");
-                appendTopPerformers(sortedAll, 5, true);
-                
-                builder.append("\n**Общий зачет - Топ 5 худших акций:**\n");
-                appendTopPerformers(sortedAll, 5, false);
-                
-                // Российские акции (топ 5 лучших и худших)
-                if (!sortedRussian.isEmpty()) {
-                    builder.append("\n\n**российские акции - Топ 5 лучших:**\n");
-                    appendTopPerformers(sortedRussian, 5, true);
-                    
-                    builder.append("\n**российские акции - Топ 5 худших:**\n");
-                    appendTopPerformers(sortedRussian, 5, false);
-                } else {
-                    builder.append("\n\n**российские акции:**\nНет данных для российских акций\n");
-                }
             }
-            
-            // Update oldData for next comparison
-            oldData.clear();
-            oldData.putAll(newData);
-            newData.clear();
-        } catch (Exception e) {
-            logger.error("Ошибка при создании сообщения с отчетом по акциям", e);
-            return "Ошибка при формировании отчета по акциям: " + e.getMessage();
+            Map<String, Double> allChanges = this.calculateChanges(allSharesData);
+            Map<String, Double> russianChanges = this.calculateChanges(russianSharesData);
+            Map<String, Double> sortedAll = this.sortChanges(allChanges);
+            Map<String, Double> sortedRussian = this.sortChanges(russianChanges);
+            this.builder.append("**\u041e\u0431\u0449\u0438\u0439 \u0437\u0430\u0447\u0435\u0442 - \u0422\u043e\u043f 5 \u043b\u0443\u0447\u0448\u0438\u0445 \u0430\u043a\u0446\u0438\u0439:**\n");
+            this.appendTopPerformers(sortedAll, 5, true);
+            this.builder.append("\n**\u041e\u0431\u0449\u0438\u0439 \u0437\u0430\u0447\u0435\u0442 - \u0422\u043e\u043f 5 \u0445\u0443\u0434\u0448\u0438\u0445 \u0430\u043a\u0446\u0438\u0439:**\n");
+            this.appendTopPerformers(sortedAll, 5, false);
+            if (!sortedRussian.isEmpty()) {
+                this.builder.append("\n\n**\u0440\u043e\u0441\u0441\u0438\u0439\u0441\u043a\u0438\u0435 \u0430\u043a\u0446\u0438\u0438 - \u0422\u043e\u043f 5 \u043b\u0443\u0447\u0448\u0438\u0445:**\n");
+                this.appendTopPerformers(sortedRussian, 5, true);
+                this.builder.append("\n**\u0440\u043e\u0441\u0441\u0438\u0439\u0441\u043a\u0438\u0435 \u0430\u043a\u0446\u0438\u0438 - \u0422\u043e\u043f 5 \u0445\u0443\u0434\u0448\u0438\u0445:**\n");
+                this.appendTopPerformers(sortedRussian, 5, false);
+            } else {
+                this.builder.append("\n\n**\u0440\u043e\u0441\u0441\u0438\u0439\u0441\u043a\u0438\u0435 \u0430\u043a\u0446\u0438\u0438:**\n\u041d\u0435\u0442 \u0434\u0430\u043d\u043d\u044b\u0445 \u0434\u043b\u044f \u0440\u043e\u0441\u0441\u0438\u0439\u0441\u043a\u0438\u0445 \u0430\u043a\u0446\u0438\u0439\n");
+            }
+            this.oldData.clear();
+            this.oldData.putAll(this.newData);
+            this.newData.clear();
         }
-        
-        return builder.toString();
+        catch (Exception e) {
+            logger.error("\u041e\u0448\u0438\u0431\u043a\u0430 \u043f\u0440\u0438 \u0441\u043e\u0437\u0434\u0430\u043d\u0438\u0438 \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u044f \u0441 \u043e\u0442\u0447\u0435\u0442\u043e\u043c \u043f\u043e \u0430\u043a\u0446\u0438\u044f\u043c", (Throwable)e);
+            return "\u041e\u0448\u0438\u0431\u043a\u0430 \u043f\u0440\u0438 \u0444\u043e\u0440\u043c\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u0438 \u043e\u0442\u0447\u0435\u0442\u0430 \u043f\u043e \u0430\u043a\u0446\u0438\u044f\u043c: " + e.getMessage();
+        }
+        return this.builder.toString();
     }
-    
+
     private boolean checkClassCode(String classCode) {
-        return !badCode.contains(classCode);
+        return !this.badCode.contains(classCode);
     }
-    
-    /**
-     * Разбивает список на части заданного размера
-     */
+
     private <T> List<List<T>> partitionList(List<T> list, int chunkSize) {
-        List<List<T>> chunks = new ArrayList<>();
+        ArrayList<List<T>> chunks = new ArrayList<List<T>>();
         for (int i = 0; i < list.size(); i += chunkSize) {
             int end = Math.min(list.size(), i + chunkSize);
             chunks.add(list.subList(i, end));
         }
         return chunks;
     }
-    
-    /**
-     * Проверяет, является ли акция российской
-     */
+
     private boolean isRussianShare(Share share) {
-        // Проверяем по бирже
         boolean isRussianExchange = RUSSIAN_EXCHANGES.contains(share.getExchange());
-        
-        // Проверяем по валюте (обычно RUB для российских акций)
         boolean isRubCurrency = "RUB".equals(share.getCurrency());
-        
-        // Проверяем по стране
         boolean isRuCountry = "RU".equals(share.getCountryOfRisk());
-        
         return isRussianExchange || isRubCurrency || isRuCountry;
     }
-    
-    /**
-     * Вычисляет процентные изменения цен
-     */
+
     private Map<String, Double> calculateChanges(Map<String, Double> currentData) {
-        Map<String, Double> changes = new HashMap<>();
-        
+        HashMap<String, Double> changes = new HashMap<String, Double>();
         for (Map.Entry<String, Double> entry : currentData.entrySet()) {
             String shareName = entry.getKey();
-            
-            if (oldData.containsKey(shareName)) {
-                double oldValue = oldData.get(shareName);
-                double newValue = entry.getValue();
-                
-                // Избегаем деления на ноль
-                if (oldValue != 0) {
-                    double change = ((newValue - oldValue) / oldValue) * 100;
-                    changes.put(shareName, change);
-                }
-            }
+            if (!this.oldData.containsKey(shareName)) continue;
+            double oldValue = this.oldData.get(shareName);
+            double newValue = entry.getValue();
+            if (oldValue == 0.0) continue;
+            double change = (newValue - oldValue) / oldValue * 100.0;
+            changes.put(shareName, change);
         }
-        
         return changes;
     }
-    
-    /**
-     * Сортирует изменения по значению
-     */
+
     private Map<String, Double> sortChanges(Map<String, Double> changes) {
-        return changes.entrySet()
-                .stream()
-                .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        Map.Entry::getValue,
-                        (oldValue, newValue) -> oldValue, LinkedHashMap::new));
+        return changes.entrySet().stream().sorted(Map.Entry.comparingByValue().reversed()).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (oldValue, newValue) -> oldValue, LinkedHashMap::new));
     }
-    
-    /**
-     * Добавляет топовые результаты в билдер
-     */
+
     private void appendTopPerformers(Map<String, Double> sortedMap, int count, boolean bestFirst) {
-        List<Map.Entry<String, Double>> entryList = new ArrayList<>(sortedMap.entrySet());
-        
+        ArrayList<Map.Entry<String, Double>> entryList = new ArrayList<Map.Entry<String, Double>>(sortedMap.entrySet());
         if (bestFirst) {
-            // Лучшие первые (с начала списка)
-            for (int i = 0; i < Math.min(count, entryList.size()); i++) {
-                Map.Entry<String, Double> entry = entryList.get(i);
-                builder.append(entry.getKey()).append(" : ").append(String.format("%.2f", entry.getValue())).append("%\n");
+            for (int i = 0; i < Math.min(count, entryList.size()); ++i) {
+                Map.Entry entry = (Map.Entry)entryList.get(i);
+                this.builder.append((String)entry.getKey()).append(" : ").append(String.format("%.2f", entry.getValue())).append("%\n");
             }
         } else {
-            // Худшие первые (с конца списка)
             int startIndex = Math.max(0, entryList.size() - count);
-            for (int i = entryList.size() - 1; i >= startIndex; i--) {
-                Map.Entry<String, Double> entry = entryList.get(i);
-                builder.append(entry.getKey()).append(" : ").append(String.format("%.2f", entry.getValue())).append("%\n");
+            for (int i = entryList.size() - 1; i >= startIndex; --i) {
+                Map.Entry entry = (Map.Entry)entryList.get(i);
+                this.builder.append((String)entry.getKey()).append(" : ").append(String.format("%.2f", entry.getValue())).append("%\n");
             }
         }
-        
         if (entryList.isEmpty()) {
-            builder.append("Нет данных\n");
+            this.builder.append("\u041d\u0435\u0442 \u0434\u0430\u043d\u043d\u044b\u0445\n");
         }
     }
 }
+
