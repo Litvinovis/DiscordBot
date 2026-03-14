@@ -39,18 +39,23 @@ public final class ConfigLoader {
 
         Object value = getNestedValue(CONFIG, "discord.allowed-channel-ids");
         if (value instanceof List<?> list) {
-            return list.stream().map(String::valueOf).map(String::trim).filter(s -> !s.isEmpty()).toList();
+            return list.stream()
+                    .map(Object::toString)
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .toList();
         }
 
         return List.of("1157258712138907700");
     }
 
+    // Methods for StatisticsSenderService (not needed for sandbox but keep to avoid breaking)
     public static String getReportGuildId() {
-        return getString("discord.report.guild-id", "DISCORD_REPORT_GUILD_ID", "");
+        return getString("reports.guild-id", "DISCORD_REPORT_GUILD_ID", "");
     }
 
     public static String getReportChannelName() {
-        return getString("discord.report.channel-name", "DISCORD_REPORT_CHANNEL_NAME", "");
+        return getString("reports.channel-name", "DISCORD_REPORT_CHANNEL_NAME", "");
     }
 
     public static String getCurrencyReportCron() {
@@ -59,6 +64,65 @@ public final class ConfigLoader {
 
     public static String getSharesReportCron() {
         return getString("reports.shares.cron", "SHARES_REPORT_CRON", "0 5 10 * * *");
+    }
+
+    // Sandbox configuration
+    public static double getSandboxStartBalance() {
+        return getDouble("sandbox.start-balance", "SANDBOX_START_BALANCE", 1_000_000.0);
+    }
+
+    public static double getSandboxCommissionRate() {
+        return getDouble("sandbox.commission-rate", "SANDBOX_COMMISSION_RATE", 0.001);
+    }
+
+    public static double getSandboxMaxLeverage() {
+        return getDouble("sandbox.max-leverage", "SANDBOX_MAX_LEVERAGE", 3.0);
+    }
+
+    public static double getSandboxMaintenanceMargin() {
+        return getDouble("sandbox.maintenance-margin", "SANDBOX_MAINTENANCE_MARGIN", 0.25);
+    }
+
+    public static List<String> getSandboxAllowedTickers() {
+        Object value = getNestedValue(CONFIG, "sandbox.allowed-tickers");
+        if (value instanceof List<?> list) {
+            return list.stream()
+                    .map(Object::toString)
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .toList();
+        }
+        String fromEnv = System.getenv("SANDBOX_ALLOWED_TICKERS");
+        if (fromEnv != null && !fromEnv.isBlank()) {
+            return parseCsv(fromEnv).stream()
+                    .map(String::toUpperCase)
+                    .toList();
+        }
+        return List.of("SBER", "GAZP", "LKOH", "ROSN", "NVTK", "YDEX", "TATN", "PLZL", "MGNT", "MTSS", "SNGS", "ALRS", "CHMF", "NLMK", "VTBR");
+    }
+
+    public static String getIgniteLocalAddress() {
+        return getString("ignite.local-address", "IGNITE_LOCAL_ADDRESS", "127.0.0.1");
+    }
+
+    public static List<String> getIgniteDiscoveryAddresses() {
+        String fromEnv = System.getenv("IGNITE_DISCOVERY_ADDRESSES");
+        if (fromEnv != null && !fromEnv.isBlank()) {
+            return parseCsv(fromEnv);
+        }
+        Object value = getNestedValue(CONFIG, "ignite.discovery-addresses");
+        if (value instanceof List<?> list) {
+            return list.stream()
+                    .map(Object::toString)
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .toList();
+        }
+        return List.of("127.0.0.1:47500..47509");
+    }
+
+    public static String getIgniteWorkDir() {
+        return getString("ignite.work-dir", "IGNITE_WORK_DIR", "/tmp/ignite-stonks-client");
     }
 
     private static String getString(String yamlPath, String envKey, String defaultValue) {
@@ -79,6 +143,15 @@ public final class ConfigLoader {
 
         text = resolveEnvPlaceholder(text);
         return text.isEmpty() ? defaultValue : text;
+    }
+
+    private static double getDouble(String yamlPath, String envKey, double defaultValue) {
+        String text = getString(yamlPath, envKey, String.valueOf(defaultValue));
+        try {
+            return Double.parseDouble(text);
+        } catch (Exception ignored) {
+            return defaultValue;
+        }
     }
 
     private static String resolveEnvPlaceholder(String value) {
@@ -122,7 +195,6 @@ public final class ConfigLoader {
                 .collect(Collectors.toList());
     }
 
-    @SuppressWarnings("unchecked")
     private static Map<String, Object> loadConfig() {
         Yaml yaml = new Yaml();
 
@@ -142,7 +214,6 @@ public final class ConfigLoader {
                     return (Map<String, Object>) map;
                 }
             } catch (IOException ignored) {
-                // fallback to next source
             }
         }
 
@@ -154,7 +225,6 @@ public final class ConfigLoader {
                 }
             }
         } catch (IOException ignored) {
-            // ignored
         }
 
         return Collections.emptyMap();
