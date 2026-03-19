@@ -25,13 +25,15 @@ public class SharesStatTask implements Runnable {
     private static final int MAX_INSTRUMENTS_PER_REQUEST = 3000;
     private static final int MAX_SHARES_TO_PROCESS = 1000;
     private static final List<String> RUSSIAN_EXCHANGES = List.of("MOEX", "RTS");
+    /** FQBR is the T-Bank class code for SPB Exchange foreign stocks — now included. */
+    private static final List<String> SPB_CLASS_CODES = List.of("FQBR");
 
     private final TInvestApi api;
     private final JDA jda;
     private final StringBuilder builder = new StringBuilder();
     private final Map<String, BigDecimal> oldData = new HashMap<>();
     private final Map<String, BigDecimal> newData = new HashMap<>();
-    private final List<String> badCode = List.of("SPEQ", "SMAL", "SPBXM_OTC", "FQBR", "A29", "A30");
+    private final List<String> badCode = List.of("SPEQ", "SMAL", "SPBXM_OTC", "A29", "A30");
 
     public SharesStatTask(TInvestApi api, JDA jda) {
         this.api = api;
@@ -83,7 +85,8 @@ public class SharesStatTask implements Runnable {
                 .limit(MAX_SHARES_TO_PROCESS)
                 .toList();
             List<Share> russianShares = allShares.stream().filter(this::isRussianShare).toList();
-            logger.info("Найдено {} акций для обработки, из них {} российских", allShares.size(), russianShares.size());
+            List<Share> spbShares = allShares.stream().filter(this::isSpbShare).toList();
+            logger.info("Найдено {} акций для обработки, из них {} российских, {} СПБ Биржи", allShares.size(), russianShares.size(), spbShares.size());
             List<List<String>> figiChunks = this.partitionList(allShares.stream().map(Share::getFigi).toList(), MAX_INSTRUMENTS_PER_REQUEST);
             ArrayList<LastPrice> allLastPrices = new ArrayList<>();
             for (int i = 0; i < figiChunks.size(); ++i) {
@@ -104,6 +107,7 @@ public class SharesStatTask implements Runnable {
             int skippedCount = 0;
             HashMap<String, BigDecimal> allSharesData = new HashMap<>();
             HashMap<String, BigDecimal> russianSharesData = new HashMap<>();
+            HashMap<String, BigDecimal> spbSharesData = new HashMap<>();
             for (Share share : allShares) {
                 LastPrice price = priceMap.get(share.getFigi());
                 if (price == null || price.getPrice().getUnits() == 0L && price.getPrice().getNano() == 0) {
@@ -113,8 +117,12 @@ public class SharesStatTask implements Runnable {
                 BigDecimal priceValue = BigDecimal.valueOf(price.getPrice().getUnits())
                         .add(BigDecimal.valueOf(price.getPrice().getNano(), 9));
                 allSharesData.put(share.getName(), priceValue);
-                if (!this.isRussianShare(share)) continue;
-                russianSharesData.put(share.getName(), priceValue);
+                if (this.isRussianShare(share)) {
+                    russianSharesData.put(share.getName(), priceValue);
+                }
+                if (this.isSpbShare(share)) {
+                    spbSharesData.put(share.getName(), priceValue);
+                }
             }
             this.newData.putAll(allSharesData);
             logger.info("Обработано {} акций, пропущено {} из-за отсутствия данных", this.newData.size(), skippedCount);
@@ -124,8 +132,10 @@ public class SharesStatTask implements Runnable {
             }
             Map<String, BigDecimal> allChanges = this.calculateChanges(allSharesData);
             Map<String, BigDecimal> russianChanges = this.calculateChanges(russianSharesData);
+            Map<String, BigDecimal> spbChanges = this.calculateChanges(spbSharesData);
             Map<String, BigDecimal> sortedAll = this.sortChanges(allChanges);
             Map<String, BigDecimal> sortedRussian = this.sortChanges(russianChanges);
+            Map<String, BigDecimal> sortedSpb = this.sortChanges(spbChanges);
             this.builder.append("**Общий зачет - Топ 5 лучших акций:**\n");
             this.appendTopPerformers(sortedAll, 5, true);
             this.builder.append("\n**Общий зачет - Топ 5 худших акций:**\n");
@@ -137,6 +147,14 @@ public class SharesStatTask implements Runnable {
                 this.appendTopPerformers(sortedRussian, 5, false);
             } else {
                 this.builder.append("\n\n**Российские акции:**\nНет данных для российских акций\n");
+            }
+            if (!sortedSpb.isEmpty()) {
+                this.builder.append("\n\n**СПБ Биржа (иностранные акции) - Топ 5 лучших:**\n");
+                this.appendTopPerformers(sortedSpb, 5, true);
+                this.builder.append("\n**СПБ Биржа (иностранные акции) - Топ 5 худших:**\n");
+                this.appendTopPerformers(sortedSpb, 5, false);
+            } else {
+                this.builder.append("\n\n**СПБ Биржа:**\nНет данных по иностранным акциям\n");
             }
             this.oldData.clear();
             this.oldData.putAll(this.newData);
@@ -166,6 +184,14 @@ public class SharesStatTask implements Runnable {
         boolean isRubCurrency = "RUB".equals(share.getCurrency());
         boolean isRuCountry = "RU".equals(share.getCountryOfRisk());
         return isRussianExchange || isRubCurrency || isRuCountry;
+    }
+
+    /**
+     * Returns true for foreign stocks traded on the Saint Petersburg Exchange (СПБ Биржа).
+     * In the T-Bank Invest API these carry the class code "FQBR".
+     */
+    private boolean isSpbShare(Share share) {
+        return SPB_CLASS_CODES.contains(share.getClassCode());
     }
 
     private Map<String, BigDecimal> calculateChanges(Map<String, BigDecimal> currentData) {

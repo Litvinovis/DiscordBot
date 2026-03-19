@@ -99,7 +99,16 @@ public final class ConfigLoader {
                     .filter(s -> !s.isEmpty())
                     .toList();
         }
-        return List.of("SBER", "GAZP", "LKOH", "ROSN", "NVTK", "YDEX", "TATN", "PLZL", "MGNT", "MTSS", "SNGS", "ALRS", "CHMF", "NLMK", "VTBR");
+        return List.of(
+                // Russian MOEX blue-chips
+                "SBER", "GAZP", "LKOH", "ROSN", "NVTK", "YDEX", "TATN", "PLZL", "MGNT",
+                "MTSS", "SNGS", "ALRS", "CHMF", "NLMK", "VTBR",
+                // SPB Exchange — foreign stocks (priced in USD via T-Bank API)
+                "AAPL", "MSFT", "AMZN", "GOOGL", "TSLA", "META", "NVDA",
+                "BRK.B", "JPM", "JNJ", "V", "PG", "UNH", "HD", "MA",
+                "DIS", "NFLX", "PYPL", "INTC", "AMD", "CRM", "ORCL", "IBM",
+                "BA", "GE", "XOM", "CVX", "KO", "PEP", "MCD", "WMT"
+        );
     }
 
     public static String getIgniteLocalAddress() {
