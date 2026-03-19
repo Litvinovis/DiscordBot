@@ -5,6 +5,10 @@ import java.io.Serializable;
 public class Position implements Serializable {
     private static final long serialVersionUID = 1L;
 
+    public static final int CURRENT_SCHEMA_VERSION = 1;
+
+    private int schemaVersion = 0;
+
     private String userId;
     private String ticker;
     private String instrumentId;
@@ -60,5 +64,13 @@ public class Position implements Serializable {
 
     public void setAvgPrice(double avgPrice) {
         this.avgPrice = avgPrice;
+    }
+
+    public int getSchemaVersion() {
+        return this.schemaVersion;
+    }
+
+    public void setSchemaVersion(int schemaVersion) {
+        this.schemaVersion = schemaVersion;
     }
 }

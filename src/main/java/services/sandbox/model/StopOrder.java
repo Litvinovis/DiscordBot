@@ -9,6 +9,10 @@ import java.time.Instant;
 public class StopOrder implements Serializable {
     private static final long serialVersionUID = 1L;
 
+    public static final int CURRENT_SCHEMA_VERSION = 1;
+
+    private int schemaVersion = 0;
+
     /** "SL" = stop-loss, "TP" = take-profit */
     private String type;
     private String id;
@@ -36,4 +40,7 @@ public class StopOrder implements Serializable {
     public String getType() { return type; }
     public double getTriggerPrice() { return triggerPrice; }
     public Instant getCreatedAt() { return createdAt; }
+
+    public int getSchemaVersion() { return schemaVersion; }
+    public void setSchemaVersion(int schemaVersion) { this.schemaVersion = schemaVersion; }
 }
