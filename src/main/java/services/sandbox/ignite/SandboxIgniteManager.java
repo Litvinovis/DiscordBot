@@ -30,6 +30,7 @@ import services.sandbox.model.PriceAlert;
 import services.sandbox.model.SandboxUser;
 import services.sandbox.model.StopOrder;
 import services.sandbox.model.TradeRecord;
+import services.sandbox.migration.SandboxMigrationService;
 import utils.ConfigLoader;
 
 public class SandboxIgniteManager {
@@ -60,6 +61,7 @@ public class SandboxIgniteManager {
         this.limitOrdersCache = this.ignite.getOrCreateCache(new CacheConfiguration<String, LimitOrder>("stonks_sandbox_limit_orders"));
         this.stopOrdersCache = this.ignite.getOrCreateCache(new CacheConfiguration<String, StopOrder>("stonks_sandbox_stop_orders"));
         this.priceAlertsCache = this.ignite.getOrCreateCache(new CacheConfiguration<String, PriceAlert>("stonks_sandbox_price_alerts"));
+        new SandboxMigrationService(this).runMigrations();
     }
 
     public IgniteCache<String, SandboxUser> usersCache() {

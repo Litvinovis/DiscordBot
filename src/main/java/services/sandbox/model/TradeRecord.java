@@ -6,6 +6,10 @@ import java.time.Instant;
 public class TradeRecord implements Serializable {
     private static final long serialVersionUID = 1L;
 
+    public static final int CURRENT_SCHEMA_VERSION = 1;
+
+    private int schemaVersion = 0;
+
     private String id;
     private String userId;
     private String ticker;
@@ -60,5 +64,13 @@ public class TradeRecord implements Serializable {
 
     public Instant getTimestamp() {
         return this.timestamp;
+    }
+
+    public int getSchemaVersion() {
+        return this.schemaVersion;
+    }
+
+    public void setSchemaVersion(int schemaVersion) {
+        this.schemaVersion = schemaVersion;
     }
 }
