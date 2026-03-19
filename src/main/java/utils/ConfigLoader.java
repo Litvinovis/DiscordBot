@@ -4,6 +4,7 @@ import org.yaml.snakeyaml.Yaml;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -66,21 +67,21 @@ public final class ConfigLoader {
         return getString("reports.shares.cron", "SHARES_REPORT_CRON", "0 5 10 * * *");
     }
 
-    // Sandbox configuration
-    public static double getSandboxStartBalance() {
-        return getDouble("sandbox.start-balance", "SANDBOX_START_BALANCE", 1_000_000.0);
+    // Sandbox configuration — monetary values returned as BigDecimal
+    public static BigDecimal getSandboxStartBalance() {
+        return getBigDecimal("sandbox.start-balance", "SANDBOX_START_BALANCE", new BigDecimal("1000000.00"));
     }
 
-    public static double getSandboxCommissionRate() {
-        return getDouble("sandbox.commission-rate", "SANDBOX_COMMISSION_RATE", 0.001);
+    public static BigDecimal getSandboxCommissionRate() {
+        return getBigDecimal("sandbox.commission-rate", "SANDBOX_COMMISSION_RATE", new BigDecimal("0.001"));
     }
 
-    public static double getSandboxMaxLeverage() {
-        return getDouble("sandbox.max-leverage", "SANDBOX_MAX_LEVERAGE", 3.0);
+    public static BigDecimal getSandboxMaxLeverage() {
+        return getBigDecimal("sandbox.max-leverage", "SANDBOX_MAX_LEVERAGE", new BigDecimal("3.0"));
     }
 
-    public static double getSandboxMaintenanceMargin() {
-        return getDouble("sandbox.maintenance-margin", "SANDBOX_MAINTENANCE_MARGIN", 0.25);
+    public static BigDecimal getSandboxMaintenanceMargin() {
+        return getBigDecimal("sandbox.maintenance-margin", "SANDBOX_MAINTENANCE_MARGIN", new BigDecimal("0.25"));
     }
 
     public static List<String> getSandboxAllowedTickers() {
@@ -145,10 +146,10 @@ public final class ConfigLoader {
         return text.isEmpty() ? defaultValue : text;
     }
 
-    private static double getDouble(String yamlPath, String envKey, double defaultValue) {
-        String text = getString(yamlPath, envKey, String.valueOf(defaultValue));
+    private static BigDecimal getBigDecimal(String yamlPath, String envKey, BigDecimal defaultValue) {
+        String text = getString(yamlPath, envKey, defaultValue.toPlainString());
         try {
-            return Double.parseDouble(text);
+            return new BigDecimal(text);
         } catch (Exception ignored) {
             return defaultValue;
         }

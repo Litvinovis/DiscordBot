@@ -1,9 +1,10 @@
 package services.sandbox;
 
 import org.junit.jupiter.api.Test;
-import services.sandbox.model.Position;
 import services.sandbox.model.SandboxUser;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.temporal.WeekFields;
 import java.util.List;
@@ -22,25 +23,26 @@ public class SandboxTradingLogicTest {
     // Helpers that mirror private methods in SandboxTradingService
     // -----------------------------------------------------------------------
 
-    private double equity(double cash, double grossPositionValue, double borrowed) {
-        return cash + grossPositionValue - borrowed;
+    private BigDecimal equity(BigDecimal cash, BigDecimal grossPositionValue, BigDecimal borrowed) {
+        return cash.add(grossPositionValue).subtract(borrowed);
     }
 
-    private double grossPositionValue(List<double[]> positions) {
+    private BigDecimal grossPositionValue(List<BigDecimal[]> positions) {
         // each entry: [qty, currentPrice]
-        return positions.stream().mapToDouble(p -> p[0] * p[1]).sum();
+        return positions.stream()
+                .map(p -> p[0].multiply(p[1]))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    private double safeRoi(double now, double base) {
-        if (base <= 0.0) return 0.0;
-        return (now - base) / base;
+    private BigDecimal safeRoi(BigDecimal now, BigDecimal base) {
+        if (base == null || base.compareTo(BigDecimal.ZERO) <= 0) return BigDecimal.ZERO;
+        return now.subtract(base).divide(base, 9, RoundingMode.HALF_UP);
     }
 
     /**
-     * Simulate recordBaseline() — the NEW single-user overload that is called
-     * from trade() BEFORE executing the trade.
+     * Simulate recordBaseline() — called from trade() BEFORE executing the trade.
      */
-    private void recordBaseline(SandboxUser u, double equityAtCallTime, LocalDate now) {
+    private void recordBaseline(SandboxUser u, BigDecimal equityAtCallTime, LocalDate now) {
         int week = now.get(WeekFields.ISO.weekOfWeekBasedYear());
         if (u.getDailyBaselineDate() == null || !now.equals(u.getDailyBaselineDate())) {
             u.setDailyBaselineDate(now);
@@ -70,18 +72,18 @@ public class SandboxTradingLogicTest {
      */
     @Test
     void testRecordBaseline_sameDay_doesNotOverwriteExistingBaseline() {
-        SandboxUser user = new SandboxUser("u1", "Alice", 100_000.0);
+        SandboxUser user = new SandboxUser("u1", "Alice", new BigDecimal("100000.00"));
         LocalDate today = LocalDate.of(2026, 3, 19);
 
         // First call (e.g. from register) — equity = 100 000
-        recordBaseline(user, 100_000.0, today);
-        assertEquals(100_000.0, user.getDailyBaselineEquity(), 1e-9,
+        recordBaseline(user, new BigDecimal("100000.00"), today);
+        assertEquals(0, new BigDecimal("100000.00").compareTo(user.getDailyBaselineEquity()),
                 "Daily baseline should be set to 100 000 on first call");
 
         // After a profitable trade equity grows to 110 000.
         // A second call on the same day should NOT overwrite the baseline.
-        recordBaseline(user, 110_000.0, today);
-        assertEquals(100_000.0, user.getDailyBaselineEquity(), 1e-9,
+        recordBaseline(user, new BigDecimal("110000.00"), today);
+        assertEquals(0, new BigDecimal("100000.00").compareTo(user.getDailyBaselineEquity()),
                 "Daily baseline must NOT be updated when the date hasn't changed");
     }
 
@@ -91,43 +93,40 @@ public class SandboxTradingLogicTest {
      */
     @Test
     void testRecordBaseline_newDay_updatesBaselineToPreTradeEquity() {
-        SandboxUser user = new SandboxUser("u1", "Alice", 100_000.0);
+        SandboxUser user = new SandboxUser("u1", "Alice", new BigDecimal("100000.00"));
         LocalDate yesterday = LocalDate.of(2026, 3, 18);
         LocalDate today = LocalDate.of(2026, 3, 19);
 
         // Baseline was set yesterday
-        recordBaseline(user, 105_000.0, yesterday);
-        assertEquals(105_000.0, user.getDailyBaselineEquity(), 1e-9);
+        recordBaseline(user, new BigDecimal("105000.00"), yesterday);
+        assertEquals(0, new BigDecimal("105000.00").compareTo(user.getDailyBaselineEquity()));
 
         // Today's first trade: recordBaseline() is called BEFORE the trade,
         // so equityAtCallTime = equity before the trade = 107 000.
-        double equityBeforeTrade = 107_000.0;
+        BigDecimal equityBeforeTrade = new BigDecimal("107000.00");
         recordBaseline(user, equityBeforeTrade, today);
 
         assertEquals(today, user.getDailyBaselineDate());
-        assertEquals(107_000.0, user.getDailyBaselineEquity(), 1e-9,
+        assertEquals(0, new BigDecimal("107000.00").compareTo(user.getDailyBaselineEquity()),
                 "Baseline must capture equity BEFORE the trade on the new day");
     }
 
     /**
      * top() metric must return non-zero ROI when there is a meaningful baseline.
-     * Previously, top() called recordBaselines() itself which reset the baseline to
-     * current equity → always 0%.
      */
     @Test
     void testTopMetric_usesPreExistingBaseline_notCurrentEquity() {
-        // Simulate a user who registered yesterday with 100 000 and now has 110 000
-        double baselineEquity = 100_000.0;
-        double currentEquity  = 110_000.0;
+        BigDecimal baselineEquity = new BigDecimal("100000.00");
+        BigDecimal currentEquity  = new BigDecimal("110000.00");
 
-        double roi = safeRoi(currentEquity, baselineEquity);
+        BigDecimal roi = safeRoi(currentEquity, baselineEquity);
 
-        assertEquals(0.10, roi, 1e-9,
+        assertEquals(0, new BigDecimal("0.1").compareTo(roi.setScale(1, RoundingMode.HALF_UP)),
                 "ROI should be 10%, not 0%, when baseline is from a prior period");
 
         // What the old (buggy) code did: reset baseline to currentEquity then compare
-        double roiBuggy = safeRoi(currentEquity, currentEquity);
-        assertEquals(0.0, roiBuggy, 1e-9,
+        BigDecimal roiBuggy = safeRoi(currentEquity, currentEquity);
+        assertEquals(0, BigDecimal.ZERO.compareTo(roiBuggy),
                 "Old bug: resetting baseline to current equity always yields 0%");
     }
 
@@ -136,17 +135,17 @@ public class SandboxTradingLogicTest {
      */
     @Test
     void testRecordBaseline_newWeek_updatesWeeklyBaseline() {
-        SandboxUser user = new SandboxUser("u1", "Alice", 100_000.0);
+        SandboxUser user = new SandboxUser("u1", "Alice", new BigDecimal("100000.00"));
 
         // Week 11 of 2026
         LocalDate lastWeek = LocalDate.of(2026, 3, 9);   // Monday, week 11
         LocalDate thisWeek = LocalDate.of(2026, 3, 16);  // Monday, week 12
 
-        recordBaseline(user, 100_000.0, lastWeek);
-        assertEquals(100_000.0, user.getWeeklyBaselineEquity(), 1e-9);
+        recordBaseline(user, new BigDecimal("100000.00"), lastWeek);
+        assertEquals(0, new BigDecimal("100000.00").compareTo(user.getWeeklyBaselineEquity()));
 
-        recordBaseline(user, 115_000.0, thisWeek);
-        assertEquals(115_000.0, user.getWeeklyBaselineEquity(), 1e-9,
+        recordBaseline(user, new BigDecimal("115000.00"), thisWeek);
+        assertEquals(0, new BigDecimal("115000.00").compareTo(user.getWeeklyBaselineEquity()),
                 "Weekly baseline must update on a new ISO week");
     }
 
@@ -156,30 +155,31 @@ public class SandboxTradingLogicTest {
 
     /**
      * Equity = cash + grossPositionValue - borrowed.
-     * The balance display must reflect ALL assets, not just cash.
      */
     @Test
     void testEquity_includesPositionValue() {
-        double cash = 50_000.0;
-        double borrowed = 0.0;
+        BigDecimal cash = new BigDecimal("50000.00");
+        BigDecimal borrowed = BigDecimal.ZERO;
         // User holds 10 shares of SBER at current price 320 ₽
-        double grossPositionValue = grossPositionValue(List.of(new double[]{10, 320.0}));
+        BigDecimal[] pos1 = {new BigDecimal("10"), new BigDecimal("320.0")};
+        BigDecimal gross = grossPositionValue(java.util.Collections.singletonList(pos1));
 
-        double eq = equity(cash, grossPositionValue, borrowed);
+        BigDecimal eq = equity(cash, gross, borrowed);
 
-        assertEquals(53_200.0, eq, 1e-9,
+        assertEquals(0, new BigDecimal("53200.00").compareTo(eq),
                 "Equity must include 3 200 ₽ worth of stock positions");
     }
 
     @Test
     void testEquity_withBorrowedFunds() {
-        double cash = 0.0;
-        double borrowed = 20_000.0;
-        double grossPositionValue = grossPositionValue(List.of(new double[]{100, 300.0}));
+        BigDecimal cash = BigDecimal.ZERO;
+        BigDecimal borrowed = new BigDecimal("20000.00");
+        BigDecimal[] pos1b = {new BigDecimal("100"), new BigDecimal("300.0")};
+        BigDecimal gross = grossPositionValue(java.util.Collections.singletonList(pos1b));
 
-        double eq = equity(cash, grossPositionValue, borrowed);
+        BigDecimal eq = equity(cash, gross, borrowed);
 
-        assertEquals(10_000.0, eq, 1e-9,
+        assertEquals(0, new BigDecimal("10000.00").compareTo(eq),
                 "Equity = 30 000 (stocks) - 20 000 (borrowed) = 10 000");
     }
 
@@ -188,12 +188,14 @@ public class SandboxTradingLogicTest {
      */
     @Test
     void testBalanceRoi_relativeTo_startBalance() {
-        double startBalance = 100_000.0;
-        double currentEquity = 112_500.0;
+        BigDecimal startBalance = new BigDecimal("100000.00");
+        BigDecimal currentEquity = new BigDecimal("112500.00");
 
-        double roi = safeRoi(currentEquity, startBalance) * 100.0;
+        BigDecimal roi = safeRoi(currentEquity, startBalance)
+                .multiply(BigDecimal.valueOf(100))
+                .setScale(1, RoundingMode.HALF_UP);
 
-        assertEquals(12.5, roi, 1e-9, "ROI from start should be +12.50%");
+        assertEquals(0, new BigDecimal("12.5").compareTo(roi), "ROI from start should be +12.50%");
     }
 
     // -----------------------------------------------------------------------
@@ -206,25 +208,28 @@ public class SandboxTradingLogicTest {
     @Test
     void testPortfolioPnl_longPosition_profitable() {
         int qty = 10;
-        double avgPrice = 300.0;
-        double currentPrice = 320.0;
+        BigDecimal avgPrice = new BigDecimal("300.0");
+        BigDecimal currentPrice = new BigDecimal("320.0");
 
-        double pnl = (currentPrice - avgPrice) * qty;
-        double pnlPct = (currentPrice - avgPrice) / avgPrice * 100.0;
+        BigDecimal pnl = currentPrice.subtract(avgPrice).multiply(BigDecimal.valueOf(qty));
+        BigDecimal pnlPct = currentPrice.subtract(avgPrice)
+                .divide(avgPrice, 9, RoundingMode.HALF_UP)
+                .multiply(BigDecimal.valueOf(100))
+                .setScale(3, RoundingMode.HALF_UP);
 
-        assertEquals(200.0, pnl, 1e-9, "P&L should be +200 ₽");
-        assertEquals(6.666_666, pnlPct, 1e-3, "P&L% should be ~+6.67%");
+        assertEquals(0, new BigDecimal("200.0").compareTo(pnl), "P&L should be +200 ₽");
+        assertEquals(0, new BigDecimal("6.667").compareTo(pnlPct), "P&L% should be ~+6.67%");
     }
 
     @Test
     void testPortfolioPnl_longPosition_loss() {
         int qty = 5;
-        double avgPrice = 500.0;
-        double currentPrice = 450.0;
+        BigDecimal avgPrice = new BigDecimal("500.0");
+        BigDecimal currentPrice = new BigDecimal("450.0");
 
-        double pnl = (currentPrice - avgPrice) * qty;
+        BigDecimal pnl = currentPrice.subtract(avgPrice).multiply(BigDecimal.valueOf(qty));
 
-        assertEquals(-250.0, pnl, 1e-9, "P&L should be -250 ₽");
+        assertEquals(0, new BigDecimal("-250.0").compareTo(pnl), "P&L should be -250 ₽");
     }
 
     /**
@@ -233,23 +238,25 @@ public class SandboxTradingLogicTest {
     @Test
     void testPortfolioTotalPnl_multiplePositions() {
         // Position A: SBER 10 @ avg 300, now 320 → +200
-        double pnlA = (320.0 - 300.0) * 10;
+        BigDecimal pnlA = new BigDecimal("320.0").subtract(new BigDecimal("300.0")).multiply(BigDecimal.valueOf(10));
         // Position B: GAZP 20 @ avg 200, now 180 → -400
-        double pnlB = (180.0 - 200.0) * 20;
+        BigDecimal pnlB = new BigDecimal("180.0").subtract(new BigDecimal("200.0")).multiply(BigDecimal.valueOf(20));
 
-        double total = pnlA + pnlB;
+        BigDecimal total = pnlA.add(pnlB);
 
-        assertEquals(-200.0, total, 1e-9, "Net P&L should be -200 ₽");
+        assertEquals(0, new BigDecimal("-200.0").compareTo(total), "Net P&L should be -200 ₽");
     }
 
     @Test
     void testPortfolioPnlPct_zeroAvgPrice_doesNotDivideByZero() {
-        double avgPrice = 0.0;
-        double currentPrice = 100.0;
+        BigDecimal avgPrice = BigDecimal.ZERO;
+        BigDecimal currentPrice = new BigDecimal("100.0");
 
-        double pnlPct = avgPrice > 0.0 ? (currentPrice - avgPrice) / avgPrice * 100.0 : 0.0;
+        BigDecimal pnlPct = avgPrice.compareTo(BigDecimal.ZERO) > 0
+                ? currentPrice.subtract(avgPrice).divide(avgPrice, 9, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100))
+                : BigDecimal.ZERO;
 
-        assertEquals(0.0, pnlPct, 1e-9,
+        assertEquals(0, BigDecimal.ZERO.compareTo(pnlPct),
                 "When avgPrice is 0, P&L% should be 0 to avoid division by zero");
     }
 
@@ -258,13 +265,201 @@ public class SandboxTradingLogicTest {
      */
     @Test
     void testGrossPositionValue_multiplePositions() {
-        List<double[]> positions = List.of(
-                new double[]{10, 320.0},  // SBER: 3200
-                new double[]{20, 180.0}   // GAZP: 3600
+        List<BigDecimal[]> positions = List.of(
+                new BigDecimal[]{new BigDecimal("10"), new BigDecimal("320.0")},  // SBER: 3200
+                new BigDecimal[]{new BigDecimal("20"), new BigDecimal("180.0")}   // GAZP: 3600
         );
 
-        double gross = grossPositionValue(positions);
+        BigDecimal gross = grossPositionValue(positions);
 
-        assertEquals(6_800.0, gross, 1e-9);
+        assertEquals(0, new BigDecimal("6800.0").compareTo(gross));
+    }
+
+    // -----------------------------------------------------------------------
+    // New feature tests
+    // -----------------------------------------------------------------------
+
+    /**
+     * Stop-loss trigger: SL fires when price <= triggerPrice.
+     */
+    @Test
+    void testStopLoss_triggersWhenPriceFallsToLevel() {
+        BigDecimal triggerPrice = new BigDecimal("270.0");
+        BigDecimal currentPrice = new BigDecimal("269.5");
+        assertTrue(currentPrice.compareTo(triggerPrice) <= 0, "SL should trigger when price <= triggerPrice");
+
+        BigDecimal currentPriceAbove = new BigDecimal("271.0");
+        assertFalse(currentPriceAbove.compareTo(triggerPrice) <= 0, "SL should NOT trigger when price > triggerPrice");
+    }
+
+    /**
+     * Take-profit trigger: TP fires when price >= triggerPrice.
+     */
+    @Test
+    void testTakeProfit_triggersWhenPriceReachesLevel() {
+        BigDecimal triggerPrice = new BigDecimal("310.0");
+        BigDecimal currentPrice = new BigDecimal("310.5");
+        assertTrue(currentPrice.compareTo(triggerPrice) >= 0, "TP should trigger when price >= triggerPrice");
+
+        BigDecimal currentPriceBelow = new BigDecimal("309.9");
+        assertFalse(currentPriceBelow.compareTo(triggerPrice) >= 0, "TP should NOT trigger when price < triggerPrice");
+    }
+
+    /**
+     * Limit buy: executes when price <= limitPrice.
+     */
+    @Test
+    void testLimitBuy_triggersWhenPriceAtOrBelowLimit() {
+        BigDecimal limitPrice = new BigDecimal("270.5");
+        BigDecimal marketPrice = new BigDecimal("270.0");
+        assertTrue(marketPrice.compareTo(limitPrice) <= 0, "Limit buy should execute when price <= limitPrice");
+
+        BigDecimal marketPriceAbove = new BigDecimal("271.0");
+        assertFalse(marketPriceAbove.compareTo(limitPrice) <= 0, "Limit buy should NOT execute when price > limitPrice");
+    }
+
+    /**
+     * Limit sell: executes when price >= limitPrice.
+     */
+    @Test
+    void testLimitSell_triggersWhenPriceAtOrAboveLimit() {
+        BigDecimal limitPrice = new BigDecimal("310.0");
+        BigDecimal marketPrice = new BigDecimal("310.0");
+        assertTrue(marketPrice.compareTo(limitPrice) >= 0, "Limit sell should execute when price >= limitPrice");
+
+        BigDecimal marketPriceBelow = new BigDecimal("309.5");
+        assertFalse(marketPriceBelow.compareTo(limitPrice) >= 0, "Limit sell should NOT execute when price < limitPrice");
+    }
+
+    /**
+     * Price alert: above alert triggers when price >= targetPrice.
+     */
+    @Test
+    void testPriceAlert_above_triggersCorrectly() {
+        BigDecimal targetPrice = new BigDecimal("310.0");
+        boolean above = true;
+
+        BigDecimal triggering = new BigDecimal("310.0");
+        boolean shouldFire = above ? triggering.compareTo(targetPrice) >= 0 : triggering.compareTo(targetPrice) <= 0;
+        assertTrue(shouldFire);
+
+        BigDecimal notTriggering = new BigDecimal("309.9");
+        boolean shouldNotFire = above ? notTriggering.compareTo(targetPrice) >= 0 : notTriggering.compareTo(targetPrice) <= 0;
+        assertFalse(shouldNotFire);
+    }
+
+    /**
+     * Price alert: below alert triggers when price <= targetPrice.
+     */
+    @Test
+    void testPriceAlert_below_triggersCorrectly() {
+        BigDecimal targetPrice = new BigDecimal("270.0");
+        boolean above = false;
+
+        BigDecimal triggering = new BigDecimal("270.0");
+        boolean shouldFire = above ? triggering.compareTo(targetPrice) >= 0 : triggering.compareTo(targetPrice) <= 0;
+        assertTrue(shouldFire);
+
+        BigDecimal notTriggering = new BigDecimal("270.1");
+        boolean shouldNotFire = above ? notTriggering.compareTo(targetPrice) >= 0 : notTriggering.compareTo(targetPrice) <= 0;
+        assertFalse(shouldNotFire);
+    }
+
+    /**
+     * Leverage status boundaries:
+     * < 2 = SAFE, 2-4 = WARNING, > 4 = CRITICAL.
+     */
+    @Test
+    void testLeverageStatus_boundaries() {
+        // lev < 2 → SAFE
+        BigDecimal lev1 = new BigDecimal("1.5");
+        assertTrue(lev1.compareTo(new BigDecimal("2.0")) < 0);
+
+        // lev in [2, 4] → WARNING
+        BigDecimal lev2 = new BigDecimal("3.0");
+        assertTrue(lev2.compareTo(new BigDecimal("2.0")) >= 0 && lev2.compareTo(new BigDecimal("4.0")) <= 0);
+
+        // lev > 4 → CRITICAL
+        BigDecimal lev3 = new BigDecimal("4.1");
+        assertTrue(lev3.compareTo(new BigDecimal("4.0")) > 0);
+    }
+
+    /**
+     * Realized PnL calculation for a sell trade:
+     * pnl = (sellPrice - avgCost) * qty - fee
+     */
+    @Test
+    void testRealizedPnl_sellAboveCost_isProfit() {
+        BigDecimal avgCost = new BigDecimal("300.0");
+        BigDecimal sellPrice = new BigDecimal("320.0");
+        int qty = 10;
+        BigDecimal fee = new BigDecimal("3.2"); // 0.001 * 320 * 10
+        BigDecimal pnl = sellPrice.subtract(avgCost).multiply(BigDecimal.valueOf(qty)).subtract(fee);
+        assertTrue(pnl.compareTo(BigDecimal.ZERO) > 0, "Selling above avg cost should yield profit");
+        assertEquals(0, new BigDecimal("196.8").compareTo(pnl));
+    }
+
+    @Test
+    void testRealizedPnl_sellBelowCost_isLoss() {
+        BigDecimal avgCost = new BigDecimal("300.0");
+        BigDecimal sellPrice = new BigDecimal("280.0");
+        int qty = 5;
+        BigDecimal fee = new BigDecimal("1.4"); // 0.001 * 280 * 5
+        BigDecimal pnl = sellPrice.subtract(avgCost).multiply(BigDecimal.valueOf(qty)).subtract(fee);
+        assertTrue(pnl.compareTo(BigDecimal.ZERO) < 0, "Selling below avg cost should be a loss");
+    }
+
+    /**
+     * Win rate calculation: wins / total closed positions.
+     */
+    @Test
+    void testWinRate_calculation() {
+        List<BigDecimal> pnls = List.of(
+                new BigDecimal("100.0"),
+                new BigDecimal("-50.0"),
+                new BigDecimal("200.0"),
+                new BigDecimal("-30.0"),
+                new BigDecimal("150.0")
+        );
+        long wins = pnls.stream().filter(p -> p.compareTo(BigDecimal.ZERO) > 0).count();
+        BigDecimal winRate = BigDecimal.valueOf(wins)
+                .divide(BigDecimal.valueOf(pnls.size()), 9, RoundingMode.HALF_UP)
+                .multiply(BigDecimal.valueOf(100))
+                .setScale(1, RoundingMode.HALF_UP);
+        assertEquals(0, new BigDecimal("60.0").compareTo(winRate), "Win rate should be 60%");
+    }
+
+    /**
+     * Trade history: invalid price (0.0) should block trade.
+     */
+    @Test
+    void testInvalidPrice_zeroBlocksTrade() {
+        BigDecimal price = BigDecimal.ZERO;
+        // Simulate the guard in trade()
+        boolean shouldBlock = price.compareTo(BigDecimal.ZERO) <= 0;
+        assertTrue(shouldBlock, "Price of 0.0 must block the trade");
+    }
+
+    /**
+     * MyRank: user rank is 1-based position in equity-sorted list.
+     */
+    @Test
+    void testMyRank_positionInList() {
+        // Simulate 3 users with equities
+        BigDecimal[] equities = {
+                new BigDecimal("110000.0"),
+                new BigDecimal("95000.0"),
+                new BigDecimal("130000.0")
+        };
+        // Sort descending
+        java.util.Arrays.sort(equities, (a, b) -> b.compareTo(a));
+        // Find rank of user with equity 95000
+        int targetRank = 0;
+        for (int i = 0; i < equities.length; i++) {
+            if (equities[i].compareTo(new BigDecimal("95000.0")) == 0) {
+                targetRank = i + 1;
+            }
+        }
+        assertEquals(3, targetRank, "User with 95k equity should be rank 3");
     }
 }

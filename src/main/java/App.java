@@ -7,6 +7,7 @@ import net.dv8tion.jda.api.requests.GatewayIntent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import services.StatisticsSenderService;
+import services.sandbox.SandboxOrderScheduler;
 import services.sandbox.SandboxReportScheduler;
 import services.sandbox.SandboxTradingService;
 import services.tbank.TInvestApi;
@@ -46,6 +47,7 @@ public class App {
             jda.awaitReady();
             new StatisticsSenderService(api, jda);
             new SandboxReportScheduler(sandboxTradingService, jda);
+            new SandboxOrderScheduler(sandboxTradingService, jda);
             start.info("Бот Discord успешно инициализирован");
         } catch (Exception e) {
             start.error("Ошибка инициализации бота Discord", (Throwable)e);
