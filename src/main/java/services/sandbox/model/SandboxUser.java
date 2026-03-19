@@ -1,34 +1,31 @@
-/*
- * Decompiled with CFR 0.152.
- */
 package services.sandbox.model;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
-public class SandboxUser
-implements Serializable {
+public class SandboxUser implements Serializable {
     private String userId;
     private String userName;
-    private double cash;
-    private double borrowed;
-    private double totalFees;
+    private BigDecimal cash;
+    private BigDecimal borrowed;
+    private BigDecimal totalFees;
     private LocalDate dailyBaselineDate;
-    private double dailyBaselineEquity;
+    private BigDecimal dailyBaselineEquity;
     private LocalDate weeklyBaselineDate;
-    private double weeklyBaselineEquity;
+    private BigDecimal weeklyBaselineEquity;
     private LocalDate monthlyBaselineDate;
-    private double monthlyBaselineEquity;
+    private BigDecimal monthlyBaselineEquity;
 
     public SandboxUser() {
     }
 
-    public SandboxUser(String userId, String userName, double cash) {
+    public SandboxUser(String userId, String userName, BigDecimal cash) {
         this.userId = userId;
         this.userName = userName;
         this.cash = cash;
-        this.borrowed = 0.0;
-        this.totalFees = 0.0;
+        this.borrowed = BigDecimal.ZERO;
+        this.totalFees = BigDecimal.ZERO;
     }
 
     public String getUserId() {
@@ -47,27 +44,27 @@ implements Serializable {
         this.userName = userName;
     }
 
-    public double getCash() {
+    public BigDecimal getCash() {
         return this.cash;
     }
 
-    public void setCash(double cash) {
+    public void setCash(BigDecimal cash) {
         this.cash = cash;
     }
 
-    public double getBorrowed() {
+    public BigDecimal getBorrowed() {
         return this.borrowed;
     }
 
-    public void setBorrowed(double borrowed) {
+    public void setBorrowed(BigDecimal borrowed) {
         this.borrowed = borrowed;
     }
 
-    public double getTotalFees() {
+    public BigDecimal getTotalFees() {
         return this.totalFees;
     }
 
-    public void setTotalFees(double totalFees) {
+    public void setTotalFees(BigDecimal totalFees) {
         this.totalFees = totalFees;
     }
 
@@ -79,11 +76,11 @@ implements Serializable {
         this.dailyBaselineDate = dailyBaselineDate;
     }
 
-    public double getDailyBaselineEquity() {
+    public BigDecimal getDailyBaselineEquity() {
         return this.dailyBaselineEquity;
     }
 
-    public void setDailyBaselineEquity(double dailyBaselineEquity) {
+    public void setDailyBaselineEquity(BigDecimal dailyBaselineEquity) {
         this.dailyBaselineEquity = dailyBaselineEquity;
     }
 
@@ -95,11 +92,11 @@ implements Serializable {
         this.weeklyBaselineDate = weeklyBaselineDate;
     }
 
-    public double getWeeklyBaselineEquity() {
+    public BigDecimal getWeeklyBaselineEquity() {
         return this.weeklyBaselineEquity;
     }
 
-    public void setWeeklyBaselineEquity(double weeklyBaselineEquity) {
+    public void setWeeklyBaselineEquity(BigDecimal weeklyBaselineEquity) {
         this.weeklyBaselineEquity = weeklyBaselineEquity;
     }
 
@@ -111,12 +108,11 @@ implements Serializable {
         this.monthlyBaselineDate = monthlyBaselineDate;
     }
 
-    public double getMonthlyBaselineEquity() {
+    public BigDecimal getMonthlyBaselineEquity() {
         return this.monthlyBaselineEquity;
     }
 
-    public void setMonthlyBaselineEquity(double monthlyBaselineEquity) {
+    public void setMonthlyBaselineEquity(BigDecimal monthlyBaselineEquity) {
         this.monthlyBaselineEquity = monthlyBaselineEquity;
     }
 }
-

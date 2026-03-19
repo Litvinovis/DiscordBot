@@ -1,19 +1,8 @@
-/*
- * Decompiled with CFR 0.152.
- * 
- * Could not load the following classes:
- *  com.google.common.base.Strings
- *  net.dv8tion.jda.api.JDA
- *  net.dv8tion.jda.api.entities.Guild
- *  net.dv8tion.jda.api.entities.channel.concrete.TextChannel
- *  org.slf4j.Logger
- *  org.slf4j.LoggerFactory
- *  ru.tinkoff.piapi.contract.v1.Currency
- *  ru.tinkoff.piapi.contract.v1.LastPrice
- */
 package services.statTask;
 
 import com.google.common.base.Strings;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -32,11 +21,12 @@ import utils.ConfigLoader;
 
 public class CurrencyStatTask implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(CurrencyStatTask.class);
+    private static final int SCALE = 8;
     private final TInvestApi api;
     private final JDA jda;
     private final StringBuilder builder = new StringBuilder();
-    private Map<String, Double> oldData = new HashMap<String, Double>();
-    private final Map<String, Double> newData = new HashMap<String, Double>();
+    private Map<String, BigDecimal> oldData = new HashMap<>();
+    private final Map<String, BigDecimal> newData = new HashMap<>();
 
     public CurrencyStatTask(TInvestApi api, JDA jda) {
         this.api = api;
@@ -87,41 +77,46 @@ public class CurrencyStatTask implements Runnable {
             List<String> figiList = currencies.stream().map(Currency::getFigi).toList();
             List<LastPrice> lastPrices = this.api.getMarketDataService().getLastPricesSync(figiList);
             for (int i = 0; i < lastPrices.size(); ++i) {
-                double priceValue = (double) lastPrices.get(i).getPrice().getUnits() + (double) lastPrices.get(i).getPrice().getNano() / 1.0E9;
+                BigDecimal priceValue = BigDecimal.valueOf(lastPrices.get(i).getPrice().getUnits())
+                        .add(BigDecimal.valueOf(lastPrices.get(i).getPrice().getNano(), 9));
                 this.newData.put(currencies.get(i).getName(), priceValue);
             }
             if (this.oldData.isEmpty()) {
-                this.oldData = new HashMap<String, Double>(this.newData);
+                this.oldData = new HashMap<>(this.newData);
                 return null;
             }
-            HashMap<String, Double> changes = new HashMap<String, Double>();
-            for (Map.Entry<String, Double> e : this.newData.entrySet()) {
+            HashMap<String, BigDecimal> changes = new HashMap<>();
+            for (Map.Entry<String, BigDecimal> e : this.newData.entrySet()) {
                 String currencyName = e.getKey();
-                if ("\u0420\u043e\u0441\u0441\u0438\u0439\u0441\u043a\u0438\u0439 \u0440\u0443\u0431\u043b\u044c".equals(currencyName) || !this.oldData.containsKey(currencyName)) continue;
-                double oldValue2 = this.oldData.get(currencyName);
-                double newValue2 = e.getValue();
-                if (oldValue2 == 0.0) continue;
-                double change = (newValue2 - oldValue2) / oldValue2 * 100.0;
+                if ("Российский рубль".equals(currencyName) || !this.oldData.containsKey(currencyName)) continue;
+                BigDecimal oldValue = this.oldData.get(currencyName);
+                BigDecimal newValue = e.getValue();
+                if (oldValue.compareTo(BigDecimal.ZERO) == 0) continue;
+                // change% = (new - old) / old * 100
+                BigDecimal change = newValue.subtract(oldValue)
+                        .divide(oldValue, SCALE, RoundingMode.HALF_UP)
+                        .multiply(BigDecimal.valueOf(100))
+                        .setScale(2, RoundingMode.HALF_UP);
                 changes.put(currencyName, change);
             }
-            Map<String, Double> sortedMap = changes.entrySet().stream()
-                .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (oldValue, newValue) -> oldValue, LinkedHashMap::new));
-            this.builder.append("**\u0422\u043e\u043f 5 \u043b\u0443\u0447\u0448\u0438\u0445 \u0432\u0430\u043b\u044e\u0442 \u043a \u0440\u0443\u0431\u043b\u044e \u0441\u0435\u0433\u043e\u0434\u043d\u044f:**\n");
-            List<Map.Entry<String, Double>> entryList = new ArrayList<>(sortedMap.entrySet());
+            Map<String, BigDecimal> sortedMap = changes.entrySet().stream()
+                .sorted(Map.Entry.<String, BigDecimal>comparingByValue().reversed())
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (ov, nv) -> ov, LinkedHashMap::new));
+            this.builder.append("**Топ 5 лучших валют к рублю сегодня:**\n");
+            List<Map.Entry<String, BigDecimal>> entryList = new ArrayList<>(sortedMap.entrySet());
             int count = 0;
-            for (Map.Entry<String, Double> entry : entryList) {
+            for (Map.Entry<String, BigDecimal> entry : entryList) {
                 if (count >= 5) break;
-                this.builder.append(entry.getKey()).append(" : ").append(String.format("%.2f", entry.getValue())).append("%\n");
+                this.builder.append(entry.getKey()).append(" : ").append(entry.getValue().toPlainString()).append("%\n");
                 ++count;
             }
-            this.builder.append("\n**\u0422\u043e\u043f 5 \u0445\u0443\u0434\u0448\u0438\u0445 \u0432\u0430\u043b\u044e\u0442 \u043a \u0440\u0443\u0431\u043b\u044e \u0441\u0435\u0433\u043e\u0434\u043d\u044f:**\n");
+            this.builder.append("\n**Топ 5 худших валют к рублю сегодня:**\n");
             count = 0;
             for (int i = entryList.size() - 1; i >= 0 && count < 5; ++count, --i) {
-                Map.Entry<String, Double> entry = entryList.get(i);
-                this.builder.append(entry.getKey()).append(" : ").append(String.format("%.2f", entry.getValue())).append("%\n");
+                Map.Entry<String, BigDecimal> entry = entryList.get(i);
+                this.builder.append(entry.getKey()).append(" : ").append(entry.getValue().toPlainString()).append("%\n");
             }
-            this.oldData = new HashMap<String, Double>(this.newData);
+            this.oldData = new HashMap<>(this.newData);
             this.newData.clear();
         } catch (Exception e) {
             logger.error("Ошибка при формировании отчета по валютам", e);
