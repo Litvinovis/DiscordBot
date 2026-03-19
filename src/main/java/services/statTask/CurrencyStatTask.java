@@ -35,7 +35,6 @@ public class CurrencyStatTask implements Runnable {
     private final TInvestApi api;
     private final JDA jda;
     private final StringBuilder builder = new StringBuilder();
-    private final StringBuilder price = new StringBuilder();
     private Map<String, Double> oldData = new HashMap<String, Double>();
     private final Map<String, Double> newData = new HashMap<String, Double>();
 
@@ -88,9 +87,8 @@ public class CurrencyStatTask implements Runnable {
             List<String> figiList = currencies.stream().map(Currency::getFigi).toList();
             List<LastPrice> lastPrices = this.api.getMarketDataService().getLastPricesSync(figiList);
             for (int i = 0; i < lastPrices.size(); ++i) {
-                this.price.setLength(0);
-                this.price.append(lastPrices.get(i).getPrice().getUnits()).append(".").append(String.format("%09d", lastPrices.get(i).getPrice().getNano()));
-                this.newData.put(currencies.get(i).getName(), Double.parseDouble(this.price.toString()));
+                double priceValue = (double) lastPrices.get(i).getPrice().getUnits() + (double) lastPrices.get(i).getPrice().getNano() / 1.0E9;
+                this.newData.put(currencies.get(i).getName(), priceValue);
             }
             if (this.oldData.isEmpty()) {
                 this.oldData = new HashMap<String, Double>(this.newData);
