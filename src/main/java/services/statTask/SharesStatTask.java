@@ -1,19 +1,8 @@
-/*
- * Decompiled with CFR 0.152.
- * 
- * Could not load the following classes:
- *  com.google.common.base.Strings
- *  net.dv8tion.jda.api.JDA
- *  net.dv8tion.jda.api.entities.Guild
- *  net.dv8tion.jda.api.entities.channel.concrete.TextChannel
- *  org.slf4j.Logger
- *  org.slf4j.LoggerFactory
- *  ru.tinkoff.piapi.contract.v1.LastPrice
- *  ru.tinkoff.piapi.contract.v1.Share
- */
 package services.statTask;
 
 import com.google.common.base.Strings;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -32,15 +21,17 @@ import utils.ConfigLoader;
 
 public class SharesStatTask implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(SharesStatTask.class);
-    private final TInvestApi api;
-    private final JDA jda;
-    private final StringBuilder builder = new StringBuilder();
-    private final Map<String, Double> oldData = new HashMap<String, Double>();
-    private final Map<String, Double> newData = new HashMap<String, Double>();
-    private final List<String> badCode = List.of("SPEQ", "SMAL", "SPBXM_OTC", "FQBR", "A29", "A30");
+    private static final int SCALE = 8;
     private static final int MAX_INSTRUMENTS_PER_REQUEST = 3000;
     private static final int MAX_SHARES_TO_PROCESS = 1000;
     private static final List<String> RUSSIAN_EXCHANGES = List.of("MOEX", "RTS");
+
+    private final TInvestApi api;
+    private final JDA jda;
+    private final StringBuilder builder = new StringBuilder();
+    private final Map<String, BigDecimal> oldData = new HashMap<>();
+    private final Map<String, BigDecimal> newData = new HashMap<>();
+    private final List<String> badCode = List.of("SPEQ", "SMAL", "SPBXM_OTC", "FQBR", "A29", "A30");
 
     public SharesStatTask(TInvestApi api, JDA jda) {
         this.api = api;
@@ -89,12 +80,12 @@ public class SharesStatTask implements Runnable {
         try {
             List<Share> allShares = this.api.getInstrumentsService().getAllSharesSync().stream()
                 .filter(share -> this.checkClassCode(share.getClassCode()))
-                .limit(1000L)
+                .limit(MAX_SHARES_TO_PROCESS)
                 .toList();
             List<Share> russianShares = allShares.stream().filter(this::isRussianShare).toList();
             logger.info("Найдено {} акций для обработки, из них {} российских", allShares.size(), russianShares.size());
-            List<List<String>> figiChunks = this.partitionList(allShares.stream().map(Share::getFigi).toList(), 3000);
-            ArrayList<LastPrice> allLastPrices = new ArrayList<LastPrice>();
+            List<List<String>> figiChunks = this.partitionList(allShares.stream().map(Share::getFigi).toList(), MAX_INSTRUMENTS_PER_REQUEST);
+            ArrayList<LastPrice> allLastPrices = new ArrayList<>();
             for (int i = 0; i < figiChunks.size(); ++i) {
                 List<String> chunk = figiChunks.get(i);
                 logger.debug("Запрашиваем цены для части {}/{} ({} инструментов)", i + 1, figiChunks.size(), chunk.size());
@@ -106,23 +97,24 @@ public class SharesStatTask implements Runnable {
                 }
             }
             logger.info("Получено {} цен из {} запрошенных акций", allLastPrices.size(), allShares.size());
-            HashMap<String, LastPrice> priceMap = new HashMap<String, LastPrice>();
+            HashMap<String, LastPrice> priceMap = new HashMap<>();
             for (LastPrice price : allLastPrices) {
                 priceMap.put(price.getFigi(), price);
             }
             int skippedCount = 0;
-            HashMap<String, Double> allSharesData = new HashMap<String, Double>();
-            HashMap<String, Double> russianSharesData = new HashMap<String, Double>();
-            for (Share share2 : allShares) {
-                LastPrice price = priceMap.get(share2.getFigi());
+            HashMap<String, BigDecimal> allSharesData = new HashMap<>();
+            HashMap<String, BigDecimal> russianSharesData = new HashMap<>();
+            for (Share share : allShares) {
+                LastPrice price = priceMap.get(share.getFigi());
                 if (price == null || price.getPrice().getUnits() == 0L && price.getPrice().getNano() == 0) {
                     ++skippedCount;
                     continue;
                 }
-                double priceValue = (double) price.getPrice().getUnits() + (double) price.getPrice().getNano() / 1.0E9;
-                allSharesData.put(share2.getName(), priceValue);
-                if (!this.isRussianShare(share2)) continue;
-                russianSharesData.put(share2.getName(), priceValue);
+                BigDecimal priceValue = BigDecimal.valueOf(price.getPrice().getUnits())
+                        .add(BigDecimal.valueOf(price.getPrice().getNano(), 9));
+                allSharesData.put(share.getName(), priceValue);
+                if (!this.isRussianShare(share)) continue;
+                russianSharesData.put(share.getName(), priceValue);
             }
             this.newData.putAll(allSharesData);
             logger.info("Обработано {} акций, пропущено {} из-за отсутствия данных", this.newData.size(), skippedCount);
@@ -130,10 +122,10 @@ public class SharesStatTask implements Runnable {
                 this.oldData.putAll(this.newData);
                 return null;
             }
-            Map<String, Double> allChanges = this.calculateChanges(allSharesData);
-            Map<String, Double> russianChanges = this.calculateChanges(russianSharesData);
-            Map<String, Double> sortedAll = this.sortChanges(allChanges);
-            Map<String, Double> sortedRussian = this.sortChanges(russianChanges);
+            Map<String, BigDecimal> allChanges = this.calculateChanges(allSharesData);
+            Map<String, BigDecimal> russianChanges = this.calculateChanges(russianSharesData);
+            Map<String, BigDecimal> sortedAll = this.sortChanges(allChanges);
+            Map<String, BigDecimal> sortedRussian = this.sortChanges(russianChanges);
             this.builder.append("**Общий зачет - Топ 5 лучших акций:**\n");
             this.appendTopPerformers(sortedAll, 5, true);
             this.builder.append("\n**Общий зачет - Топ 5 худших акций:**\n");
@@ -161,7 +153,7 @@ public class SharesStatTask implements Runnable {
     }
 
     private <T> List<List<T>> partitionList(List<T> list, int chunkSize) {
-        ArrayList<List<T>> chunks = new ArrayList<List<T>>();
+        ArrayList<List<T>> chunks = new ArrayList<>();
         for (int i = 0; i < list.size(); i += chunkSize) {
             int end = Math.min(list.size(), i + chunkSize);
             chunks.add(list.subList(i, end));
@@ -176,38 +168,41 @@ public class SharesStatTask implements Runnable {
         return isRussianExchange || isRubCurrency || isRuCountry;
     }
 
-    private Map<String, Double> calculateChanges(Map<String, Double> currentData) {
-        HashMap<String, Double> changes = new HashMap<String, Double>();
-        for (Map.Entry<String, Double> entry : currentData.entrySet()) {
+    private Map<String, BigDecimal> calculateChanges(Map<String, BigDecimal> currentData) {
+        HashMap<String, BigDecimal> changes = new HashMap<>();
+        for (Map.Entry<String, BigDecimal> entry : currentData.entrySet()) {
             String shareName = entry.getKey();
             if (!this.oldData.containsKey(shareName)) continue;
-            double oldValue = this.oldData.get(shareName);
-            double newValue = entry.getValue();
-            if (oldValue == 0.0) continue;
-            double change = (newValue - oldValue) / oldValue * 100.0;
+            BigDecimal oldValue = this.oldData.get(shareName);
+            BigDecimal newValue = entry.getValue();
+            if (oldValue.compareTo(BigDecimal.ZERO) == 0) continue;
+            BigDecimal change = newValue.subtract(oldValue)
+                    .divide(oldValue, SCALE, RoundingMode.HALF_UP)
+                    .multiply(BigDecimal.valueOf(100))
+                    .setScale(2, RoundingMode.HALF_UP);
             changes.put(shareName, change);
         }
         return changes;
     }
 
-    private Map<String, Double> sortChanges(Map<String, Double> changes) {
+    private Map<String, BigDecimal> sortChanges(Map<String, BigDecimal> changes) {
         return changes.entrySet().stream()
-            .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
-            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (oldValue, newValue) -> oldValue, LinkedHashMap::new));
+            .sorted(Map.Entry.<String, BigDecimal>comparingByValue().reversed())
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (ov, nv) -> ov, LinkedHashMap::new));
     }
 
-    private void appendTopPerformers(Map<String, Double> sortedMap, int count, boolean bestFirst) {
-        ArrayList<Map.Entry<String, Double>> entryList = new ArrayList<Map.Entry<String, Double>>(sortedMap.entrySet());
+    private void appendTopPerformers(Map<String, BigDecimal> sortedMap, int count, boolean bestFirst) {
+        ArrayList<Map.Entry<String, BigDecimal>> entryList = new ArrayList<>(sortedMap.entrySet());
         if (bestFirst) {
             for (int i = 0; i < Math.min(count, entryList.size()); ++i) {
-                Map.Entry<String, Double> entry = entryList.get(i);
-                this.builder.append(entry.getKey()).append(" : ").append(String.format("%.2f", entry.getValue())).append("%\n");
+                Map.Entry<String, BigDecimal> entry = entryList.get(i);
+                this.builder.append(entry.getKey()).append(" : ").append(entry.getValue().toPlainString()).append("%\n");
             }
         } else {
             int startIndex = Math.max(0, entryList.size() - count);
             for (int i = entryList.size() - 1; i >= startIndex; --i) {
-                Map.Entry<String, Double> entry = entryList.get(i);
-                this.builder.append(entry.getKey()).append(" : ").append(String.format("%.2f", entry.getValue())).append("%\n");
+                Map.Entry<String, BigDecimal> entry = entryList.get(i);
+                this.builder.append(entry.getKey()).append(" : ").append(entry.getValue().toPlainString()).append("%\n");
             }
         }
         if (entryList.isEmpty()) {

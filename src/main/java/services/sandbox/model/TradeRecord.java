@@ -1,26 +1,24 @@
-/*
- * Decompiled with CFR 0.152.
- */
 package services.sandbox.model;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.time.Instant;
 
-public class TradeRecord
-implements Serializable {
+public class TradeRecord implements Serializable {
     private String id;
     private String userId;
     private String ticker;
     private String side;
     private int qty;
-    private double price;
-    private double fee;
+    private BigDecimal price;
+    private BigDecimal fee;
     private Instant timestamp;
 
     public TradeRecord() {
     }
 
-    public TradeRecord(String id, String userId, String ticker, String side, int qty, double price, double fee, Instant timestamp) {
+    public TradeRecord(String id, String userId, String ticker, String side, int qty,
+                       BigDecimal price, BigDecimal fee, Instant timestamp) {
         this.id = id;
         this.userId = userId;
         this.ticker = ticker;
@@ -51,11 +49,11 @@ implements Serializable {
         return this.qty;
     }
 
-    public double getPrice() {
+    public BigDecimal getPrice() {
         return this.price;
     }
 
-    public double getFee() {
+    public BigDecimal getFee() {
         return this.fee;
     }
 
@@ -63,4 +61,3 @@ implements Serializable {
         return this.timestamp;
     }
 }
-
