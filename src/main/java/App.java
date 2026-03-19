@@ -39,7 +39,7 @@ public class App {
         } else if (!target.contains(":///")) {
             target = "dns:///" + target;
         }
-        TInvestApi api = TInvestApi.create(tinkoffToken, false, target);
+        TInvestApi api = TInvestApi.create(tinkoffToken, "sandbox".equalsIgnoreCase(apiMode), target);
         SandboxTradingService sandboxTradingService = new SandboxTradingService(api);
         try {
             JDA jda = JDABuilder.createDefault(discordToken).enableIntents(GatewayIntent.MESSAGE_CONTENT, new GatewayIntent[0]).addEventListeners(new MessageHandler(api, sandboxTradingService)).setActivity(Activity.playing("NASDAQ")).build();

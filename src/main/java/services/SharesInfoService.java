@@ -25,7 +25,6 @@ public class SharesInfoService {
     @Generated
     private static final Logger log = LoggerFactory.getLogger(SharesInfoService.class);
     private final TInvestApi api;
-    private final StringBuilder builder = new StringBuilder();
     private final Logger logger = LoggerFactory.getLogger((String)"default-logger");
     private final List<String> badCode = List.of("SPEQ", "SMAL", "SPBXM_OTC", "A29", "A30");
 
@@ -34,8 +33,8 @@ public class SharesInfoService {
     }
 
     public String getSharesInfo(String sharesName) {
-        this.builder.setLength(0);
-        this.builder.append("\u0418\u043d\u0444\u043e\u0440\u043c\u0430\u0446\u0438\u044f \u043e \u043f\u043e\u0434\u0445\u043e\u0434\u044f\u0449\u0438\u0445 \u0430\u043a\u0446\u0438\u044f\u0445: \n");
+        StringBuilder builder = new StringBuilder();
+        builder.append("\u0418\u043d\u0444\u043e\u0440\u043c\u0430\u0446\u0438\u044f \u043e \u043f\u043e\u0434\u0445\u043e\u0434\u044f\u0449\u0438\u0445 \u0430\u043a\u0446\u0438\u044f\u0445: \n");
         try {
             String query = sharesName == null ? "" : sharesName.trim();
             String qLower = query.toLowerCase();
@@ -56,23 +55,23 @@ public class SharesInfoService {
                 if (lastPrices.get(i).getPrice().getUnits() == 0L && lastPrices.get(i).getPrice().getNano() == 0) continue;
                 sharesMap.put(shares.get(i), lastPrices.get(i));
             }
-            this.createShareInfo(sharesMap);
+            this.createShareInfo(sharesMap, builder);
         }
         catch (Throwable e) {
             this.logger.error("\u041e\u0448\u0438\u0431\u043a\u0430 \u043f\u0440\u0438 \u043f\u043e\u043b\u0443\u0447\u0435\u043d\u0438\u0438 \u0434\u0430\u043d\u043d\u044b\u0445 \u043f\u043e \u0430\u043a\u0446\u0438\u044f\u043c '{}': {}", new Object[]{sharesName, e.getMessage(), e});
             return "\u0421\u0435\u0440\u0432\u0438\u0441 \u043a\u043e\u0442\u0438\u0440\u043e\u0432\u043e\u043a \u0432\u0440\u0435\u043c\u0435\u043d\u043d\u043e \u043d\u0435\u0434\u043e\u0441\u0442\u0443\u043f\u0435\u043d, \u043f\u043e\u043f\u0440\u043e\u0431\u0443\u0439\u0442\u0435 \u043f\u043e\u0437\u0436\u0435";
         }
-        return this.builder.toString();
+        return builder.toString();
     }
 
     private boolean checkClassCode(String classCode) {
         return !this.badCode.contains(classCode);
     }
 
-    private void createShareInfo(Map<Share, LastPrice> shares) {
+    private void createShareInfo(Map<Share, LastPrice> shares, StringBuilder builder) {
         for (Map.Entry<Share, LastPrice> entry : shares.entrySet()) {
             double price = (double)entry.getValue().getPrice().getUnits() + (double)entry.getValue().getPrice().getNano() / 1.0E9;
-            this.builder.append("\n").append("\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435: ").append(entry.getKey().getName()).append("\n").append("\u0421\u0442\u043e\u0438\u043c\u043e\u0441\u0442\u044c = ").append(String.format("%.2f", price)).append(" ").append(entry.getKey().getCurrency().toUpperCase()).append("\n");
+            builder.append("\n").append("\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435: ").append(entry.getKey().getName()).append("\n").append("\u0421\u0442\u043e\u0438\u043c\u043e\u0441\u0442\u044c = ").append(String.format("%.2f", price)).append(" ").append(entry.getKey().getCurrency().toUpperCase()).append("\n");
         }
     }
 }
