@@ -111,7 +111,7 @@ public class SandboxTradingService {
             if (existing != null) {
                 return "Вы уже зарегистрированы в песочнице.";
             }
-            SandboxUser user = new SandboxUser(userId, userName, startBalance);
+            SandboxUser user = new SandboxUser(userId, userName, startBalance.doubleValue());
             recordBaseline(user);
             users.put(userId, user);
             return "✅ Регистрация успешна. Стартовый баланс: " + fmt(startBalance) + " ₽";
@@ -192,7 +192,7 @@ public class SandboxTradingService {
         Position posInCache = positions.get(pKey);
         Position pos = posInCache != null
                 ? posInCache
-                : new Position(userId, ticker, share.getUid(), 0, ZERO);
+                : new Position(userId, ticker, share.getUid(), 0, 0.0);
 
         if (!buy && pos.getQuantity() < qty) {
             return "Недостаточно бумаг в портфеле.";
@@ -205,25 +205,28 @@ public class SandboxTradingService {
             fee = ONE;
         }
 
-        BigDecimal origCash = user.getCash();
-        BigDecimal origBorrowed = user.getBorrowed();
-        BigDecimal origTotalFees = user.getTotalFees();
+        // Read current model state as BigDecimal for precise calculation
+        BigDecimal origCash = BigDecimal.valueOf(user.getCash());
+        BigDecimal origBorrowed = BigDecimal.valueOf(user.getBorrowed());
+        BigDecimal origTotalFees = BigDecimal.valueOf(user.getTotalFees());
         int origQty = pos.getQuantity();
-        BigDecimal origAvgPrice = pos.getAvgPrice();
+        BigDecimal origAvgPrice = BigDecimal.valueOf(pos.getAvgPrice());
 
         if (buy) {
-            user.setCash(user.getCash().subtract(turnover).subtract(fee));
+            BigDecimal newCash = origCash.subtract(turnover).subtract(fee);
+            user.setCash(newCash.doubleValue());
             int newQty = pos.getQuantity() + qty;
             // newAvg = (avgPrice * oldQty + turnover) / newQty
-            BigDecimal newAvg = pos.getAvgPrice()
+            BigDecimal newAvg = origAvgPrice
                     .multiply(BigDecimal.valueOf(pos.getQuantity()))
                     .add(turnover)
                     .divide(BigDecimal.valueOf(newQty), SCALE, RoundingMode.HALF_UP);
             pos.setQuantity(newQty);
-            pos.setAvgPrice(newAvg);
+            pos.setAvgPrice(newAvg.doubleValue());
             positions.put(pKey, pos);
         } else {
-            user.setCash(user.getCash().add(turnover).subtract(fee));
+            BigDecimal newCash = origCash.add(turnover).subtract(fee);
+            user.setCash(newCash.doubleValue());
             pos.setQuantity(pos.getQuantity() - qty);
             if (pos.getQuantity() == 0) {
                 positions.remove(pKey);
@@ -231,7 +234,7 @@ public class SandboxTradingService {
                 positions.put(pKey, pos);
             }
         }
-        user.setTotalFees(user.getTotalFees().add(fee));
+        user.setTotalFees(origTotalFees.add(fee).doubleValue());
         rebalanceDebt(user, userId);
 
         if (!checkRisk(user, userId)) {
@@ -240,19 +243,20 @@ public class SandboxTradingService {
                 positions.remove(pKey);
             } else {
                 pos.setQuantity(origQty);
-                pos.setAvgPrice(origAvgPrice);
+                pos.setAvgPrice(origAvgPrice.doubleValue());
                 positions.put(pKey, pos);
             }
-            user.setCash(origCash);
-            user.setBorrowed(origBorrowed);
-            user.setTotalFees(origTotalFees);
+            user.setCash(origCash.doubleValue());
+            user.setBorrowed(origBorrowed.doubleValue());
+            user.setTotalFees(origTotalFees.doubleValue());
             users.put(userId, user);
             return "❌ Сделка отклонена: превышен риск/плечо.";
         }
 
         users.put(userId, user);
         String tradeId = UUID.randomUUID().toString();
-        trades.put(tradeId, new TradeRecord(tradeId, userId, ticker, buy ? "BUY" : "SELL", qty, price, fee, Instant.now()));
+        trades.put(tradeId, new TradeRecord(tradeId, userId, ticker, buy ? "BUY" : "SELL", qty,
+                price.doubleValue(), fee.doubleValue(), Instant.now()));
         String cur = currencySymbol(share.getCurrency());
         return (buy ? "🟢 Куплено " : "🔴 Продано ") + qty + " " + ticker + " по " + fmt(price) + " " + cur + ". Комиссия " + fmt(fee) + " " + cur;
     }
@@ -274,13 +278,14 @@ public class SandboxTradingService {
         BigDecimal totalPnl = ZERO;
         for (Position p : ps) {
             BigDecimal price = loadPriceSafe(p.getInstrumentId());
-            BigDecimal pnl = price.subtract(p.getAvgPrice())
+            BigDecimal avgPrice = BigDecimal.valueOf(p.getAvgPrice());
+            BigDecimal pnl = price.subtract(avgPrice)
                     .multiply(BigDecimal.valueOf(p.getQuantity()))
                     .setScale(2, RoundingMode.HALF_UP);
             BigDecimal pnlPct;
-            if (p.getAvgPrice().compareTo(ZERO) > 0) {
-                pnlPct = price.subtract(p.getAvgPrice())
-                        .divide(p.getAvgPrice(), SCALE, RoundingMode.HALF_UP)
+            if (avgPrice.compareTo(ZERO) > 0) {
+                pnlPct = price.subtract(avgPrice)
+                        .divide(avgPrice, SCALE, RoundingMode.HALF_UP)
                         .multiply(BigDecimal.valueOf(100))
                         .setScale(2, RoundingMode.HALF_UP);
             } else {
@@ -290,7 +295,7 @@ public class SandboxTradingService {
             String pnlSign = pnl.compareTo(ZERO) >= 0 ? "+" : "";
             String pnlPctSign = pnlPct.compareTo(ZERO) >= 0 ? "+" : "";
             sb.append(p.getTicker()).append(": ").append(p.getQuantity())
-                    .append(" шт, ср. ").append(fmt(p.getAvgPrice()))
+                    .append(" шт, ср. ").append(fmt(avgPrice))
                     .append(" ₽, текущ. ").append(price.compareTo(ZERO) > 0 ? fmt(price) : "N/A")
                     .append(" ₽, P&L: ").append(pnlSign).append(fmt(pnl))
                     .append(" ₽ (").append(pnlPctSign)
@@ -329,9 +334,9 @@ public class SandboxTradingService {
             leverageStatus = "🚨 КРИТИЧНО (ликвидация скоро)";
         }
 
-        return "💰 Свободные средства: " + fmt(user.getCash()) + " ₽\n"
+        return "💰 Свободные средства: " + fmt(BigDecimal.valueOf(user.getCash())) + " ₽\n"
                 + "📈 Стоимость активов: " + fmt(gross) + " ₽\n"
-                + "💳 Заём: " + fmt(user.getBorrowed()) + " ₽\n"
+                + "💳 Заём: " + fmt(BigDecimal.valueOf(user.getBorrowed())) + " ₽\n"
                 + "📊 Equity (итого): " + fmt(eq) + " ₽\n"
                 + "📉 ROI от старта: " + roiSign + roi.toPlainString() + "%\n"
                 + "⚖️ Плечо: x" + lev.setScale(2, RoundingMode.HALF_UP).toPlainString() + " " + leverageStatus;
@@ -347,10 +352,11 @@ public class SandboxTradingService {
             return "Сначала выполните +регистрация";
         }
         BigDecimal eq = equity(userId, user);
-        if (user.getBorrowed().compareTo(ZERO) <= 0) {
+        BigDecimal borrowed = BigDecimal.valueOf(user.getBorrowed());
+        if (borrowed.compareTo(ZERO) <= 0) {
             return "Маржи нет. Заём = 0.";
         }
-        BigDecimal level = eq.divide(user.getBorrowed(), SCALE, RoundingMode.HALF_UP);
+        BigDecimal level = eq.divide(borrowed, SCALE, RoundingMode.HALF_UP);
         BigDecimal gross = grossPositionValue(userId);
         BigDecimal lev = eq.compareTo(ZERO) <= 0
                 ? ZERO
@@ -469,8 +475,8 @@ public class SandboxTradingService {
             String side = "BUY".equals(r.getSide()) ? "🟢 Покупка" : "🔴 Продажа";
             sb.append(dt).append(" | ").append(side).append(" ").append(r.getQty())
                     .append(" ").append(r.getTicker())
-                    .append(" @ ").append(fmt(r.getPrice())).append(" ₽")
-                    .append(" (комиссия ").append(fmt(r.getFee())).append(" ₽)\n");
+                    .append(" @ ").append(fmt(BigDecimal.valueOf(r.getPrice()))).append(" ₽")
+                    .append(" (комиссия ").append(fmt(BigDecimal.valueOf(r.getFee()))).append(" ₽)\n");
         }
         return sb.toString().trim();
     }
@@ -504,20 +510,22 @@ public class SandboxTradingService {
         int totalTrades = userTrades.size();
 
         for (TradeRecord r : sorted) {
+            BigDecimal rPrice = BigDecimal.valueOf(r.getPrice());
+            BigDecimal rFee = BigDecimal.valueOf(r.getFee());
             if ("BUY".equals(r.getSide())) {
                 BigDecimal prevAvg = avgCostByTicker.getOrDefault(r.getTicker(), ZERO);
                 int prevQty = qtyByTicker.getOrDefault(r.getTicker(), 0);
                 int newQty = prevQty + r.getQty();
                 BigDecimal newAvg = prevAvg.multiply(BigDecimal.valueOf(prevQty))
-                        .add(r.getPrice().multiply(BigDecimal.valueOf(r.getQty())))
+                        .add(rPrice.multiply(BigDecimal.valueOf(r.getQty())))
                         .divide(BigDecimal.valueOf(newQty), SCALE, RoundingMode.HALF_UP);
                 avgCostByTicker.put(r.getTicker(), newAvg);
                 qtyByTicker.put(r.getTicker(), newQty);
             } else {
-                BigDecimal avgCost = avgCostByTicker.getOrDefault(r.getTicker(), r.getPrice());
-                BigDecimal pnl = r.getPrice().subtract(avgCost)
+                BigDecimal avgCost = avgCostByTicker.getOrDefault(r.getTicker(), rPrice);
+                BigDecimal pnl = rPrice.subtract(avgCost)
                         .multiply(BigDecimal.valueOf(r.getQty()))
-                        .subtract(r.getFee())
+                        .subtract(rFee)
                         .setScale(2, RoundingMode.HALF_UP);
                 realizedPnlList.add(pnl);
                 int prevQty = qtyByTicker.getOrDefault(r.getTicker(), r.getQty());
@@ -588,7 +596,7 @@ public class SandboxTradingService {
         toRemove.forEach(stopOrders::remove);
 
         String id = UUID.randomUUID().toString();
-        stopOrders.put(id, new StopOrder(id, userId, ticker, type, triggerPrice, Instant.now()));
+        stopOrders.put(id, new StopOrder(id, userId, ticker, type, triggerPrice.doubleValue(), Instant.now()));
         String typeName = "SL".equals(type) ? "Стоп-лосс" : "Тейк-профит";
         return "✅ " + typeName + " на " + ticker + " установлен: " + fmt(triggerPrice) + " ₽";
     }
@@ -621,7 +629,7 @@ public class SandboxTradingService {
             return "Цена должна быть > 0";
         }
         String id = UUID.randomUUID().toString();
-        limitOrders.put(id, new LimitOrder(id, userId, userName, ticker, side, qty, limitPrice, Instant.now()));
+        limitOrders.put(id, new LimitOrder(id, userId, userName, ticker, side, qty, limitPrice.doubleValue(), Instant.now()));
         String sideLabel = "BUY".equals(side) ? "покупку" : "продажу";
         return "✅ Лимитная заявка на " + sideLabel + " " + qty + " " + ticker
                 + " @ " + fmt(limitPrice) + " ₽ принята (ID: " + id.substring(0, 8) + "...)";
@@ -649,7 +657,7 @@ public class SandboxTradingService {
             sb.append("[").append(o.getId().substring(0, 8)).append("] ")
                     .append(dt).append(" | ").append(sideLabel).append(" ")
                     .append(o.getQty()).append(" ").append(o.getTicker())
-                    .append(" @ ").append(fmt(o.getLimitPrice())).append(" ₽\n");
+                    .append(" @ ").append(fmt(BigDecimal.valueOf(o.getLimitPrice()))).append(" ₽\n");
         }
         return sb.toString().trim();
     }
@@ -671,7 +679,7 @@ public class SandboxTradingService {
         limitOrders.remove(fullKey);
         return "✅ Заявка [" + fullKey.substring(0, 8) + "] отменена: "
                 + o.getSide() + " " + o.getQty() + " " + o.getTicker()
-                + " @ " + fmt(o.getLimitPrice()) + " ₽";
+                + " @ " + fmt(BigDecimal.valueOf(o.getLimitPrice())) + " ₽";
     }
 
     // -----------------------------------------------------------------------
@@ -695,7 +703,7 @@ public class SandboxTradingService {
         boolean above = currentPrice.compareTo(ZERO) <= 0 || targetPrice.compareTo(currentPrice) > 0;
 
         String id = UUID.randomUUID().toString();
-        priceAlerts.put(id, new PriceAlert(id, userId, ticker, targetPrice, above, Instant.now()));
+        priceAlerts.put(id, new PriceAlert(id, userId, ticker, targetPrice.doubleValue(), above, Instant.now()));
         String direction = above ? "достигнет или превысит" : "упадёт до";
         return "🔔 Алерт установлен: уведомлю когда " + ticker + " " + direction + " " + fmt(targetPrice) + " ₽";
     }
@@ -716,11 +724,12 @@ public class SandboxTradingService {
             BigDecimal price = loadPriceSafe(share.getUid());
             if (price.compareTo(ZERO) <= 0) continue;
 
+            BigDecimal triggerPrice = BigDecimal.valueOf(so.getTriggerPrice());
             boolean triggered;
             if ("SL".equals(so.getType())) {
-                triggered = price.compareTo(so.getTriggerPrice()) <= 0;
+                triggered = price.compareTo(triggerPrice) <= 0;
             } else { // TP
-                triggered = price.compareTo(so.getTriggerPrice()) >= 0;
+                triggered = price.compareTo(triggerPrice) >= 0;
             }
 
             if (triggered) {
@@ -766,11 +775,12 @@ public class SandboxTradingService {
             BigDecimal price = loadPriceSafe(share.getUid());
             if (price.compareTo(ZERO) <= 0) continue;
 
+            BigDecimal loLimitPrice = BigDecimal.valueOf(lo.getLimitPrice());
             boolean triggered;
             if ("BUY".equals(lo.getSide())) {
-                triggered = price.compareTo(lo.getLimitPrice()) <= 0;
+                triggered = price.compareTo(loLimitPrice) <= 0;
             } else {
-                triggered = price.compareTo(lo.getLimitPrice()) >= 0;
+                triggered = price.compareTo(loLimitPrice) >= 0;
             }
 
             if (triggered) {
@@ -805,16 +815,17 @@ public class SandboxTradingService {
             BigDecimal price = loadPriceSafe(share.getUid());
             if (price.compareTo(ZERO) <= 0) continue;
 
+            BigDecimal alertTarget = BigDecimal.valueOf(alert.getTargetPrice());
             boolean triggered;
             if (alert.isAbove()) {
-                triggered = price.compareTo(alert.getTargetPrice()) >= 0;
+                triggered = price.compareTo(alertTarget) >= 0;
             } else {
-                triggered = price.compareTo(alert.getTargetPrice()) <= 0;
+                triggered = price.compareTo(alertTarget) <= 0;
             }
 
             if (triggered) {
                 String msg = "🔔 Алерт! " + alert.getTicker() + " = " + fmt(price)
-                        + " ₽ (целевая: " + fmt(alert.getTargetPrice()) + " ₽)";
+                        + " ₽ (целевая: " + fmt(alertTarget) + " ₽)";
                 notifications.add(new String[]{alert.getUserId(), msg});
                 toRemove.add(e.getKey());
             }
@@ -839,14 +850,16 @@ public class SandboxTradingService {
     // -----------------------------------------------------------------------
 
     private void rebalanceDebt(SandboxUser user, String userId) {
-        if (user.getCash().compareTo(ZERO) < 0) {
-            BigDecimal abs = user.getCash().abs();
-            user.setBorrowed(user.getBorrowed().add(abs));
-            user.setCash(ZERO);
-        } else if (user.getBorrowed().compareTo(ZERO) > 0 && user.getCash().compareTo(ZERO) > 0) {
-            BigDecimal repay = user.getCash().min(user.getBorrowed());
-            user.setCash(user.getCash().subtract(repay));
-            user.setBorrowed(user.getBorrowed().subtract(repay));
+        BigDecimal cash = BigDecimal.valueOf(user.getCash());
+        BigDecimal borrowed = BigDecimal.valueOf(user.getBorrowed());
+        if (cash.compareTo(ZERO) < 0) {
+            BigDecimal abs = cash.abs();
+            user.setBorrowed(borrowed.add(abs).doubleValue());
+            user.setCash(0.0);
+        } else if (borrowed.compareTo(ZERO) > 0 && cash.compareTo(ZERO) > 0) {
+            BigDecimal repay = cash.min(borrowed);
+            user.setCash(cash.subtract(repay).doubleValue());
+            user.setBorrowed(borrowed.subtract(repay).doubleValue());
         }
         users.put(userId, user);
     }
@@ -864,8 +877,9 @@ public class SandboxTradingService {
         if (lev.compareTo(maxLeverage) > 0) {
             return false;
         }
-        if (user.getBorrowed().compareTo(ZERO) > 0) {
-            BigDecimal marginLevel = eq.divide(user.getBorrowed(), SCALE, RoundingMode.HALF_UP);
+        BigDecimal borrowed = BigDecimal.valueOf(user.getBorrowed());
+        if (borrowed.compareTo(ZERO) > 0) {
+            BigDecimal marginLevel = eq.divide(borrowed, SCALE, RoundingMode.HALF_UP);
             if (marginLevel.compareTo(new BigDecimal("0.2")) < 0) {
                 liquidate(userId, user);
                 String msg = "🚨 Margin call / Ликвидация! Ваши позиции по " + userId + " принудительно закрыты.";
@@ -877,14 +891,16 @@ public class SandboxTradingService {
 
     private void liquidate(String userId, SandboxUser user) {
         List<Position> ps = userPositions(userId);
+        BigDecimal cash = BigDecimal.valueOf(user.getCash());
         for (Position p : ps) {
             BigDecimal price = loadPriceSafe(p.getInstrumentId());
-            if (price.compareTo(ZERO) <= 0) price = p.getAvgPrice(); // fallback
+            BigDecimal avgPrice = BigDecimal.valueOf(p.getAvgPrice());
+            if (price.compareTo(ZERO) <= 0) price = avgPrice; // fallback
             BigDecimal qtyBD = BigDecimal.valueOf(p.getQuantity());
             BigDecimal turnover = price.multiply(qtyBD);
             BigDecimal fee = turnover.multiply(commissionRate).setScale(SCALE, RoundingMode.HALF_UP);
             if (fee.compareTo(ONE) < 0) fee = ONE;
-            user.setCash(user.getCash().add(turnover).subtract(fee));
+            cash = cash.add(turnover).subtract(fee);
             positions.remove(posKey(userId, p.getTicker()));
             List<String> soKeys = new ArrayList<>();
             for (Cache.Entry<String, StopOrder> e : stopOrders) {
@@ -894,6 +910,7 @@ public class SandboxTradingService {
             }
             soKeys.forEach(stopOrders::remove);
         }
+        user.setCash(cash.doubleValue());
         rebalanceDebt(user, userId);
         users.put(userId, user);
     }
@@ -904,17 +921,17 @@ public class SandboxTradingService {
         BigDecimal eq = equity(u.getUserId(), u);
         if (u.getDailyBaselineDate() == null || !now.equals(u.getDailyBaselineDate())) {
             u.setDailyBaselineDate(now);
-            u.setDailyBaselineEquity(eq);
+            u.setDailyBaselineEquity(eq.doubleValue());
         }
         if (u.getWeeklyBaselineDate() == null ||
                 u.getWeeklyBaselineDate().get(WeekFields.ISO.weekOfWeekBasedYear()) != week) {
             u.setWeeklyBaselineDate(now);
-            u.setWeeklyBaselineEquity(eq);
+            u.setWeeklyBaselineEquity(eq.doubleValue());
         }
         if (u.getMonthlyBaselineDate() == null ||
                 u.getMonthlyBaselineDate().getMonthValue() != now.getMonthValue()) {
             u.setMonthlyBaselineDate(now);
-            u.setMonthlyBaselineEquity(eq);
+            u.setMonthlyBaselineEquity(eq.doubleValue());
         }
         users.put(u.getUserId(), u);
     }
@@ -922,9 +939,9 @@ public class SandboxTradingService {
     private BigDecimal metric(SandboxUser u, String period) {
         BigDecimal eq = equity(u.getUserId(), u);
         return switch (period.toLowerCase(Locale.ROOT)) {
-            case "день" -> safeRoi(eq, u.getDailyBaselineEquity());
-            case "неделя" -> safeRoi(eq, u.getWeeklyBaselineEquity());
-            case "месяц" -> safeRoi(eq, u.getMonthlyBaselineEquity());
+            case "день" -> safeRoi(eq, BigDecimal.valueOf(u.getDailyBaselineEquity()));
+            case "неделя" -> safeRoi(eq, BigDecimal.valueOf(u.getWeeklyBaselineEquity()));
+            case "месяц" -> safeRoi(eq, BigDecimal.valueOf(u.getMonthlyBaselineEquity()));
             default -> safeRoi(eq, startBalance);
         };
     }
@@ -952,7 +969,9 @@ public class SandboxTradingService {
     }
 
     private BigDecimal equity(String userId, SandboxUser user) {
-        return user.getCash().add(grossPositionValue(userId)).subtract(user.getBorrowed());
+        return BigDecimal.valueOf(user.getCash())
+                .add(grossPositionValue(userId))
+                .subtract(BigDecimal.valueOf(user.getBorrowed()));
     }
 
     /** Load price and throw if API call fails */

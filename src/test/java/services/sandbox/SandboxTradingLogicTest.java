@@ -41,22 +41,23 @@ public class SandboxTradingLogicTest {
 
     /**
      * Simulate recordBaseline() — called from trade() BEFORE executing the trade.
+     * Uses double fields as in the model, but accepts BigDecimal equityAtCallTime for test convenience.
      */
     private void recordBaseline(SandboxUser u, BigDecimal equityAtCallTime, LocalDate now) {
         int week = now.get(WeekFields.ISO.weekOfWeekBasedYear());
         if (u.getDailyBaselineDate() == null || !now.equals(u.getDailyBaselineDate())) {
             u.setDailyBaselineDate(now);
-            u.setDailyBaselineEquity(equityAtCallTime);
+            u.setDailyBaselineEquity(equityAtCallTime.doubleValue());
         }
         if (u.getWeeklyBaselineDate() == null ||
                 u.getWeeklyBaselineDate().get(WeekFields.ISO.weekOfWeekBasedYear()) != week) {
             u.setWeeklyBaselineDate(now);
-            u.setWeeklyBaselineEquity(equityAtCallTime);
+            u.setWeeklyBaselineEquity(equityAtCallTime.doubleValue());
         }
         if (u.getMonthlyBaselineDate() == null ||
                 u.getMonthlyBaselineDate().getMonthValue() != now.getMonthValue()) {
             u.setMonthlyBaselineDate(now);
-            u.setMonthlyBaselineEquity(equityAtCallTime);
+            u.setMonthlyBaselineEquity(equityAtCallTime.doubleValue());
         }
     }
 
@@ -72,18 +73,18 @@ public class SandboxTradingLogicTest {
      */
     @Test
     void testRecordBaseline_sameDay_doesNotOverwriteExistingBaseline() {
-        SandboxUser user = new SandboxUser("u1", "Alice", new BigDecimal("100000.00"));
+        SandboxUser user = new SandboxUser("u1", "Alice", 100000.00);
         LocalDate today = LocalDate.of(2026, 3, 19);
 
         // First call (e.g. from register) — equity = 100 000
         recordBaseline(user, new BigDecimal("100000.00"), today);
-        assertEquals(0, new BigDecimal("100000.00").compareTo(user.getDailyBaselineEquity()),
+        assertEquals(0, new BigDecimal("100000.00").compareTo(BigDecimal.valueOf(user.getDailyBaselineEquity())),
                 "Daily baseline should be set to 100 000 on first call");
 
         // After a profitable trade equity grows to 110 000.
         // A second call on the same day should NOT overwrite the baseline.
         recordBaseline(user, new BigDecimal("110000.00"), today);
-        assertEquals(0, new BigDecimal("100000.00").compareTo(user.getDailyBaselineEquity()),
+        assertEquals(0, new BigDecimal("100000.00").compareTo(BigDecimal.valueOf(user.getDailyBaselineEquity())),
                 "Daily baseline must NOT be updated when the date hasn't changed");
     }
 
@@ -93,13 +94,13 @@ public class SandboxTradingLogicTest {
      */
     @Test
     void testRecordBaseline_newDay_updatesBaselineToPreTradeEquity() {
-        SandboxUser user = new SandboxUser("u1", "Alice", new BigDecimal("100000.00"));
+        SandboxUser user = new SandboxUser("u1", "Alice", 100000.00);
         LocalDate yesterday = LocalDate.of(2026, 3, 18);
         LocalDate today = LocalDate.of(2026, 3, 19);
 
         // Baseline was set yesterday
         recordBaseline(user, new BigDecimal("105000.00"), yesterday);
-        assertEquals(0, new BigDecimal("105000.00").compareTo(user.getDailyBaselineEquity()));
+        assertEquals(0, new BigDecimal("105000.00").compareTo(BigDecimal.valueOf(user.getDailyBaselineEquity())));
 
         // Today's first trade: recordBaseline() is called BEFORE the trade,
         // so equityAtCallTime = equity before the trade = 107 000.
@@ -107,7 +108,7 @@ public class SandboxTradingLogicTest {
         recordBaseline(user, equityBeforeTrade, today);
 
         assertEquals(today, user.getDailyBaselineDate());
-        assertEquals(0, new BigDecimal("107000.00").compareTo(user.getDailyBaselineEquity()),
+        assertEquals(0, new BigDecimal("107000.00").compareTo(BigDecimal.valueOf(user.getDailyBaselineEquity())),
                 "Baseline must capture equity BEFORE the trade on the new day");
     }
 
@@ -135,17 +136,17 @@ public class SandboxTradingLogicTest {
      */
     @Test
     void testRecordBaseline_newWeek_updatesWeeklyBaseline() {
-        SandboxUser user = new SandboxUser("u1", "Alice", new BigDecimal("100000.00"));
+        SandboxUser user = new SandboxUser("u1", "Alice", 100000.00);
 
         // Week 11 of 2026
         LocalDate lastWeek = LocalDate.of(2026, 3, 9);   // Monday, week 11
         LocalDate thisWeek = LocalDate.of(2026, 3, 16);  // Monday, week 12
 
         recordBaseline(user, new BigDecimal("100000.00"), lastWeek);
-        assertEquals(0, new BigDecimal("100000.00").compareTo(user.getWeeklyBaselineEquity()));
+        assertEquals(0, new BigDecimal("100000.00").compareTo(BigDecimal.valueOf(user.getWeeklyBaselineEquity())));
 
         recordBaseline(user, new BigDecimal("115000.00"), thisWeek);
-        assertEquals(0, new BigDecimal("115000.00").compareTo(user.getWeeklyBaselineEquity()),
+        assertEquals(0, new BigDecimal("115000.00").compareTo(BigDecimal.valueOf(user.getWeeklyBaselineEquity())),
                 "Weekly baseline must update on a new ISO week");
     }
 

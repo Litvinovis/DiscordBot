@@ -1,19 +1,20 @@
 package services.sandbox.model;
 
 import java.io.Serializable;
-import java.math.BigDecimal;
 
 public class Position implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private String userId;
     private String ticker;
     private String instrumentId;
     private int quantity;
-    private BigDecimal avgPrice;
+    private double avgPrice;
 
     public Position() {
     }
 
-    public Position(String userId, String ticker, String instrumentId, int quantity, BigDecimal avgPrice) {
+    public Position(String userId, String ticker, String instrumentId, int quantity, double avgPrice) {
         this.userId = userId;
         this.ticker = ticker;
         this.instrumentId = instrumentId;
@@ -53,11 +54,11 @@ public class Position implements Serializable {
         this.quantity = quantity;
     }
 
-    public BigDecimal getAvgPrice() {
+    public double getAvgPrice() {
         return this.avgPrice;
     }
 
-    public void setAvgPrice(BigDecimal avgPrice) {
+    public void setAvgPrice(double avgPrice) {
         this.avgPrice = avgPrice;
     }
 }
