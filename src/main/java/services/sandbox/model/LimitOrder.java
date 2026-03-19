@@ -1,13 +1,14 @@
 package services.sandbox.model;
 
 import java.io.Serializable;
-import java.math.BigDecimal;
 import java.time.Instant;
 
 /**
  * Represents a pending limit order (buy or sell) placed by a user.
  */
 public class LimitOrder implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private String id;
     private String userId;
     private String userName;
@@ -16,7 +17,7 @@ public class LimitOrder implements Serializable {
     private String side;
     private int qty;
     /** Target price at which the order should be executed */
-    private BigDecimal limitPrice;
+    private double limitPrice;
     private Instant createdAt;
 
     public LimitOrder() {
@@ -24,7 +25,7 @@ public class LimitOrder implements Serializable {
 
     public LimitOrder(String id, String userId, String userName,
                       String ticker, String side, int qty,
-                      BigDecimal limitPrice, Instant createdAt) {
+                      double limitPrice, Instant createdAt) {
         this.id = id;
         this.userId = userId;
         this.userName = userName;
@@ -41,6 +42,6 @@ public class LimitOrder implements Serializable {
     public String getTicker() { return ticker; }
     public String getSide() { return side; }
     public int getQty() { return qty; }
-    public BigDecimal getLimitPrice() { return limitPrice; }
+    public double getLimitPrice() { return limitPrice; }
     public Instant getCreatedAt() { return createdAt; }
 }

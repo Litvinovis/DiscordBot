@@ -1,24 +1,25 @@
 package services.sandbox.model;
 
 import java.io.Serializable;
-import java.math.BigDecimal;
 import java.time.Instant;
 
 public class TradeRecord implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private String id;
     private String userId;
     private String ticker;
     private String side;
     private int qty;
-    private BigDecimal price;
-    private BigDecimal fee;
+    private double price;
+    private double fee;
     private Instant timestamp;
 
     public TradeRecord() {
     }
 
     public TradeRecord(String id, String userId, String ticker, String side, int qty,
-                       BigDecimal price, BigDecimal fee, Instant timestamp) {
+                       double price, double fee, Instant timestamp) {
         this.id = id;
         this.userId = userId;
         this.ticker = ticker;
@@ -49,11 +50,11 @@ public class TradeRecord implements Serializable {
         return this.qty;
     }
 
-    public BigDecimal getPrice() {
+    public double getPrice() {
         return this.price;
     }
 
-    public BigDecimal getFee() {
+    public double getFee() {
         return this.fee;
     }
 
