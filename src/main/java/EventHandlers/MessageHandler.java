@@ -106,6 +106,58 @@ extends ListenerAdapter {
                 return this.sandboxTradingService.top("all");
             }
         }
+        // +мой-рейтинг
+        if (lower.equals("+\u043c\u043e\u0439-\u0440\u0435\u0439\u0442\u0438\u043d\u0433")) {
+            return this.sandboxTradingService.myRank(event.getAuthor().getId());
+        }
+        // +история
+        if (lower.equals("+\u0438\u0441\u0442\u043e\u0440\u0438\u044f")) {
+            return this.sandboxTradingService.history(event.getAuthor().getId());
+        }
+        // +стата / +статистика
+        if (lower.equals("+\u0441\u0442\u0430\u0442\u0430") || lower.equals("+\u0441\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043a\u0430")) {
+            return this.sandboxTradingService.stats(event.getAuthor().getId());
+        }
+        // +стоп-лосс TICKER PRICE
+        if (p.length == 3 && lower.startsWith("+\u0441\u0442\u043e\u043f-\u043b\u043e\u0441\u0441 ")) {
+            double price = this.parseDouble(p[2]);
+            if (price <= 0) return "\u0423\u043a\u0430\u0436\u0438\u0442\u0435 \u043a\u043e\u0440\u0440\u0435\u043a\u0442\u043d\u0443\u044e \u0446\u0435\u043d\u0443: +\u0441\u0442\u043e\u043f-\u043b\u043e\u0441\u0441 \u0422\u0418\u041a\u0415\u0420 \u0426\u0415\u041d\u0410";
+            return this.sandboxTradingService.setStopLoss(event.getAuthor().getId(), p[1], price);
+        }
+        // +тейк-профит TICKER PRICE
+        if (p.length == 3 && lower.startsWith("+\u0442\u0435\u0439\u043a-\u043f\u0440\u043e\u0444\u0438\u0442 ")) {
+            double price = this.parseDouble(p[2]);
+            if (price <= 0) return "\u0423\u043a\u0430\u0436\u0438\u0442\u0435 \u043a\u043e\u0440\u0440\u0435\u043a\u0442\u043d\u0443\u044e \u0446\u0435\u043d\u0443: +\u0442\u0435\u0439\u043a-\u043f\u0440\u043e\u0444\u0438\u0442 \u0422\u0418\u041a\u0415\u0420 \u0426\u0415\u041d\u0410";
+            return this.sandboxTradingService.setTakeProfit(event.getAuthor().getId(), p[1], price);
+        }
+        // +лимит-куплю TICKER QTY PRICE
+        if (p.length == 4 && lower.startsWith("+\u043b\u0438\u043c\u0438\u0442-\u043a\u0443\u043f\u043b\u044e ")) {
+            int qty = this.parseInt(p[2]);
+            double price = this.parseDouble(p[3]);
+            if (qty <= 0 || price <= 0) return "\u0418\u0441\u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u043d\u0438\u0435: +\u043b\u0438\u043c\u0438\u0442-\u043a\u0443\u043f\u043b\u044e \u0422\u0418\u041a\u0415\u0420 \u041a\u041e\u041b-\u0412\u041e \u0426\u0415\u041d\u0410";
+            return this.sandboxTradingService.placeLimitBuy(event.getAuthor().getId(), event.getAuthor().getName(), p[1], qty, price);
+        }
+        // +лимит-продам TICKER QTY PRICE
+        if (p.length == 4 && lower.startsWith("+\u043b\u0438\u043c\u0438\u0442-\u043f\u0440\u043e\u0434\u0430\u043c ")) {
+            int qty = this.parseInt(p[2]);
+            double price = this.parseDouble(p[3]);
+            if (qty <= 0 || price <= 0) return "\u0418\u0441\u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u043d\u0438\u0435: +\u043b\u0438\u043c\u0438\u0442-\u043f\u0440\u043e\u0434\u0430\u043c \u0422\u0418\u041a\u0415\u0420 \u041a\u041e\u041b-\u0412\u041e \u0426\u0415\u041d\u0410";
+            return this.sandboxTradingService.placeLimitSell(event.getAuthor().getId(), event.getAuthor().getName(), p[1], qty, price);
+        }
+        // +мои-заявки
+        if (lower.equals("+\u043c\u043e\u0438-\u0437\u0430\u044f\u0432\u043a\u0438")) {
+            return this.sandboxTradingService.myOrders(event.getAuthor().getId());
+        }
+        // +отмена-заявки ID
+        if (p.length == 2 && lower.startsWith("+\u043e\u0442\u043c\u0435\u043d\u0430-\u0437\u0430\u044f\u0432\u043a\u0438 ")) {
+            return this.sandboxTradingService.cancelOrder(event.getAuthor().getId(), p[1]);
+        }
+        // +алерт TICKER PRICE
+        if (p.length == 3 && lower.startsWith("+\u0430\u043b\u0435\u0440\u0442 ")) {
+            double price = this.parseDouble(p[2]);
+            if (price <= 0) return "\u0418\u0441\u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u043d\u0438\u0435: +\u0430\u043b\u0435\u0440\u0442 \u0422\u0418\u041a\u0415\u0420 \u0426\u0415\u041d\u0410";
+            return this.sandboxTradingService.setAlert(event.getAuthor().getId(), p[1], price);
+        }
         return "\u043d\u0435\u0438\u0437\u0432\u0435\u0441\u0442\u043d\u0430\u044f \u043a\u043e\u043c\u0430\u043d\u0434\u0430, \u043d\u0430\u043f\u0438\u0448\u0438\u0442\u0435 '+\u043f\u043e\u043c\u043e\u0449\u044c'";
     }
 
@@ -115,6 +167,14 @@ extends ListenerAdapter {
         }
         catch (Exception e) {
             return -1;
+        }
+    }
+
+    private double parseDouble(String s) {
+        try {
+            return Double.parseDouble(s.replace(',', '.'));
+        } catch (Exception e) {
+            return -1.0;
         }
     }
 

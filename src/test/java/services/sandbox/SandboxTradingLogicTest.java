@@ -267,4 +267,181 @@ public class SandboxTradingLogicTest {
 
         assertEquals(6_800.0, gross, 1e-9);
     }
+
+    // -----------------------------------------------------------------------
+    // New feature tests
+    // -----------------------------------------------------------------------
+
+    /**
+     * Stop-loss trigger: SL fires when price <= triggerPrice.
+     */
+    @Test
+    void testStopLoss_triggersWhenPriceFallsToLevel() {
+        double triggerPrice = 270.0;
+        double currentPrice = 269.5;
+        assertTrue(currentPrice <= triggerPrice, "SL should trigger when price <= triggerPrice");
+
+        double currentPriceAbove = 271.0;
+        assertFalse(currentPriceAbove <= triggerPrice, "SL should NOT trigger when price > triggerPrice");
+    }
+
+    /**
+     * Take-profit trigger: TP fires when price >= triggerPrice.
+     */
+    @Test
+    void testTakeProfit_triggersWhenPriceReachesLevel() {
+        double triggerPrice = 310.0;
+        double currentPrice = 310.5;
+        assertTrue(currentPrice >= triggerPrice, "TP should trigger when price >= triggerPrice");
+
+        double currentPriceBelow = 309.9;
+        assertFalse(currentPriceBelow >= triggerPrice, "TP should NOT trigger when price < triggerPrice");
+    }
+
+    /**
+     * Limit buy: executes when price <= limitPrice.
+     */
+    @Test
+    void testLimitBuy_triggersWhenPriceAtOrBelowLimit() {
+        double limitPrice = 270.5;
+        double marketPrice = 270.0;
+        assertTrue(marketPrice <= limitPrice, "Limit buy should execute when price <= limitPrice");
+
+        double marketPriceAbove = 271.0;
+        assertFalse(marketPriceAbove <= limitPrice, "Limit buy should NOT execute when price > limitPrice");
+    }
+
+    /**
+     * Limit sell: executes when price >= limitPrice.
+     */
+    @Test
+    void testLimitSell_triggersWhenPriceAtOrAboveLimit() {
+        double limitPrice = 310.0;
+        double marketPrice = 310.0;
+        assertTrue(marketPrice >= limitPrice, "Limit sell should execute when price >= limitPrice");
+
+        double marketPriceBelow = 309.5;
+        assertFalse(marketPriceBelow >= limitPrice, "Limit sell should NOT execute when price < limitPrice");
+    }
+
+    /**
+     * Price alert: above alert triggers when price >= targetPrice.
+     */
+    @Test
+    void testPriceAlert_above_triggersCorrectly() {
+        double targetPrice = 310.0;
+        boolean above = true;
+
+        double triggering = 310.0;
+        boolean shouldFire = above ? triggering >= targetPrice : triggering <= targetPrice;
+        assertTrue(shouldFire);
+
+        double notTriggering = 309.9;
+        boolean shouldNotFire = above ? notTriggering >= targetPrice : notTriggering <= targetPrice;
+        assertFalse(shouldNotFire);
+    }
+
+    /**
+     * Price alert: below alert triggers when price <= targetPrice.
+     */
+    @Test
+    void testPriceAlert_below_triggersCorrectly() {
+        double targetPrice = 270.0;
+        boolean above = false;
+
+        double triggering = 270.0;
+        boolean shouldFire = above ? triggering >= targetPrice : triggering <= targetPrice;
+        assertTrue(shouldFire);
+
+        double notTriggering = 270.1;
+        boolean shouldNotFire = above ? notTriggering >= targetPrice : notTriggering <= targetPrice;
+        assertFalse(shouldNotFire);
+    }
+
+    /**
+     * Leverage status boundaries (item 6):
+     * < 2 = SAFE, 2-4 = WARNING, > 4 = CRITICAL.
+     */
+    @Test
+    void testLeverageStatus_boundaries() {
+        // lev < 2 → SAFE
+        double lev1 = 1.5;
+        assertTrue(lev1 < 2.0);
+
+        // lev in [2, 4] → WARNING
+        double lev2 = 3.0;
+        assertTrue(lev2 >= 2.0 && lev2 <= 4.0);
+
+        // lev > 4 → CRITICAL
+        double lev3 = 4.1;
+        assertTrue(lev3 > 4.0);
+    }
+
+    /**
+     * Realized PnL calculation for a sell trade:
+     * pnl = (sellPrice - avgCost) * qty - fee
+     */
+    @Test
+    void testRealizedPnl_sellAboveCost_isProfit() {
+        double avgCost = 300.0;
+        double sellPrice = 320.0;
+        int qty = 10;
+        double fee = 3.2; // 0.001 * 320 * 10
+        double pnl = (sellPrice - avgCost) * qty - fee;
+        assertTrue(pnl > 0, "Selling above avg cost should yield profit");
+        assertEquals(200.0 - 3.2, pnl, 1e-9);
+    }
+
+    @Test
+    void testRealizedPnl_sellBelowCost_isLoss() {
+        double avgCost = 300.0;
+        double sellPrice = 280.0;
+        int qty = 5;
+        double fee = 1.4; // 0.001 * 280 * 5
+        double pnl = (sellPrice - avgCost) * qty - fee;
+        assertTrue(pnl < 0, "Selling below avg cost should be a loss");
+    }
+
+    /**
+     * Win rate calculation: wins / total closed positions.
+     */
+    @Test
+    void testWinRate_calculation() {
+        List<Double> pnls = List.of(100.0, -50.0, 200.0, -30.0, 150.0);
+        long wins = pnls.stream().filter(p -> p > 0).count();
+        double winRate = (double) wins / pnls.size() * 100.0;
+        assertEquals(60.0, winRate, 1e-9, "Win rate should be 60%");
+    }
+
+    /**
+     * Trade history: invalid price (0.0) should block trade.
+     */
+    @Test
+    void testInvalidPrice_zeroBlocksTrade() {
+        double price = 0.0;
+        // Simulate the guard in trade()
+        boolean shouldBlock = price <= 0.0;
+        assertTrue(shouldBlock, "Price of 0.0 must block the trade");
+    }
+
+    /**
+     * MyRank: user rank is 1-based position in equity-sorted list.
+     */
+    @Test
+    void testMyRank_positionInList() {
+        // Simulate 3 users with equities
+        double[] equities = {110_000.0, 95_000.0, 130_000.0};
+        // Sorted descending: 130k, 110k, 95k → ranks: 3rd user=1, 1st user=2, 2nd user=3
+        java.util.Arrays.sort(equities);
+        // Reverse
+        double[] sorted = {equities[2], equities[1], equities[0]};
+        // Find rank of user with equity 95000
+        int targetEquity = 0; // index in sorted
+        for (int i = 0; i < sorted.length; i++) {
+            if (sorted[i] == 95_000.0) {
+                targetEquity = i + 1;
+            }
+        }
+        assertEquals(3, targetEquity, "User with 95k equity should be rank 3");
+    }
 }

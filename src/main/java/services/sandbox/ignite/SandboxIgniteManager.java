@@ -24,8 +24,11 @@ import org.apache.ignite.spi.discovery.DiscoverySpi;
 import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
 import org.apache.ignite.spi.discovery.tcp.ipfinder.TcpDiscoveryIpFinder;
 import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
+import services.sandbox.model.LimitOrder;
 import services.sandbox.model.Position;
+import services.sandbox.model.PriceAlert;
 import services.sandbox.model.SandboxUser;
+import services.sandbox.model.StopOrder;
 import services.sandbox.model.TradeRecord;
 import utils.ConfigLoader;
 
@@ -34,6 +37,9 @@ public class SandboxIgniteManager {
     private final IgniteCache<String, SandboxUser> usersCache;
     private final IgniteCache<String, Position> positionsCache;
     private final IgniteCache<String, TradeRecord> tradesCache;
+    private final IgniteCache<String, LimitOrder> limitOrdersCache;
+    private final IgniteCache<String, StopOrder> stopOrdersCache;
+    private final IgniteCache<String, PriceAlert> priceAlertsCache;
 
     public SandboxIgniteManager() {
         IgniteConfiguration cfg = new IgniteConfiguration();
@@ -48,9 +54,12 @@ public class SandboxIgniteManager {
         spi.setIpFinder((TcpDiscoveryIpFinder)ipFinder);
         cfg.setDiscoverySpi((DiscoverySpi)spi);
         this.ignite = Ignition.start((IgniteConfiguration)cfg);
-        this.usersCache = this.ignite.getOrCreateCache(new CacheConfiguration("stonks_sandbox_users"));
-        this.positionsCache = this.ignite.getOrCreateCache(new CacheConfiguration("stonks_sandbox_positions"));
-        this.tradesCache = this.ignite.getOrCreateCache(new CacheConfiguration("stonks_sandbox_trades"));
+        this.usersCache = this.ignite.getOrCreateCache(new CacheConfiguration<String, SandboxUser>("stonks_sandbox_users"));
+        this.positionsCache = this.ignite.getOrCreateCache(new CacheConfiguration<String, Position>("stonks_sandbox_positions"));
+        this.tradesCache = this.ignite.getOrCreateCache(new CacheConfiguration<String, TradeRecord>("stonks_sandbox_trades"));
+        this.limitOrdersCache = this.ignite.getOrCreateCache(new CacheConfiguration<String, LimitOrder>("stonks_sandbox_limit_orders"));
+        this.stopOrdersCache = this.ignite.getOrCreateCache(new CacheConfiguration<String, StopOrder>("stonks_sandbox_stop_orders"));
+        this.priceAlertsCache = this.ignite.getOrCreateCache(new CacheConfiguration<String, PriceAlert>("stonks_sandbox_price_alerts"));
     }
 
     public IgniteCache<String, SandboxUser> usersCache() {
@@ -63,6 +72,18 @@ public class SandboxIgniteManager {
 
     public IgniteCache<String, TradeRecord> tradesCache() {
         return this.tradesCache;
+    }
+
+    public IgniteCache<String, LimitOrder> limitOrdersCache() {
+        return this.limitOrdersCache;
+    }
+
+    public IgniteCache<String, StopOrder> stopOrdersCache() {
+        return this.stopOrdersCache;
+    }
+
+    public IgniteCache<String, PriceAlert> priceAlertsCache() {
+        return this.priceAlertsCache;
     }
 }
 
