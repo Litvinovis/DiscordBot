@@ -84,18 +84,18 @@ public final class ConfigLoader {
     }
 
     public static List<String> getSandboxAllowedTickers() {
+        String fromEnv = System.getenv("SANDBOX_ALLOWED_TICKERS");
+        if (fromEnv != null && !fromEnv.isBlank()) {
+            return parseCsv(fromEnv).stream()
+                    .map(String::toUpperCase)
+                    .toList();
+        }
         Object value = getNestedValue(CONFIG, "sandbox.allowed-tickers");
         if (value instanceof List<?> list) {
             return list.stream()
                     .map(Object::toString)
                     .map(String::trim)
                     .filter(s -> !s.isEmpty())
-                    .toList();
-        }
-        String fromEnv = System.getenv("SANDBOX_ALLOWED_TICKERS");
-        if (fromEnv != null && !fromEnv.isBlank()) {
-            return parseCsv(fromEnv).stream()
-                    .map(String::toUpperCase)
                     .toList();
         }
         return List.of("SBER", "GAZP", "LKOH", "ROSN", "NVTK", "YDEX", "TATN", "PLZL", "MGNT", "MTSS", "SNGS", "ALRS", "CHMF", "NLMK", "VTBR");
