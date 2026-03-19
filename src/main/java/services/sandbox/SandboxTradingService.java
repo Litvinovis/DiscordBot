@@ -101,15 +101,21 @@ public class SandboxTradingService {
             return "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0446\u0435\u043d\u0443 \u0434\u043b\u044f " + ticker;
         }
         String pKey = this.posKey(userId, ticker);
-        Position pos = (Position)this.positions.get(pKey);
-        if (pos == null) {
-            pos = new Position(userId, ticker, share.getUid(), 0, 0.0);
-        }
+        Position posInCache = (Position)this.positions.get(pKey);
+        Position pos = posInCache != null ? posInCache : new Position(userId, ticker, share.getUid(), 0, 0.0);
         if (!buy && pos.getQuantity() < qty) {
             return "\u041d\u0435\u0434\u043e\u0441\u0442\u0430\u0442\u043e\u0447\u043d\u043e \u0431\u0443\u043c\u0430\u0433 \u0432 \u043f\u043e\u0440\u0442\u0444\u0435\u043b\u0435.";
         }
         double turnover = price * (double)qty;
         double fee = Math.max(1.0, turnover * this.commissionRate);
+
+        // Сохраняем состояние до сделки для возможного отката
+        double origCash = user.getCash();
+        double origBorrowed = user.getBorrowed();
+        double origTotalFees = user.getTotalFees();
+        int origQty = pos.getQuantity();
+        double origAvgPrice = pos.getAvgPrice();
+
         if (buy) {
             user.setCash(user.getCash() - turnover - fee);
             int newQty = pos.getQuantity() + qty;
@@ -129,10 +135,24 @@ public class SandboxTradingService {
         user.setTotalFees(user.getTotalFees() + fee);
         this.rebalanceDebt(user, userId);
         if (!this.checkRisk(user, userId)) {
+            // Откатываем изменения в позиции
+            if (posInCache == null) {
+                this.positions.remove(pKey);
+            } else {
+                pos.setQuantity(origQty);
+                pos.setAvgPrice(origAvgPrice);
+                this.positions.put(pKey, pos);
+            }
+            // Откатываем состояние пользователя
+            user.setCash(origCash);
+            user.setBorrowed(origBorrowed);
+            user.setTotalFees(origTotalFees);
+            this.users.put(userId, user);
             return "\u274c \u0421\u0434\u0435\u043b\u043a\u0430 \u043e\u0442\u043a\u043b\u043e\u043d\u0435\u043d\u0430: \u043f\u0440\u0435\u0432\u044b\u0448\u0435\u043d \u0440\u0438\u0441\u043a/\u043f\u043b\u0435\u0447\u043e.";
         }
         this.users.put(userId, user);
-        this.trades.put(UUID.randomUUID().toString(), new TradeRecord(UUID.randomUUID().toString(), userId, ticker, buy ? "BUY" : "SELL", qty, price, fee, Instant.now()));
+        String tradeId = UUID.randomUUID().toString();
+        this.trades.put(tradeId, new TradeRecord(tradeId, userId, ticker, buy ? "BUY" : "SELL", qty, price, fee, Instant.now()));
         return (buy ? "\ud83d\udfe2 \u041a\u0443\u043f\u043b\u0435\u043d\u043e " : "\ud83d\udd34 \u041f\u0440\u043e\u0434\u0430\u043d\u043e ") + qty + " " + ticker + " \u043f\u043e " + this.fmt(price) + " \u20bd. \u041a\u043e\u043c\u0438\u0441\u0441\u0438\u044f " + this.fmt(fee) + " \u20bd";
     }
 
