@@ -6,6 +6,10 @@ import java.time.LocalDate;
 public class SandboxUser implements Serializable {
     private static final long serialVersionUID = 1L;
 
+    public static final int CURRENT_SCHEMA_VERSION = 1;
+
+    private int schemaVersion = 0;
+
     private String userId;
     private String userName;
     private double cash;
@@ -115,5 +119,13 @@ public class SandboxUser implements Serializable {
 
     public void setMonthlyBaselineEquity(double monthlyBaselineEquity) {
         this.monthlyBaselineEquity = monthlyBaselineEquity;
+    }
+
+    public int getSchemaVersion() {
+        return this.schemaVersion;
+    }
+
+    public void setSchemaVersion(int schemaVersion) {
+        this.schemaVersion = schemaVersion;
     }
 }

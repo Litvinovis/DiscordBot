@@ -10,6 +10,10 @@ import java.time.Instant;
 public class PriceAlert implements Serializable {
     private static final long serialVersionUID = 1L;
 
+    public static final int CURRENT_SCHEMA_VERSION = 1;
+
+    private int schemaVersion = 0;
+
     private String id;
     private String userId;
     private String ticker;
@@ -37,4 +41,7 @@ public class PriceAlert implements Serializable {
     public double getTargetPrice() { return targetPrice; }
     public boolean isAbove() { return above; }
     public Instant getCreatedAt() { return createdAt; }
+
+    public int getSchemaVersion() { return schemaVersion; }
+    public void setSchemaVersion(int schemaVersion) { this.schemaVersion = schemaVersion; }
 }
