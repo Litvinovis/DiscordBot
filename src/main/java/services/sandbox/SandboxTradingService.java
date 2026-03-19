@@ -80,7 +80,6 @@ public class SandboxTradingService {
                 .map(String::toUpperCase)
                 .collect(Collectors.toSet());
         this.shareByTicker = api.getInstrumentsService().getAllSharesSync().stream()
-                .filter(s -> "rub".equalsIgnoreCase(s.getCurrency()))
                 .filter(s -> allowed.contains(s.getTicker().toUpperCase()))
                 .collect(Collectors.toMap(s -> s.getTicker().toUpperCase(), s -> s, (a, b) -> a));
         this.tickerByUid = shareByTicker.entrySet().stream()
@@ -254,7 +253,8 @@ public class SandboxTradingService {
         users.put(userId, user);
         String tradeId = UUID.randomUUID().toString();
         trades.put(tradeId, new TradeRecord(tradeId, userId, ticker, buy ? "BUY" : "SELL", qty, price, fee, Instant.now()));
-        return (buy ? "🟢 Куплено " : "🔴 Продано ") + qty + " " + ticker + " по " + fmt(price) + " ₽. Комиссия " + fmt(fee) + " ₽";
+        String cur = currencySymbol(share.getCurrency());
+        return (buy ? "🟢 Куплено " : "🔴 Продано ") + qty + " " + ticker + " по " + fmt(price) + " " + cur + ". Комиссия " + fmt(fee) + " " + cur;
     }
 
     // -----------------------------------------------------------------------
@@ -382,7 +382,7 @@ public class SandboxTradingService {
         if (p.compareTo(ZERO) <= 0) {
             return ticker.toUpperCase() + " — цена временно недоступна";
         }
-        return ticker.toUpperCase() + " = " + fmt(p) + " ₽";
+        return ticker.toUpperCase() + " = " + fmt(p) + " " + currencySymbol(s.getCurrency());
     }
 
     // -----------------------------------------------------------------------
@@ -987,5 +987,20 @@ public class SandboxTradingService {
         if (value == null) return "0.00";
         return value.setScale(2, RoundingMode.HALF_UP).toPlainString()
                 .replaceAll("(\\d)(?=(\\d{3})+\\.)", "$1 ");
+    }
+
+    /**
+     * Returns a human-readable currency symbol for the given ISO currency code.
+     * SPB Exchange foreign stocks are denominated in USD; MOEX stocks in RUB.
+     */
+    private String currencySymbol(String currency) {
+        if (currency == null) return "₽";
+        return switch (currency.toUpperCase(Locale.ROOT)) {
+            case "USD" -> "$";
+            case "EUR" -> "€";
+            case "CNY" -> "¥";
+            case "GBP" -> "£";
+            default    -> "₽";
+        };
     }
 }
