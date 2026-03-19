@@ -100,14 +100,29 @@ public final class ConfigLoader {
                     .toList();
         }
         return List.of(
-                // Russian MOEX blue-chips
-                "SBER", "GAZP", "LKOH", "ROSN", "NVTK", "YDEX", "TATN", "PLZL", "MGNT",
-                "MTSS", "SNGS", "ALRS", "CHMF", "NLMK", "VTBR",
-                // SPB Exchange — foreign stocks (priced in USD via T-Bank API)
-                "AAPL", "MSFT", "AMZN", "GOOGL", "TSLA", "META", "NVDA",
+                // === MOEX 1st echelon (blue-chips) ===
+                "SBER", "SBERP", "GAZP", "LKOH", "ROSN", "NVTK", "YDEX", "TATN", "TATNP",
+                "PLZL", "MGNT", "MTSS", "SNGS", "SNGSP", "ALRS", "CHMF", "NLMK", "VTBR",
+                "GMKN", "RUAL", "MAGN", "TCSG", "FIVE", "OZON", "VKCO", "AFLT", "HYDR",
+                "IRAO", "RTKM", "RTKMP", "FEES", "PHOR", "AKRN", "GLTR",
+                // === MOEX 2nd echelon ===
+                "BSPB", "SVCB", "MVID", "FIXP", "PIKK", "POSI", "ASTR", "HEAD", "SOFL",
+                "TRMK", "RASP", "TGKB", "TGKD", "MSNG", "UPRO", "OGKB", "LSNG", "LSNGP",
+                "SGZH", "AGRO", "SPBE", "CIAN", "GEMC", "MDMG", "RNFT", "BANEP", "BANE",
+                "KMAZ", "UWGN", "NKNC", "NKNCP", "KZOS", "KZOSP", "SELG", "PMSB", "PMSBP",
+                "MFGP", "GCHE", "GRNT", "NSVZ", "ZVEZ", "DIOD",
+                // === MOEX 3rd echelon & emerging ===
+                "LENT", "KART", "KLSB", "IRKT", "DSKI", "RKKE", "ELMT", "BRZL",
+                "TGKN", "MISB", "MISBP", "MGTSP", "CHGZ", "KUBE", "AMEZ",
+                // === SPB Exchange — foreign stocks (USD) ===
+                "AAPL", "MSFT", "AMZN", "GOOGL", "GOOG", "TSLA", "META", "NVDA",
                 "BRK.B", "JPM", "JNJ", "V", "PG", "UNH", "HD", "MA",
                 "DIS", "NFLX", "PYPL", "INTC", "AMD", "CRM", "ORCL", "IBM",
-                "BA", "GE", "XOM", "CVX", "KO", "PEP", "MCD", "WMT"
+                "BA", "GE", "XOM", "CVX", "KO", "PEP", "MCD", "WMT",
+                "BABA", "JD", "NKE", "SBUX", "UBER", "LYFT", "SNAP", "TWTR",
+                "SPOT", "SQ", "ROKU", "ZM", "SHOP", "ABNB", "COIN", "HOOD",
+                "F", "GM", "T", "VZ", "CSCO", "QCOM", "TXN", "MU",
+                "LRCX", "KLAC", "AMAT", "ASML", "TSM", "AVGO", "MRVL"
         );
     }
 
