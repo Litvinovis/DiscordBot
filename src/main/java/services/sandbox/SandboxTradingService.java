@@ -38,7 +38,10 @@ import services.sandbox.model.TradeRecord;
 import services.tbank.TInvestApi;
 import utils.ConfigLoader;
 
-public class SandboxTradingService {
+public class SandboxTradingService implements
+        services.sandbox.api.ISandboxOrderService,
+        services.sandbox.api.ISandboxPortfolioService,
+        services.sandbox.api.ISandboxRatingService {
     private static final Logger log = LoggerFactory.getLogger(SandboxTradingService.class);
     private static final ZoneId ZONE = ZoneId.of("Asia/Yekaterinburg");
     private static final DateTimeFormatter DT_FMT = DateTimeFormatter.ofPattern("dd.MM.yy HH:mm", Locale.ROOT);
@@ -47,6 +50,7 @@ public class SandboxTradingService {
     private static final int SCALE = 8;
 
     private final TInvestApi api;
+    private final SandboxIgniteManager igniteManager;
     private final IgniteCache<String, SandboxUser> users;
     private final IgniteCache<String, Position> positions;
     private final IgniteCache<String, TradeRecord> trades;
@@ -70,6 +74,7 @@ public class SandboxTradingService {
     public SandboxTradingService(TInvestApi api) {
         this.api = api;
         SandboxIgniteManager manager = new SandboxIgniteManager();
+        this.igniteManager = manager;
         this.users = manager.usersCache();
         this.positions = manager.positionsCache();
         this.trades = manager.tradesCache();
@@ -84,6 +89,11 @@ public class SandboxTradingService {
                 .collect(Collectors.toMap(s -> s.getTicker().toUpperCase(), s -> s, (a, b) -> a));
         this.tickerByUid = shareByTicker.entrySet().stream()
                 .collect(Collectors.toMap(e -> e.getValue().getUid(), Map.Entry::getKey));
+    }
+
+    /** Expose the Ignite manager for health checks and other services */
+    public SandboxIgniteManager getIgniteManager() {
+        return igniteManager;
     }
 
     /** Inject JDA after bot is ready so we can send DMs */
@@ -1002,10 +1012,20 @@ public class SandboxTradingService {
         return userId + "::" + ticker;
     }
 
+    /**
+     * Format a monetary value with thousands separators and 2 decimal places.
+     * Example: 1000000.5 → "1 000 000.50"
+     * Uses a space as the thousands separator (Russian convention).
+     */
     private String fmt(BigDecimal value) {
         if (value == null) return "0.00";
-        return value.setScale(2, RoundingMode.HALF_UP).toPlainString()
-                .replaceAll("(\\d)(?=(\\d{3})+\\.)", "$1 ");
+        java.text.NumberFormat nf = java.text.NumberFormat.getInstance(new Locale("ru", "RU"));
+        nf.setMinimumFractionDigits(2);
+        nf.setMaximumFractionDigits(2);
+        nf.setGroupingUsed(true);
+        // NumberFormat with ru_RU uses non-breaking space (\u00A0) as group separator;
+        // replace with a regular space for consistent display in Discord.
+        return nf.format(value).replace('\u00A0', ' ');
     }
 
     /**
