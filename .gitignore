@@ -1,1 +1,44 @@
+# Maven build output
 target/
+
+# Compiled jars
+*.jar
+
+# Environment & secrets
+.env
+*.env
+.env.local
+.env.*.local
+
+# Runtime config (contains secrets / local overrides)
+application.yml
+application.yaml
+config/application.yml
+config/application.yaml
+
+# IDE files
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+*.code-workspace
+nbproject/
+.settings/
+.classpath
+.project
+.factorypath
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+log/
