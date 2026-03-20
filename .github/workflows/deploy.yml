@@ -1,0 +1,84 @@
+name: Build & Deploy — Stonks Bot
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to deploy'
+        default: 'main'
+        required: false
+
+jobs:
+  build-and-deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch || github.ref }}
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Build & Test
+        run: mvn package -B
+
+      - name: Deploy (only on push/dispatch to main)
+        if: github.event_name != 'pull_request'
+        run: |
+          DEPLOY_DIR=/opt/DiscordBot
+          JAR_NAME=DiscordBot.jar
+          SERVICE=bot-discord
+
+          # Backup current jar
+          BACKUP="${DEPLOY_DIR}/${JAR_NAME}.backup.$(date +%Y%m%d_%H%M)"
+          sudo cp ${DEPLOY_DIR}/${JAR_NAME} ${BACKUP} 2>/dev/null || true
+
+          # Deploy new jar
+          sudo cp target/${JAR_NAME} ${DEPLOY_DIR}/${JAR_NAME}
+
+          # Restart service
+          sudo systemctl restart ${SERVICE}
+
+      - name: Smoke test
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "Waiting for bot to start..."
+          sleep 15
+          STATUS=$(sudo systemctl is-active bot-discord)
+          if [ "$STATUS" != "active" ]; then
+            echo "❌ Bot failed to start, rolling back..."
+            sudo cp /opt/DiscordBot/DiscordBot.jar.backup.* /opt/DiscordBot/DiscordBot.jar 2>/dev/null | tail -1 || true
+            sudo systemctl restart bot-discord
+            exit 1
+          fi
+          # Check for fatal errors in logs
+          ERRORS=$(sudo journalctl -u bot-discord -n 20 --no-pager | grep -c "ERROR\|FATAL\|Exception in thread" || true)
+          if [ "$ERRORS" -gt 2 ]; then
+            echo "❌ Too many errors in logs ($ERRORS), rolling back..."
+            LATEST_BACKUP=$(ls -t /opt/DiscordBot/DiscordBot.jar.backup.* 2>/dev/null | sed -n '2p')
+            if [ -n "$LATEST_BACKUP" ]; then
+              sudo cp "$LATEST_BACKUP" /opt/DiscordBot/DiscordBot.jar
+              sudo systemctl restart bot-discord
+            fi
+            exit 1
+          fi
+          echo "✅ Bot is running fine"
+
+      - name: Notify Telegram
+        if: always() && github.event_name != 'pull_request'
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            MSG="✅ *Stonks Bot* задеплоен%0Aветка: \`${{ github.ref_name }}\`%0Aкоммит: ${{ github.sha }}"
+          else
+            MSG="❌ *Stonks Bot* — деплой упал%0Aветка: \`${{ github.ref_name }}\`%0Aсмотри: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          fi
+          curl -s "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&text=${MSG}&parse_mode=Markdown" > /dev/null
