@@ -10,6 +10,7 @@ import services.StatisticsSenderService;
 import services.sandbox.SandboxOrderScheduler;
 import services.sandbox.SandboxReportScheduler;
 import services.sandbox.SandboxTradingService;
+import services.sandbox.ignite.IgniteHealthService;
 import services.tbank.TInvestApi;
 import utils.ConfigLoader;
 
@@ -42,6 +43,11 @@ public class App {
         }
         TInvestApi api = TInvestApi.create(tinkoffToken, "sandbox".equalsIgnoreCase(apiMode), target);
         SandboxTradingService sandboxTradingService = new SandboxTradingService(api);
+
+        // Start Ignite health-check service
+        IgniteHealthService igniteHealthService = new IgniteHealthService(sandboxTradingService.getIgniteManager());
+        igniteHealthService.start();
+
         try {
             JDA jda = JDABuilder.createDefault(discordToken).enableIntents(GatewayIntent.MESSAGE_CONTENT, new GatewayIntent[0]).addEventListeners(new MessageHandler(api, sandboxTradingService)).setActivity(Activity.playing("NASDAQ")).build();
             jda.awaitReady();
