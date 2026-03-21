@@ -68,6 +68,9 @@ public class SandboxTradingService implements
     /** Per-user locks to prevent race conditions on concurrent trades */
     private final ConcurrentHashMap<String, ReentrantLock> userLocks = new ConcurrentHashMap<>();
 
+    /** Currency service (lazy-initialised via createCurrencyService) */
+    private volatile SandboxCurrencyService currencyService;
+
     /** JDA reference for DM notifications (set after bot is ready) */
     private volatile JDA jda;
 
@@ -94,6 +97,17 @@ public class SandboxTradingService implements
     /** Expose the Ignite manager for health checks and other services */
     public SandboxIgniteManager getIgniteManager() {
         return igniteManager;
+    }
+
+    /**
+     * Creates (or returns the cached) {@link SandboxCurrencyService} that shares
+     * the same users cache and per-user lock map as this trading service.
+     */
+    public SandboxCurrencyService createCurrencyService() {
+        if (currencyService == null) {
+            currencyService = new SandboxCurrencyService(users, new CbrRateService(), userLocks);
+        }
+        return currencyService;
     }
 
     /** Inject JDA after bot is ready so we can send DMs */
@@ -312,7 +326,14 @@ public class SandboxTradingService implements
                     .append(pnlPct.toPlainString()).append("%)\n");
         }
         String totalSign = totalPnl.compareTo(ZERO) >= 0 ? "+" : "";
-        sb.append("Итого P&L: ").append(totalSign).append(fmt(totalPnl)).append(" ₽");
+        sb.append("Итого P&L акции: ").append(totalSign).append(fmt(totalPnl)).append(" ₽");
+
+        // Append currency holdings section
+        SandboxCurrencyService ccs = createCurrencyService();
+        String ccyPortfolio = ccs.currencyPortfolio(userId);
+        if (ccyPortfolio != null && !ccyPortfolio.equals("Валютных позиций нет.")) {
+            sb.append("\n\n").append(ccyPortfolio);
+        }
         return sb.toString();
     }
 
@@ -344,12 +365,23 @@ public class SandboxTradingService implements
             leverageStatus = "🚨 КРИТИЧНО (ликвидация скоро)";
         }
 
-        return "💰 Свободные средства: " + fmt(BigDecimal.valueOf(user.getCash())) + " ₽\n"
-                + "📈 Стоимость активов: " + fmt(gross) + " ₽\n"
-                + "💳 Заём: " + fmt(BigDecimal.valueOf(user.getBorrowed())) + " ₽\n"
-                + "📊 Equity (итого): " + fmt(eq) + " ₽\n"
-                + "📉 ROI от старта: " + roiSign + roi.toPlainString() + "%\n"
-                + "⚖️ Плечо: x" + lev.setScale(2, RoundingMode.HALF_UP).toPlainString() + " " + leverageStatus;
+        StringBuilder result = new StringBuilder();
+        result.append("💰 Рублёвый счёт: ").append(fmt(BigDecimal.valueOf(user.getCash()))).append(" ₽\n");
+
+        // Currency holdings line
+        SandboxCurrencyService ccs = createCurrencyService();
+        String ccyLine = ccs.currencyBalanceLine(userId);
+        if (ccyLine != null && !ccyLine.isBlank()) {
+            result.append(ccyLine).append("\n");
+        }
+
+        result.append("📈 Стоимость акций: ").append(fmt(gross)).append(" ₽\n")
+                .append("💳 Заём: ").append(fmt(BigDecimal.valueOf(user.getBorrowed()))).append(" ₽\n")
+                .append("📊 Equity (итого): ").append(fmt(eq)).append(" ₽\n")
+                .append("📉 ROI от старта: ").append(roiSign).append(roi.toPlainString()).append("%\n")
+                .append("⚖️ Плечо: x").append(lev.setScale(2, RoundingMode.HALF_UP).toPlainString())
+                .append(" ").append(leverageStatus);
+        return result.toString();
     }
 
     // -----------------------------------------------------------------------
