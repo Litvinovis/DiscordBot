@@ -2,11 +2,13 @@ package services.sandbox.model;
 
 import java.io.Serializable;
 import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.Map;
 
 public class SandboxUser implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    public static final int CURRENT_SCHEMA_VERSION = 1;
+    public static final int CURRENT_SCHEMA_VERSION = 2;
 
     private int schemaVersion = 0;
 
@@ -22,6 +24,9 @@ public class SandboxUser implements Serializable {
     private LocalDate monthlyBaselineDate;
     private double monthlyBaselineEquity;
 
+    /** Currency holdings: ISO code (e.g. "USD") -> amount held */
+    private Map<String, Double> currencyHoldings = new HashMap<>();
+
     public SandboxUser() {
     }
 
@@ -31,6 +36,7 @@ public class SandboxUser implements Serializable {
         this.cash = cash;
         this.borrowed = 0.0;
         this.totalFees = 0.0;
+        this.currencyHoldings = new HashMap<>();
     }
 
     public String getUserId() {
@@ -119,6 +125,17 @@ public class SandboxUser implements Serializable {
 
     public void setMonthlyBaselineEquity(double monthlyBaselineEquity) {
         this.monthlyBaselineEquity = monthlyBaselineEquity;
+    }
+
+    public Map<String, Double> getCurrencyHoldings() {
+        if (this.currencyHoldings == null) {
+            this.currencyHoldings = new HashMap<>();
+        }
+        return this.currencyHoldings;
+    }
+
+    public void setCurrencyHoldings(Map<String, Double> currencyHoldings) {
+        this.currencyHoldings = currencyHoldings;
     }
 
     public int getSchemaVersion() {

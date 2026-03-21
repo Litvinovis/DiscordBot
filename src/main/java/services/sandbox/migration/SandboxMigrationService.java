@@ -14,6 +14,7 @@ import services.sandbox.model.TradeRecord;
 
 import javax.cache.Cache;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -80,6 +81,12 @@ public class SandboxMigrationService {
                 try {
                     SandboxUser value = entry.getValue();
                     if (value.getSchemaVersion() < SandboxUser.CURRENT_SCHEMA_VERSION) {
+                        // v1 -> v2: initialise currencyHoldings if null
+                        if (value.getSchemaVersion() < 2) {
+                            if (value.getCurrencyHoldings() == null) {
+                                value.setCurrencyHoldings(new HashMap<>());
+                            }
+                        }
                         value.setSchemaVersion(SandboxUser.CURRENT_SCHEMA_VERSION);
                         cache.put(key, value);
                         migrated++;

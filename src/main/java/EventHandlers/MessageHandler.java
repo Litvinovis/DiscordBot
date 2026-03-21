@@ -7,8 +7,10 @@ import commands.HelpCommand;
 import commands.SandboxAlertCommand;
 import commands.SandboxAssetsCommand;
 import commands.SandboxBalanceCommand;
+import commands.SandboxBuyCurrencyCommand;
 import commands.SandboxBuyCommand;
 import commands.SandboxCancelOrderCommand;
+import commands.SandboxCurrencyPortfolioCommand;
 import commands.SandboxHistoryCommand;
 import commands.SandboxLimitBuyCommand;
 import commands.SandboxLimitSellCommand;
@@ -19,6 +21,7 @@ import commands.SandboxPortfolioCommand;
 import commands.SandboxPriceCommand;
 import commands.SandboxRegisterCommand;
 import commands.SandboxSellCommand;
+import commands.SandboxSellCurrencyCommand;
 import commands.SandboxStatsCommand;
 import commands.SandboxStopLossCommand;
 import commands.SandboxTakeProfitCommand;
@@ -36,6 +39,7 @@ import org.slf4j.LoggerFactory;
 import services.CurrencyInfoService;
 import services.HelpInfoService;
 import services.SharesInfoService;
+import services.sandbox.SandboxCurrencyService;
 import services.sandbox.SandboxTradingService;
 import services.tbank.TInvestApi;
 import utils.ConfigLoader;
@@ -53,6 +57,7 @@ public class MessageHandler extends ListenerAdapter {
         CurrencyInfoService currencyInfoService = new CurrencyInfoService(api);
         SharesInfoService sharesInfoService = new SharesInfoService(api);
         HelpInfoService helpInfoService = new HelpInfoService(api);
+        SandboxCurrencyService sandboxCurrencyService = sandboxTradingService.createCurrencyService();
 
         this.commands = List.of(
                 new CurrencyInfoCommand(currencyInfoService),
@@ -66,6 +71,9 @@ public class MessageHandler extends ListenerAdapter {
                 new SandboxPriceCommand(sandboxTradingService),
                 new SandboxBuyCommand(sandboxTradingService),
                 new SandboxSellCommand(sandboxTradingService),
+                new SandboxBuyCurrencyCommand(sandboxCurrencyService),
+                new SandboxSellCurrencyCommand(sandboxCurrencyService),
+                new SandboxCurrencyPortfolioCommand(sandboxCurrencyService),
                 new SandboxTopCommand(sandboxTradingService),
                 new SandboxMyRankCommand(sandboxTradingService),
                 new SandboxHistoryCommand(sandboxTradingService),
