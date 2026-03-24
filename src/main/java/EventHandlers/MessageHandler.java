@@ -44,6 +44,13 @@ import services.sandbox.SandboxTradingService;
 import services.tbank.TInvestApi;
 import utils.ConfigLoader;
 
+/**
+ * Обработчик входящих сообщений Discord.
+ *
+ * <p>Слушает события {@link MessageReceivedEvent}, фильтрует сообщения по
+ * разрешённым каналам и делегирует выполнение подходящей команде из списка
+ * зарегистрированных {@link BotCommand}.
+ */
 public class MessageHandler extends ListenerAdapter {
     @Generated
     private static final Logger log = LoggerFactory.getLogger(MessageHandler.class);
@@ -53,6 +60,12 @@ public class MessageHandler extends ListenerAdapter {
 
     private final List<BotCommand> commands;
 
+    /**
+     * Инициализирует обработчик и все зарегистрированные команды бота.
+     *
+     * @param api                   клиент T-Invest API для рыночных данных
+     * @param sandboxTradingService сервис торговли в режиме песочницы
+     */
     public MessageHandler(TInvestApi api, SandboxTradingService sandboxTradingService) {
         CurrencyInfoService currencyInfoService = new CurrencyInfoService(api);
         SharesInfoService sharesInfoService = new SharesInfoService(api);
@@ -88,6 +101,12 @@ public class MessageHandler extends ListenerAdapter {
         );
     }
 
+    /**
+     * Вызывается JDA при получении нового сообщения.
+     * Обрабатывает только сообщения, начинающиеся с «+» в разрешённых каналах.
+     *
+     * @param event событие Discord о полученном сообщении
+     */
     public void onMessageReceived(@NotNull MessageReceivedEvent event) {
         try {
             if (!this.isBotAsking(event)) {

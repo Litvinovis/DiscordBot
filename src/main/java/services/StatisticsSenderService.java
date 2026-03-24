@@ -21,10 +21,22 @@ import services.statTask.SharesStatTask;
 import services.tbank.TInvestApi;
 import utils.ConfigLoader;
 
+/**
+ * Сервис отправки ежедневных статистических отчётов в Discord.
+ *
+ * <p>При создании запускает два задания по расписанию (cron-формат из конфигурации):
+ * отчёт по валютам ({@link CurrencyStatTask}) и отчёт по акциям ({@link SharesStatTask}).
+ */
 public class StatisticsSenderService {
     private static final Logger logger = LoggerFactory.getLogger(StatisticsSenderService.class);
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
 
+    /**
+     * Создаёт сервис и запускает плановые задачи отправки статистики.
+     *
+     * @param api клиент T-Invest API для получения рыночных данных
+     * @param jda экземпляр JDA для отправки сообщений в Discord
+     */
     public StatisticsSenderService(TInvestApi api, JDA jda) {
         this.runCurrencyTask(api, jda);
         this.runSharesTask(api, jda);

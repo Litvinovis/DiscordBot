@@ -14,10 +14,21 @@ import services.sandbox.ignite.IgniteHealthService;
 import services.tbank.TInvestApi;
 import utils.ConfigLoader;
 
+/**
+ * Точка входа в приложение Stonks Bot.
+ *
+ * <p>Инициализирует подключение к T-Invest API, запускает Discord-бота через JDA,
+ * а также планировщики: отчётов по песочнице, выполнения заявок и сервис статистики.
+ */
 public class App {
     @Generated
     private static final Logger log = LoggerFactory.getLogger(App.class);
 
+    /**
+     * Запускает приложение: проверяет токены, инициализирует API, JDA и все сервисы.
+     *
+     * @param args аргументы командной строки (не используются)
+     */
     public static void main(String[] args) {
         Logger start = LoggerFactory.getLogger("default-logger");
         start.trace("Запускаем приложение");

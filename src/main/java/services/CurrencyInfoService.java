@@ -12,13 +12,30 @@ import ru.tinkoff.piapi.contract.v1.Currency;
 import ru.tinkoff.piapi.contract.v1.LastPrice;
 import services.tbank.TInvestApi;
 
+/**
+ * Сервис получения информации о валютных инструментах через T-Invest API.
+ *
+ * <p>По тикеру ISO-кода (например, «USD») находит FIGI инструмента и
+ * возвращает текущий курс относительно рубля.
+ */
 public class CurrencyInfoService {
     private final TInvestApi api;
 
+    /**
+     * Создаёт сервис информации о валютах.
+     *
+     * @param api клиент T-Invest API
+     */
     public CurrencyInfoService(TInvestApi api) {
         this.api = api;
     }
 
+    /**
+     * Возвращает текстовое описание текущего курса указанной валюты.
+     *
+     * @param currency ISO-код валюты (например, «USD», «EUR»)
+     * @return отформатированная строка с текущим курсом или сообщение об ошибке
+     */
     public String getCurrencyInfo(String currency) {
         try {
             StringBuilder builder = new StringBuilder();

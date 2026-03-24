@@ -19,6 +19,14 @@ import ru.tinkoff.piapi.contract.v1.Share;
 import services.tbank.TInvestApi;
 import utils.ConfigLoader;
 
+/**
+ * Задача формирования ежедневного отчёта по изменению котировок акций.
+ *
+ * <p>Анализирует все доступные акции, разбивая их на три группы: общий список,
+ * российские бумаги (MOEX/RTS) и иностранные акции СПБ Биржи (FQBR).
+ * Для каждой группы публикует топ-5 лидеров и аутсайдеров за день.
+ * Первый запуск только сохраняет начальные значения (без отправки отчёта).
+ */
 public class SharesStatTask implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(SharesStatTask.class);
     private static final int SCALE = 8;
@@ -35,11 +43,20 @@ public class SharesStatTask implements Runnable {
     private final Map<String, BigDecimal> newData = new HashMap<>();
     private final List<String> badCode = List.of("SPEQ", "SMAL", "SPBXM_OTC", "A29", "A30");
 
+    /**
+     * Создаёт задачу отчётности по акциям.
+     *
+     * @param api клиент T-Invest API для получения котировок
+     * @param jda экземпляр JDA для публикации отчёта в Discord
+     */
     public SharesStatTask(TInvestApi api, JDA jda) {
         this.api = api;
         this.jda = jda;
     }
 
+    /**
+     * Выполняет задачу: формирует отчёт по изменению котировок акций и отправляет его в Discord.
+     */
     @Override
     public void run() {
         try {

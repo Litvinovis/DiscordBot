@@ -38,6 +38,19 @@ import services.sandbox.model.TradeRecord;
 import services.tbank.TInvestApi;
 import utils.ConfigLoader;
 
+/**
+ * Основной сервис торговой песочницы Stonks Bot.
+ *
+ * <p>Реализует интерфейсы {@link services.sandbox.api.ISandboxOrderService},
+ * {@link services.sandbox.api.ISandboxPortfolioService} и
+ * {@link services.sandbox.api.ISandboxRatingService}, предоставляя полный
+ * цикл симуляции биржевой торговли: регистрацию, покупку/продажу,
+ * лимитные заявки, стоп-ордера, ценовые алерты, рейтинг и статистику.
+ *
+ * <p>Все данные хранятся в Apache Ignite через {@link services.sandbox.ignite.SandboxIgniteManager}.
+ * Для каждого пользователя используется персональная блокировка, исключающая
+ * гонки при параллельных торговых операциях.
+ */
 public class SandboxTradingService implements
         services.sandbox.api.ISandboxOrderService,
         services.sandbox.api.ISandboxPortfolioService,
@@ -74,6 +87,12 @@ public class SandboxTradingService implements
     /** JDA reference for DM notifications (set after bot is ready) */
     private volatile JDA jda;
 
+    /**
+     * Создаёт сервис торговли в песочнице: инициализирует Ignite, загружает
+     * список разрешённых инструментов из T-Invest API.
+     *
+     * @param api клиент T-Invest API
+     */
     public SandboxTradingService(TInvestApi api) {
         this.api = api;
         SandboxIgniteManager manager = new SandboxIgniteManager();
@@ -94,14 +113,20 @@ public class SandboxTradingService implements
                 .collect(Collectors.toMap(e -> e.getValue().getUid(), Map.Entry::getKey));
     }
 
-    /** Expose the Ignite manager for health checks and other services */
+    /**
+     * Возвращает менеджер Ignite для использования в health-check сервисах.
+     *
+     * @return менеджер Ignite-кэшей песочницы
+     */
     public SandboxIgniteManager getIgniteManager() {
         return igniteManager;
     }
 
     /**
-     * Creates (or returns the cached) {@link SandboxCurrencyService} that shares
-     * the same users cache and per-user lock map as this trading service.
+     * Создаёт (или возвращает ранее созданный) {@link SandboxCurrencyService},
+     * разделяющий кэш пользователей и карту блокировок с данным сервисом.
+     *
+     * @return сервис валютных операций песочницы
      */
     public SandboxCurrencyService createCurrencyService() {
         if (currencyService == null) {
@@ -110,7 +135,11 @@ public class SandboxTradingService implements
         return currencyService;
     }
 
-    /** Inject JDA after bot is ready so we can send DMs */
+    /**
+     * Внедряет экземпляр JDA после готовности бота для отправки DM-уведомлений.
+     *
+     * @param jda инициализированный экземпляр JDA
+     */
     public void setJda(JDA jda) {
         this.jda = jda;
     }
@@ -127,6 +156,13 @@ public class SandboxTradingService implements
     // Registration
     // -----------------------------------------------------------------------
 
+    /**
+     * Регистрирует нового участника песочницы и зачисляет стартовый баланс.
+     *
+     * @param userId   идентификатор пользователя Discord
+     * @param userName имя пользователя Discord
+     * @return строка с результатом регистрации
+     */
     public String register(String userId, String userName) {
         ReentrantLock lock = lockFor(userId);
         lock.lock();
@@ -148,6 +184,11 @@ public class SandboxTradingService implements
     // Assets listing
     // -----------------------------------------------------------------------
 
+    /**
+     * Возвращает отсортированный список всех доступных для торговли тикеров.
+     *
+     * @return строка с перечнем тикеров через запятую
+     */
     public synchronized String assets() {
         if (shareByTicker.isEmpty()) {
             return "Список активов пуст.";
@@ -159,6 +200,15 @@ public class SandboxTradingService implements
     // Buy / Sell
     // -----------------------------------------------------------------------
 
+    /**
+     * Выполняет рыночную покупку указанного количества лотов по текущей цене.
+     *
+     * @param userId   идентификатор пользователя Discord
+     * @param userName имя пользователя Discord
+     * @param ticker   тикер инструмента
+     * @param qty      количество лотов
+     * @return строка с результатом операции
+     */
     public String buy(String userId, String userName, String ticker, int qty) {
         ReentrantLock lock = lockFor(userId);
         lock.lock();
@@ -169,6 +219,15 @@ public class SandboxTradingService implements
         }
     }
 
+    /**
+     * Выполняет рыночную продажу указанного количества лотов по текущей цене.
+     *
+     * @param userId   идентификатор пользователя Discord
+     * @param userName имя пользователя Discord
+     * @param ticker   тикер инструмента
+     * @param qty      количество лотов
+     * @return строка с результатом операции
+     */
     public String sell(String userId, String userName, String ticker, int qty) {
         ReentrantLock lock = lockFor(userId);
         lock.lock();
@@ -289,6 +348,12 @@ public class SandboxTradingService implements
     // Portfolio
     // -----------------------------------------------------------------------
 
+    /**
+     * Возвращает содержимое портфеля с P&amp;L по каждой позиции и валютными холдингами.
+     *
+     * @param userId идентификатор пользователя Discord
+     * @return отформатированное описание портфеля
+     */
     public synchronized String portfolio(String userId) {
         SandboxUser user = users.get(userId);
         if (user == null) {
@@ -341,6 +406,12 @@ public class SandboxTradingService implements
     // Balance
     // -----------------------------------------------------------------------
 
+    /**
+     * Возвращает сводку баланса: рублёвый счёт, стоимость акций, заём, equity, ROI и плечо.
+     *
+     * @param userId идентификатор пользователя Discord
+     * @return отформатированная строка с показателями баланса
+     */
     public synchronized String balance(String userId) {
         SandboxUser user = users.get(userId);
         if (user == null) {
@@ -388,6 +459,12 @@ public class SandboxTradingService implements
     // Margin
     // -----------------------------------------------------------------------
 
+    /**
+     * Возвращает маржинальные показатели пользователя: уровень маржи, пороги и плечо.
+     *
+     * @param userId идентификатор пользователя Discord
+     * @return отформатированная строка маржинальных показателей
+     */
     public synchronized String margin(String userId) {
         SandboxUser user = users.get(userId);
         if (user == null) {
@@ -421,6 +498,12 @@ public class SandboxTradingService implements
     // Price
     // -----------------------------------------------------------------------
 
+    /**
+     * Возвращает текущую рыночную цену указанного тикера.
+     *
+     * @param ticker тикер инструмента
+     * @return строка с ценой или сообщение об ошибке
+     */
     public synchronized String price(String ticker) {
         Share s = shareByTicker.get(ticker.toUpperCase(Locale.ROOT));
         if (s == null) {
@@ -437,6 +520,12 @@ public class SandboxTradingService implements
     // Top
     // -----------------------------------------------------------------------
 
+    /**
+     * Возвращает таблицу лидеров топ-5 участников за указанный период.
+     *
+     * @param period временной период: «день», «неделя», «месяц» или «all»
+     * @return отформатированная таблица лидеров
+     */
     public synchronized String top(String period) {
         List<SandboxUser> all = new ArrayList<>();
         for (Cache.Entry<String, SandboxUser> e : users) {
@@ -463,6 +552,12 @@ public class SandboxTradingService implements
     // My rank
     // -----------------------------------------------------------------------
 
+    /**
+     * Возвращает персональный рейтинг пользователя среди всех участников.
+     *
+     * @param userId идентификатор пользователя Discord
+     * @return строка с позицией, equity и ROI пользователя
+     */
     public synchronized String myRank(String userId) {
         SandboxUser target = users.get(userId);
         if (target == null) {
@@ -494,6 +589,13 @@ public class SandboxTradingService implements
     // Trade history
     // -----------------------------------------------------------------------
 
+    /**
+     * Возвращает историю последних сделок пользователя (до 20 записей), отсортированных
+     * по убыванию времени.
+     *
+     * @param userId идентификатор пользователя Discord
+     * @return отформатированная история сделок
+     */
     public synchronized String history(String userId) {
         SandboxUser user = users.get(userId);
         if (user == null) {
@@ -527,6 +629,12 @@ public class SandboxTradingService implements
     // Statistics
     // -----------------------------------------------------------------------
 
+    /**
+     * Возвращает торговую статистику пользователя: win rate, средний P&amp;L, лучшая и худшая сделка.
+     *
+     * @param userId идентификатор пользователя Discord
+     * @return отформатированная торговая статистика
+     */
     public synchronized String stats(String userId) {
         SandboxUser user = users.get(userId);
         if (user == null) {
@@ -604,10 +712,26 @@ public class SandboxTradingService implements
     // Stop Loss / Take Profit
     // -----------------------------------------------------------------------
 
+    /**
+     * Устанавливает стоп-лосс ордер для открытой позиции по тикеру.
+     *
+     * @param userId       идентификатор пользователя Discord
+     * @param ticker       тикер инструмента
+     * @param triggerPrice цена срабатывания стоп-лосса
+     * @return строка с подтверждением или ошибкой
+     */
     public String setStopLoss(String userId, String ticker, BigDecimal triggerPrice) {
         return setStopOrder(userId, ticker, "SL", triggerPrice);
     }
 
+    /**
+     * Устанавливает тейк-профит ордер для открытой позиции по тикеру.
+     *
+     * @param userId       идентификатор пользователя Discord
+     * @param ticker       тикер инструмента
+     * @param triggerPrice цена срабатывания тейк-профита
+     * @return строка с подтверждением или ошибкой
+     */
     public String setTakeProfit(String userId, String ticker, BigDecimal triggerPrice) {
         return setStopOrder(userId, ticker, "TP", triggerPrice);
     }
@@ -647,10 +771,30 @@ public class SandboxTradingService implements
     // Limit orders
     // -----------------------------------------------------------------------
 
+    /**
+     * Размещает лимитную заявку на покупку.
+     *
+     * @param userId     идентификатор пользователя Discord
+     * @param userName   имя пользователя Discord
+     * @param ticker     тикер инструмента
+     * @param qty        количество лотов
+     * @param limitPrice целевая цена исполнения
+     * @return строка с подтверждением или ошибкой
+     */
     public String placeLimitBuy(String userId, String userName, String ticker, int qty, BigDecimal limitPrice) {
         return placeLimitOrder(userId, userName, ticker, qty, limitPrice, "BUY");
     }
 
+    /**
+     * Размещает лимитную заявку на продажу.
+     *
+     * @param userId     идентификатор пользователя Discord
+     * @param userName   имя пользователя Discord
+     * @param ticker     тикер инструмента
+     * @param qty        количество лотов
+     * @param limitPrice целевая цена исполнения
+     * @return строка с подтверждением или ошибкой
+     */
     public String placeLimitSell(String userId, String userName, String ticker, int qty, BigDecimal limitPrice) {
         return placeLimitOrder(userId, userName, ticker, qty, limitPrice, "SELL");
     }
@@ -677,6 +821,12 @@ public class SandboxTradingService implements
                 + " @ " + fmt(limitPrice) + " ₽ принята (ID: " + id.substring(0, 8) + "...)";
     }
 
+    /**
+     * Возвращает список активных лимитных заявок пользователя.
+     *
+     * @param userId идентификатор пользователя Discord
+     * @return отформатированный список заявок
+     */
     public synchronized String myOrders(String userId) {
         SandboxUser user = users.get(userId);
         if (user == null) {
@@ -704,6 +854,13 @@ public class SandboxTradingService implements
         return sb.toString().trim();
     }
 
+    /**
+     * Отменяет лимитную заявку по идентификатору (полному или сокращённому UUID-префиксу).
+     *
+     * @param userId  идентификатор пользователя Discord
+     * @param orderId идентификатор заявки или его префикс
+     * @return строка с результатом отмены
+     */
     public String cancelOrder(String userId, String orderId) {
         String fullKey = null;
         for (Cache.Entry<String, LimitOrder> e : limitOrders) {
@@ -728,6 +885,14 @@ public class SandboxTradingService implements
     // Price alerts
     // -----------------------------------------------------------------------
 
+    /**
+     * Устанавливает ценовой алерт: бот отправит DM, когда цена тикера достигнет цели.
+     *
+     * @param userId      идентификатор пользователя Discord
+     * @param ticker      тикер инструмента
+     * @param targetPrice целевая цена для уведомления
+     * @return строка с подтверждением или ошибкой
+     */
     public String setAlert(String userId, String ticker, BigDecimal targetPrice) {
         SandboxUser user = users.get(userId);
         if (user == null) {
@@ -754,6 +919,12 @@ public class SandboxTradingService implements
     // Scheduler callbacks
     // -----------------------------------------------------------------------
 
+    /**
+     * Проверяет и исполняет стоп-ордера (SL/TP), у которых достигнута цена триггера.
+     * Вызывается планировщиком {@link SandboxOrderScheduler}.
+     *
+     * @return список пар [userId, сообщение] для отправки DM-уведомлений
+     */
     public List<String[]> checkStopOrders() {
         List<String[]> notifications = new ArrayList<>();
         List<String> toRemove = new ArrayList<>();
@@ -805,6 +976,12 @@ public class SandboxTradingService implements
         return notifications;
     }
 
+    /**
+     * Проверяет и исполняет лимитные заявки, у которых рыночная цена достигла лимита.
+     * Вызывается планировщиком {@link SandboxOrderScheduler}.
+     *
+     * @return список пар [userId, сообщение] для отправки DM-уведомлений
+     */
     public List<String[]> checkLimitOrders() {
         List<String[]> notifications = new ArrayList<>();
         List<String> toRemove = new ArrayList<>();
@@ -845,6 +1022,12 @@ public class SandboxTradingService implements
         return notifications;
     }
 
+    /**
+     * Проверяет ценовые алерты и возвращает список сработавших уведомлений.
+     * Вызывается планировщиком {@link SandboxOrderScheduler}.
+     *
+     * @return список пар [userId, сообщение] для отправки DM-уведомлений
+     */
     public List<String[]> checkPriceAlerts() {
         List<String[]> notifications = new ArrayList<>();
         List<String> toRemove = new ArrayList<>();
@@ -876,6 +1059,12 @@ public class SandboxTradingService implements
         return notifications;
     }
 
+    /**
+     * Отправляет личное сообщение (DM) указанному пользователю Discord.
+     *
+     * @param userId  идентификатор пользователя Discord
+     * @param message текст сообщения
+     */
     public void sendDm(String userId, String message) {
         if (jda == null) return;
         try {

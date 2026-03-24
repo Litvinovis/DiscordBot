@@ -11,6 +11,11 @@ public class SandboxAlertCommand implements BotCommand {
 
     private final SandboxTradingService sandboxTradingService;
 
+    /**
+     * Создаёт команду установки ценового алерта.
+     *
+     * @param sandboxTradingService сервис торговли в песочнице
+     */
     public SandboxAlertCommand(SandboxTradingService sandboxTradingService) {
         this.sandboxTradingService = sandboxTradingService;
     }

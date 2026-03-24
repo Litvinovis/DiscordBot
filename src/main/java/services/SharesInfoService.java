@@ -21,6 +21,12 @@ import ru.tinkoff.piapi.contract.v1.LastPrice;
 import ru.tinkoff.piapi.contract.v1.Share;
 import services.tbank.TInvestApi;
 
+/**
+ * Сервис получения информации об акциях через T-Invest API.
+ *
+ * <p>Ищет акции по точному тикеру или по вхождению строки в название.
+ * Возвращает цену каждого найденного инструмента.
+ */
 public class SharesInfoService {
     @Generated
     private static final Logger log = LoggerFactory.getLogger(SharesInfoService.class);
@@ -28,10 +34,23 @@ public class SharesInfoService {
     private final Logger logger = LoggerFactory.getLogger((String)"default-logger");
     private final List<String> badCode = List.of("SPEQ", "SMAL", "SPBXM_OTC", "A29", "A30");
 
+    /**
+     * Создаёт сервис информации об акциях.
+     *
+     * @param api клиент T-Invest API
+     */
     public SharesInfoService(TInvestApi api) {
         this.api = api;
     }
 
+    /**
+     * Возвращает информацию об акциях, соответствующих запросу.
+     *
+     * <p>Сначала ищет по точному совпадению тикера, затем по вхождению строки в название.
+     *
+     * @param sharesName тикер или часть названия акции
+     * @return отформатированная строка с ценами найденных акций или сообщение об отсутствии результатов
+     */
     public String getSharesInfo(String sharesName) {
         StringBuilder builder = new StringBuilder();
         builder.append("\u0418\u043d\u0444\u043e\u0440\u043c\u0430\u0446\u0438\u044f \u043e \u043f\u043e\u0434\u0445\u043e\u0434\u044f\u0449\u0438\u0445 \u0430\u043a\u0446\u0438\u044f\u0445: \n");

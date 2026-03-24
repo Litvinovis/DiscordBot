@@ -10,6 +10,11 @@ public class SandboxPriceCommand implements BotCommand {
 
     private final SandboxTradingService sandboxTradingService;
 
+    /**
+     * Создаёт команду запроса текущей цены тикера.
+     *
+     * @param sandboxTradingService сервис торговли в песочнице
+     */
     public SandboxPriceCommand(SandboxTradingService sandboxTradingService) {
         this.sandboxTradingService = sandboxTradingService;
     }

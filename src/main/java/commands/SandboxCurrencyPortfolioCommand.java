@@ -10,6 +10,11 @@ public class SandboxCurrencyPortfolioCommand implements BotCommand {
 
     private final SandboxCurrencyService sandboxCurrencyService;
 
+    /**
+     * Создаёт команду просмотра валютного портфеля.
+     *
+     * @param sandboxCurrencyService сервис валютных операций песочницы
+     */
     public SandboxCurrencyPortfolioCommand(SandboxCurrencyService sandboxCurrencyService) {
         this.sandboxCurrencyService = sandboxCurrencyService;
     }
