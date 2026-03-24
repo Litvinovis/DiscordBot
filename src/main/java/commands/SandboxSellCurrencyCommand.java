@@ -14,6 +14,11 @@ public class SandboxSellCurrencyCommand implements BotCommand {
 
     private final SandboxCurrencyService sandboxCurrencyService;
 
+    /**
+     * Создаёт команду продажи иностранной валюты за рубли.
+     *
+     * @param sandboxCurrencyService сервис валютных операций песочницы
+     */
     public SandboxSellCurrencyCommand(SandboxCurrencyService sandboxCurrencyService) {
         this.sandboxCurrencyService = sandboxCurrencyService;
     }

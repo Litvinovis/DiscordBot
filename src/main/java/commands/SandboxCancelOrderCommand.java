@@ -10,6 +10,11 @@ public class SandboxCancelOrderCommand implements BotCommand {
 
     private final SandboxTradingService sandboxTradingService;
 
+    /**
+     * Создаёт команду отмены лимитной заявки.
+     *
+     * @param sandboxTradingService сервис торговли в песочнице
+     */
     public SandboxCancelOrderCommand(SandboxTradingService sandboxTradingService) {
         this.sandboxTradingService = sandboxTradingService;
     }

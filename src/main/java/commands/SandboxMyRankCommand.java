@@ -10,6 +10,11 @@ public class SandboxMyRankCommand implements BotCommand {
 
     private final SandboxTradingService sandboxTradingService;
 
+    /**
+     * Создаёт команду просмотра персонального рейтинга пользователя.
+     *
+     * @param sandboxTradingService сервис торговли в песочнице
+     */
     public SandboxMyRankCommand(SandboxTradingService sandboxTradingService) {
         this.sandboxTradingService = sandboxTradingService;
     }

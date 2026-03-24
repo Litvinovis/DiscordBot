@@ -11,6 +11,11 @@ public class SandboxLimitBuyCommand implements BotCommand {
 
     private final SandboxTradingService sandboxTradingService;
 
+    /**
+     * Создаёт команду размещения лимитной заявки на покупку.
+     *
+     * @param sandboxTradingService сервис торговли в песочнице
+     */
     public SandboxLimitBuyCommand(SandboxTradingService sandboxTradingService) {
         this.sandboxTradingService = sandboxTradingService;
     }

@@ -10,6 +10,11 @@ public class SandboxHistoryCommand implements BotCommand {
 
     private final SandboxTradingService sandboxTradingService;
 
+    /**
+     * Создаёт команду просмотра истории сделок.
+     *
+     * @param sandboxTradingService сервис торговли в песочнице
+     */
     public SandboxHistoryCommand(SandboxTradingService sandboxTradingService) {
         this.sandboxTradingService = sandboxTradingService;
     }

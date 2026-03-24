@@ -10,6 +10,11 @@ public class SandboxRegisterCommand implements BotCommand {
 
     private final SandboxTradingService sandboxTradingService;
 
+    /**
+     * Создаёт команду регистрации нового участника песочницы.
+     *
+     * @param sandboxTradingService сервис торговли в песочнице
+     */
     public SandboxRegisterCommand(SandboxTradingService sandboxTradingService) {
         this.sandboxTradingService = sandboxTradingService;
     }

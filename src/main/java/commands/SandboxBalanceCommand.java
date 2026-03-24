@@ -10,6 +10,11 @@ public class SandboxBalanceCommand implements BotCommand {
 
     private final SandboxTradingService sandboxTradingService;
 
+    /**
+     * Создаёт команду просмотра баланса пользователя.
+     *
+     * @param sandboxTradingService сервис торговли в песочнице
+     */
     public SandboxBalanceCommand(SandboxTradingService sandboxTradingService) {
         this.sandboxTradingService = sandboxTradingService;
     }
