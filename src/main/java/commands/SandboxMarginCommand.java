@@ -10,6 +10,11 @@ public class SandboxMarginCommand implements BotCommand {
 
     private final SandboxTradingService sandboxTradingService;
 
+    /**
+     * Создаёт команду просмотра маржинальных показателей.
+     *
+     * @param sandboxTradingService сервис торговли в песочнице
+     */
     public SandboxMarginCommand(SandboxTradingService sandboxTradingService) {
         this.sandboxTradingService = sandboxTradingService;
     }

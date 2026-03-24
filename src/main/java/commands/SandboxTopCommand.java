@@ -12,6 +12,11 @@ public class SandboxTopCommand implements BotCommand {
 
     private final SandboxTradingService sandboxTradingService;
 
+    /**
+     * Создаёт команду просмотра рейтинга участников за выбранный период.
+     *
+     * @param sandboxTradingService сервис торговли в песочнице
+     */
     public SandboxTopCommand(SandboxTradingService sandboxTradingService) {
         this.sandboxTradingService = sandboxTradingService;
     }

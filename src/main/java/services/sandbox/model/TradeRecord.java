@@ -3,6 +3,13 @@ package services.sandbox.model;
 import java.io.Serializable;
 import java.time.Instant;
 
+/**
+ * Запись об исполненной сделке в торговой песочнице.
+ *
+ * <p>Хранит направление (BUY/SELL), тикер, цену, количество лотов,
+ * комиссию и время исполнения.
+ * Используется как сущность Ignite-кэша {@code stonks_sandbox_trades}.
+ */
 public class TradeRecord implements Serializable {
     private static final long serialVersionUID = 1L;
 

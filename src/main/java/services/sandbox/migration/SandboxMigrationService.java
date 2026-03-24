@@ -33,6 +33,11 @@ public class SandboxMigrationService {
 
     private final SandboxIgniteManager igniteManager;
 
+    /**
+     * Создаёт сервис миграций с указанным менеджером Ignite.
+     *
+     * @param igniteManager менеджер кэшей Ignite
+     */
     public SandboxMigrationService(SandboxIgniteManager igniteManager) {
         this.igniteManager = igniteManager;
     }
@@ -254,10 +259,19 @@ public class SandboxMigrationService {
     // Result holder
     // ------------------------------------------------------------------
 
+    /**
+     * Итог миграции одного кэша: количество обновлённых и удалённых записей.
+     */
     public static class CacheMigrationResult {
         public final int migrated;
         public final int removed;
 
+        /**
+         * Создаёт результат миграции кэша.
+         *
+         * @param migrated количество обновлённых (смигрированных) записей
+         * @param removed  количество удалённых повреждённых записей
+         */
         public CacheMigrationResult(int migrated, int removed) {
             this.migrated = migrated;
             this.removed  = removed;

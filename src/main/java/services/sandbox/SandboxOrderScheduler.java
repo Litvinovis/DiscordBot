@@ -28,6 +28,13 @@ public class SandboxOrderScheduler {
                 return t;
             });
 
+    /**
+     * Запускает планировщик, который каждые 60 секунд проверяет и исполняет
+     * стоп-ордера, лимитные заявки и ценовые алерты.
+     *
+     * @param service сервис торговли в песочнице
+     * @param jda     экземпляр JDA для отправки DM-уведомлений
+     */
     public SandboxOrderScheduler(SandboxTradingService service, JDA jda) {
         // Inject JDA for DM support
         service.setJda(jda);

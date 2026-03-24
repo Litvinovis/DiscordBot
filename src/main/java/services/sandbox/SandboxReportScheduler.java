@@ -19,10 +19,22 @@ import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import services.sandbox.SandboxTradingService;
 import utils.ConfigLoader;
 
+/**
+ * Планировщик ежедневных отчётов по итогам торгов в песочнице.
+ *
+ * <p>Каждый день в 10:00 по екатеринбургскому времени отправляет в первый
+ * разрешённый Discord-канал топ-5 участников за текущий день.
+ */
 public class SandboxReportScheduler {
     private static final ZoneId ZONE = ZoneId.of("Asia/Yekaterinburg");
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
+    /**
+     * Создаёт и запускает планировщик ежедневных отчётов.
+     *
+     * @param service сервис торговли в песочнице
+     * @param jda     экземпляр JDA для отправки сообщений в канал
+     */
     public SandboxReportScheduler(SandboxTradingService service, JDA jda) {
         List<String> channels = ConfigLoader.getAllowedChannelIds();
         if (channels.isEmpty()) {

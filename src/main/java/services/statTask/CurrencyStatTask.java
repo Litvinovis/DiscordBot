@@ -19,6 +19,13 @@ import ru.tinkoff.piapi.contract.v1.LastPrice;
 import services.tbank.TInvestApi;
 import utils.ConfigLoader;
 
+/**
+ * Задача формирования ежедневного отчёта по изменению курсов валют.
+ *
+ * <p>При каждом запуске сравнивает текущие котировки всех валют с предыдущим
+ * снимком и публикует в Discord-канал топ-5 лучших и худших валют к рублю.
+ * Первый запуск только сохраняет начальные значения (без отправки отчёта).
+ */
 public class CurrencyStatTask implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(CurrencyStatTask.class);
     private static final int SCALE = 8;
@@ -28,11 +35,20 @@ public class CurrencyStatTask implements Runnable {
     private Map<String, BigDecimal> oldData = new HashMap<>();
     private final Map<String, BigDecimal> newData = new HashMap<>();
 
+    /**
+     * Создаёт задачу отчётности по валютам.
+     *
+     * @param api клиент T-Invest API для получения котировок
+     * @param jda экземпляр JDA для публикации отчёта в Discord
+     */
     public CurrencyStatTask(TInvestApi api, JDA jda) {
         this.api = api;
         this.jda = jda;
     }
 
+    /**
+     * Выполняет задачу: формирует отчёт по изменению курсов валют и отправляет его в Discord.
+     */
     @Override
     public void run() {
         try {

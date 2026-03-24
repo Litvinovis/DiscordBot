@@ -17,6 +17,17 @@ import ru.ttech.piapi.core.connector.ConnectorConfiguration;
 import ru.ttech.piapi.core.connector.ServiceStubFactory;
 import ru.ttech.piapi.core.connector.SyncStubWrapper;
 
+/**
+ * Фасад для работы с T-Invest gRPC API.
+ *
+ * <p>Предоставляет два вложенных сервиса:
+ * <ul>
+ *   <li>{@link InstrumentsService} — получение списка инструментов (акции, валюты);</li>
+ *   <li>{@link MarketDataService} — получение последних цен.</li>
+ * </ul>
+ * Все методы выполняются синхронно с автоматическим повтором при ошибке 429
+ * через {@link ExponentialBackoffRetry}.
+ */
 public class TInvestApi {
     private final InstrumentsService instrumentsService;
     private final MarketDataService marketDataService;
@@ -26,6 +37,14 @@ public class TInvestApi {
         this.marketDataService = new MarketDataService(factory);
     }
 
+    /**
+     * Создаёт экземпляр {@code TInvestApi} с указанными параметрами подключения.
+     *
+     * @param token          токен авторизации T-Invest API
+     * @param sandboxEnabled {@code true} — подключение к sandbox-эндпоинту
+     * @param targetUrl      адрес gRPC-сервера в формате {@code dns:///host:port}
+     * @return инициализированный экземпляр API
+     */
     public static TInvestApi create(String token, boolean sandboxEnabled, String targetUrl) {
         Properties properties = new Properties();
         properties.setProperty("token", token);
@@ -38,14 +57,28 @@ public class TInvestApi {
         return new TInvestApi(factory);
     }
 
+    /**
+     * Возвращает сервис работы с инструментами (акции, валюты).
+     *
+     * @return {@link InstrumentsService}
+     */
     public InstrumentsService getInstrumentsService() {
         return this.instrumentsService;
     }
 
+    /**
+     * Возвращает сервис рыночных данных (последние цены).
+     *
+     * @return {@link MarketDataService}
+     */
     public MarketDataService getMarketDataService() {
         return this.marketDataService;
     }
 
+    /**
+     * Синхронный клиент gRPC-сервиса инструментов T-Invest.
+     * Предоставляет методы для получения списков акций и валют.
+     */
     public static class InstrumentsService {
         private final SyncStubWrapper<InstrumentsServiceGrpc.InstrumentsServiceBlockingStub> instrumentsStub;
 
@@ -53,6 +86,11 @@ public class TInvestApi {
             this.instrumentsStub = factory.newSyncService(InstrumentsServiceGrpc::newBlockingStub);
         }
 
+        /**
+         * Возвращает список всех базовых валютных инструментов.
+         *
+         * @return список объектов {@code Currency}
+         */
         public List<Currency> getAllCurrenciesSync() {
             InstrumentsRequest request = InstrumentsRequest.newBuilder()
                     .setInstrumentStatus(InstrumentStatus.INSTRUMENT_STATUS_BASE)
@@ -63,6 +101,11 @@ public class TInvestApi {
             );
         }
 
+        /**
+         * Возвращает список всех базовых акций.
+         *
+         * @return список объектов {@code Share}
+         */
         public List<Share> getAllSharesSync() {
             InstrumentsRequest request = InstrumentsRequest.newBuilder()
                     .setInstrumentStatus(InstrumentStatus.INSTRUMENT_STATUS_BASE)
@@ -74,6 +117,10 @@ public class TInvestApi {
         }
     }
 
+    /**
+     * Синхронный клиент gRPC-сервиса рыночных данных T-Invest.
+     * Предоставляет метод получения последних цен по списку инструментов.
+     */
     public static class MarketDataService {
         private final SyncStubWrapper<MarketDataServiceGrpc.MarketDataServiceBlockingStub> marketDataStub;
 
@@ -81,6 +128,12 @@ public class TInvestApi {
             this.marketDataStub = factory.newSyncService(MarketDataServiceGrpc::newBlockingStub);
         }
 
+        /**
+         * Возвращает последние цены для заданных инструментов.
+         *
+         * @param instrumentIds список FIGI или UID инструментов
+         * @return список объектов {@code LastPrice}
+         */
         public List<LastPrice> getLastPricesSync(List<String> instrumentIds) {
             GetLastPricesRequest request = GetLastPricesRequest.newBuilder()
                     .addAllInstrumentId(instrumentIds)
