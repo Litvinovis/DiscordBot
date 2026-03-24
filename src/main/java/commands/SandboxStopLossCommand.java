@@ -11,6 +11,11 @@ public class SandboxStopLossCommand implements BotCommand {
 
     private final SandboxTradingService sandboxTradingService;
 
+    /**
+     * Создаёт команду установки стоп-лосс ордера.
+     *
+     * @param sandboxTradingService сервис торговли в песочнице
+     */
     public SandboxStopLossCommand(SandboxTradingService sandboxTradingService) {
         this.sandboxTradingService = sandboxTradingService;
     }

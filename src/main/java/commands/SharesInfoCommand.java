@@ -10,6 +10,11 @@ public class SharesInfoCommand implements BotCommand {
 
     private final SharesInfoService sharesInfoService;
 
+    /**
+     * Создаёт команду запроса информации об акции.
+     *
+     * @param sharesInfoService сервис для получения данных об акциях
+     */
     public SharesInfoCommand(SharesInfoService sharesInfoService) {
         this.sharesInfoService = sharesInfoService;
     }

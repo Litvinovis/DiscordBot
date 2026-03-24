@@ -33,6 +33,14 @@ import services.sandbox.model.TradeRecord;
 import services.sandbox.migration.SandboxMigrationService;
 import utils.ConfigLoader;
 
+/**
+ * Управляет подключением к Apache Ignite и предоставляет доступ ко всем
+ * кэшам песочницы: пользователи, позиции, сделки, лимитные заявки,
+ * стоп-ордера и ценовые алерты.
+ *
+ * <p>При создании экземпляра запускается Ignite-клиент, создаются или
+ * открываются все необходимые кэши, а затем выполняются миграции схемы.
+ */
 public class SandboxIgniteManager {
     private final Ignite ignite;
     private final IgniteCache<String, SandboxUser> usersCache;
@@ -42,6 +50,10 @@ public class SandboxIgniteManager {
     private final IgniteCache<String, StopOrder> stopOrdersCache;
     private final IgniteCache<String, PriceAlert> priceAlertsCache;
 
+    /**
+     * Инициализирует Ignite-клиент на основе настроек из {@link utils.ConfigLoader}
+     * и создаёт все кэши песочницы. По завершении запускает миграции схемы.
+     */
     public SandboxIgniteManager() {
         IgniteConfiguration cfg = new IgniteConfiguration();
         cfg.setIgniteInstanceName("stonks-sandbox-client");
@@ -64,26 +76,56 @@ public class SandboxIgniteManager {
         new SandboxMigrationService(this).runMigrations();
     }
 
+    /**
+     * Возвращает кэш пользователей песочницы.
+     *
+     * @return кэш {@code stonks_sandbox_users}
+     */
     public IgniteCache<String, SandboxUser> usersCache() {
         return this.usersCache;
     }
 
+    /**
+     * Возвращает кэш открытых позиций пользователей.
+     *
+     * @return кэш {@code stonks_sandbox_positions}
+     */
     public IgniteCache<String, Position> positionsCache() {
         return this.positionsCache;
     }
 
+    /**
+     * Возвращает кэш истории сделок.
+     *
+     * @return кэш {@code stonks_sandbox_trades}
+     */
     public IgniteCache<String, TradeRecord> tradesCache() {
         return this.tradesCache;
     }
 
+    /**
+     * Возвращает кэш активных лимитных заявок.
+     *
+     * @return кэш {@code stonks_sandbox_limit_orders}
+     */
     public IgniteCache<String, LimitOrder> limitOrdersCache() {
         return this.limitOrdersCache;
     }
 
+    /**
+     * Возвращает кэш стоп-ордеров (стоп-лосс и тейк-профит).
+     *
+     * @return кэш {@code stonks_sandbox_stop_orders}
+     */
     public IgniteCache<String, StopOrder> stopOrdersCache() {
         return this.stopOrdersCache;
     }
 
+    /**
+     * Возвращает кэш ценовых алертов.
+     *
+     * @return кэш {@code stonks_sandbox_price_alerts}
+     */
     public IgniteCache<String, PriceAlert> priceAlertsCache() {
         return this.priceAlertsCache;
     }

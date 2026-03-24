@@ -2,6 +2,12 @@ package services.sandbox.model;
 
 import java.io.Serializable;
 
+/**
+ * Представляет открытую позицию пользователя по конкретному инструменту в песочнице.
+ *
+ * <p>Хранит тикер, количество лотов и среднюю цену покупки.
+ * Используется как сущность Ignite-кэша {@code stonks_sandbox_positions}.
+ */
 public class Position implements Serializable {
     private static final long serialVersionUID = 1L;
 

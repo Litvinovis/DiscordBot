@@ -10,6 +10,11 @@ public class SandboxMyOrdersCommand implements BotCommand {
 
     private final SandboxTradingService sandboxTradingService;
 
+    /**
+     * Создаёт команду просмотра активных заявок пользователя.
+     *
+     * @param sandboxTradingService сервис торговли в песочнице
+     */
     public SandboxMyOrdersCommand(SandboxTradingService sandboxTradingService) {
         this.sandboxTradingService = sandboxTradingService;
     }

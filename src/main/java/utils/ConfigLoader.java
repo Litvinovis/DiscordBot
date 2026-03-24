@@ -10,12 +10,29 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * Утилитарный класс для загрузки конфигурации приложения.
+ *
+ * <p>Параметры считываются в следующем приоритете:
+ * <ol>
+ *   <li>переменные окружения;</li>
+ *   <li>файл {@code application.yml} (поиск в нескольких стандартных путях);</li>
+ *   <li>значения по умолчанию.</li>
+ * </ol>
+ * Поддерживает плейсхолдеры вида {@code ${ENV_KEY:default}} в YAML-значениях.
+ */
 public final class ConfigLoader {
     private static final Map<String, Object> CONFIG = loadConfig();
 
     private ConfigLoader() {
     }
 
+    /**
+     * Возвращает токен Discord-бота.
+     * Сначала проверяется переменная окружения {@code DISCORD_BOT_TOKEN}.
+     *
+     * @return токен Discord или пустую строку, если не задан
+     */
     public static String getDiscordToken() {
         String botToken = System.getenv("DISCORD_BOT_TOKEN");
         if (botToken != null && !botToken.isBlank()) {
@@ -24,14 +41,29 @@ public final class ConfigLoader {
         return getString("discord.token", "DISCORD_TOKEN", "");
     }
 
+    /**
+     * Возвращает токен T-Invest API.
+     *
+     * @return токен Tinkoff/T-Bank или пустую строку, если не задан
+     */
     public static String getTinkoffToken() {
         return getString("tinkoff.token", "TINKOFF_TOKEN", "");
     }
 
+    /**
+     * Возвращает режим API T-Invest: {@code "sandbox"} или {@code "prod"}.
+     *
+     * @return режим API (по умолчанию {@code "prod"})
+     */
     public static String getTinkoffApiMode() {
         return getString("tinkoff.api-mode", "TINKOFF_API_MODE", "prod");
     }
 
+    /**
+     * Возвращает список идентификаторов Discord-каналов, в которых принимаются команды.
+     *
+     * @return неизменяемый список ID каналов
+     */
     public static List<String> getAllowedChannelIds() {
         String fromEnv = System.getenv("DISCORD_ALLOWED_CHANNEL_IDS");
         if (fromEnv != null && !fromEnv.isBlank()) {
@@ -50,40 +82,83 @@ public final class ConfigLoader {
         return List.of("1157258712138907700");
     }
 
-    // Methods for StatisticsSenderService (not needed for sandbox but keep to avoid breaking)
+    /**
+     * Возвращает ID Discord-сервера для отправки статистических отчётов.
+     *
+     * @return ID сервера или пустую строку, если не задан
+     */
     public static String getReportGuildId() {
         return getString("reports.guild-id", "DISCORD_REPORT_GUILD_ID", "");
     }
 
+    /**
+     * Возвращает имя Discord-канала для отправки статистических отчётов.
+     *
+     * @return имя канала или пустую строку, если не задано
+     */
     public static String getReportChannelName() {
         return getString("reports.channel-name", "DISCORD_REPORT_CHANNEL_NAME", "");
     }
 
+    /**
+     * Возвращает cron-выражение расписания для отчёта по валютам.
+     *
+     * @return cron-строка из 6 полей (по умолчанию {@code "0 0 10 * * *"})
+     */
     public static String getCurrencyReportCron() {
         return getString("reports.currency.cron", "CURRENCY_REPORT_CRON", "0 0 10 * * *");
     }
 
+    /**
+     * Возвращает cron-выражение расписания для отчёта по акциям.
+     *
+     * @return cron-строка из 6 полей (по умолчанию {@code "0 5 10 * * *"})
+     */
     public static String getSharesReportCron() {
         return getString("reports.shares.cron", "SHARES_REPORT_CRON", "0 5 10 * * *");
     }
 
-    // Sandbox configuration — monetary values returned as BigDecimal
+    /**
+     * Возвращает стартовый баланс нового участника песочницы в рублях.
+     *
+     * @return стартовый баланс (по умолчанию 1 000 000 ₽)
+     */
     public static BigDecimal getSandboxStartBalance() {
         return getBigDecimal("sandbox.start-balance", "SANDBOX_START_BALANCE", new BigDecimal("1000000.00"));
     }
 
+    /**
+     * Возвращает ставку комиссии за сделку (доля от оборота).
+     *
+     * @return ставка комиссии (по умолчанию 0.001 = 0.1%)
+     */
     public static BigDecimal getSandboxCommissionRate() {
         return getBigDecimal("sandbox.commission-rate", "SANDBOX_COMMISSION_RATE", new BigDecimal("0.001"));
     }
 
+    /**
+     * Возвращает максимально допустимое кредитное плечо в песочнице.
+     *
+     * @return максимальное плечо (по умолчанию 3.0x)
+     */
     public static BigDecimal getSandboxMaxLeverage() {
         return getBigDecimal("sandbox.max-leverage", "SANDBOX_MAX_LEVERAGE", new BigDecimal("3.0"));
     }
 
+    /**
+     * Возвращает порог поддерживающей маржи (maintenance margin).
+     *
+     * @return порог маржи (по умолчанию 0.25 = 25%)
+     */
     public static BigDecimal getSandboxMaintenanceMargin() {
         return getBigDecimal("sandbox.maintenance-margin", "SANDBOX_MAINTENANCE_MARGIN", new BigDecimal("0.25"));
     }
 
+    /**
+     * Возвращает список тикеров, доступных для торговли в песочнице.
+     *
+     * @return список тикеров в верхнем регистре
+     */
     public static List<String> getSandboxAllowedTickers() {
         String fromEnv = System.getenv("SANDBOX_ALLOWED_TICKERS");
         if (fromEnv != null && !fromEnv.isBlank()) {
@@ -126,10 +201,20 @@ public final class ConfigLoader {
         );
     }
 
+    /**
+     * Возвращает локальный адрес для привязки Ignite-клиента.
+     *
+     * @return адрес (по умолчанию {@code "127.0.0.1"})
+     */
     public static String getIgniteLocalAddress() {
         return getString("ignite.local-address", "IGNITE_LOCAL_ADDRESS", "127.0.0.1");
     }
 
+    /**
+     * Возвращает список адресов для TCP-discovery Ignite-кластера.
+     *
+     * @return список адресов в формате {@code host:port} или {@code host:portRange}
+     */
     public static List<String> getIgniteDiscoveryAddresses() {
         String fromEnv = System.getenv("IGNITE_DISCOVERY_ADDRESSES");
         if (fromEnv != null && !fromEnv.isBlank()) {
@@ -146,6 +231,11 @@ public final class ConfigLoader {
         return List.of("127.0.0.1:47500..47509");
     }
 
+    /**
+     * Возвращает рабочую директорию для Ignite-клиента.
+     *
+     * @return путь к директории (по умолчанию {@code "/tmp/ignite-stonks-client"})
+     */
     public static String getIgniteWorkDir() {
         return getString("ignite.work-dir", "IGNITE_WORK_DIR", "/tmp/ignite-stonks-client");
     }

@@ -10,6 +10,11 @@ public class SandboxAssetsCommand implements BotCommand {
 
     private final SandboxTradingService sandboxTradingService;
 
+    /**
+     * Создаёт команду просмотра списка доступных активов.
+     *
+     * @param sandboxTradingService сервис торговли в песочнице
+     */
     public SandboxAssetsCommand(SandboxTradingService sandboxTradingService) {
         this.sandboxTradingService = sandboxTradingService;
     }

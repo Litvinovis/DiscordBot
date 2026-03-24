@@ -10,6 +10,11 @@ public class CurrencyInfoCommand implements BotCommand {
 
     private final CurrencyInfoService currencyInfoService;
 
+    /**
+     * Создаёт команду с указанным сервисом получения информации о валютах.
+     *
+     * @param currencyInfoService сервис для получения данных о валютах
+     */
     public CurrencyInfoCommand(CurrencyInfoService currencyInfoService) {
         this.currencyInfoService = currencyInfoService;
     }

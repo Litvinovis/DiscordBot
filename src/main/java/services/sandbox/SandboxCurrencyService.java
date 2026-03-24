@@ -41,6 +41,13 @@ public class SandboxCurrencyService {
             "HKD", "HK$"
     );
 
+    /**
+     * Создаёт сервис валютных операций.
+     *
+     * @param users          Ignite-кэш пользователей песочницы
+     * @param cbrRateService сервис курсов ЦБ РФ
+     * @param userLocks      карта персональных блокировок пользователей
+     */
     public SandboxCurrencyService(IgniteCache<String, SandboxUser> users,
                                   CbrRateService cbrRateService,
                                   ConcurrentHashMap<String, ReentrantLock> userLocks) {

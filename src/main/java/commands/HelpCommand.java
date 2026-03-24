@@ -10,6 +10,11 @@ public class HelpCommand implements BotCommand {
 
     private final HelpInfoService helpInfoService;
 
+    /**
+     * Создаёт команду помощи с указанным сервисом.
+     *
+     * @param helpInfoService сервис формирования текста справки
+     */
     public HelpCommand(HelpInfoService helpInfoService) {
         this.helpInfoService = helpInfoService;
     }

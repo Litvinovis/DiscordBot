@@ -10,6 +10,11 @@ public class SandboxStatsCommand implements BotCommand {
 
     private final SandboxTradingService sandboxTradingService;
 
+    /**
+     * Создаёт команду просмотра торговой статистики пользователя.
+     *
+     * @param sandboxTradingService сервис торговли в песочнице
+     */
     public SandboxStatsCommand(SandboxTradingService sandboxTradingService) {
         this.sandboxTradingService = sandboxTradingService;
     }

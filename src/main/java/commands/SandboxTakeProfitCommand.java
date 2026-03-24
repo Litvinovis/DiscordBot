@@ -11,6 +11,11 @@ public class SandboxTakeProfitCommand implements BotCommand {
 
     private final SandboxTradingService sandboxTradingService;
 
+    /**
+     * Создаёт команду установки тейк-профит ордера.
+     *
+     * @param sandboxTradingService сервис торговли в песочнице
+     */
     public SandboxTakeProfitCommand(SandboxTradingService sandboxTradingService) {
         this.sandboxTradingService = sandboxTradingService;
     }

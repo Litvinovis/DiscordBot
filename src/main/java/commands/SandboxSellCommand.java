@@ -10,6 +10,11 @@ public class SandboxSellCommand implements BotCommand {
 
     private final SandboxTradingService sandboxTradingService;
 
+    /**
+     * Создаёт команду рыночной продажи акций.
+     *
+     * @param sandboxTradingService сервис торговли в песочнице
+     */
     public SandboxSellCommand(SandboxTradingService sandboxTradingService) {
         this.sandboxTradingService = sandboxTradingService;
     }
