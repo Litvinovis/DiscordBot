@@ -40,7 +40,7 @@ public class SandboxReportScheduler {
         if (channels.isEmpty()) {
             return;
         }
-        String channelId = channels.get(0);
+        String channelId = channels.getFirst();
         long initialDelay = this.initialDelayTo10am();
         this.scheduler.scheduleAtFixedRate(() -> {
             MessageChannel channel = (MessageChannel)jda.getChannelById(MessageChannel.class, channelId);
