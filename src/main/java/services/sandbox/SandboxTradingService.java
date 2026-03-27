@@ -488,10 +488,15 @@ public class SandboxTradingService implements
         } else {
             leverageStatus = "🚨 КРИТИЧНО";
         }
-        return "Margin level: " + level.setScale(2, RoundingMode.HALF_UP).toPlainString() + "\n"
-                + "Порог margin call: " + maintenanceMargin.toPlainString() + "\n"
-                + "Порог ликвидации: 0.20\n"
-                + "Плечо: x" + lev.setScale(2, RoundingMode.HALF_UP).toPlainString() + " " + leverageStatus;
+        return """
+                Margin level: %s
+                Порог margin call: %s
+                Порог ликвидации: 0.20
+                Плечо: x%s %s""".formatted(
+                level.setScale(2, RoundingMode.HALF_UP).toPlainString(),
+                maintenanceMargin.toPlainString(),
+                lev.setScale(2, RoundingMode.HALF_UP).toPlainString(),
+                leverageStatus);
     }
 
     // -----------------------------------------------------------------------
@@ -580,9 +585,10 @@ public class SandboxTradingService implements
                 .multiply(BigDecimal.valueOf(100))
                 .setScale(2, RoundingMode.HALF_UP);
         String roiSign = roi.compareTo(ZERO) >= 0 ? "+" : "";
-        return "📊 Ваш рейтинг: #" + rank + " из " + all.size() + "\n"
-                + "Equity: " + fmt(eq) + " ₽\n"
-                + "ROI: " + roiSign + roi.toPlainString() + "%";
+        return """
+                📊 Ваш рейтинг: #%d из %d
+                Equity: %s ₽
+                ROI: %s%s%%""".formatted(rank, all.size(), fmt(eq), roiSign, roi.toPlainString());
     }
 
     // -----------------------------------------------------------------------
@@ -699,13 +705,20 @@ public class SandboxTradingService implements
         BigDecimal bestPnl = realizedPnlList.stream().max(BigDecimal::compareTo).orElse(ZERO);
         BigDecimal worstPnl = realizedPnlList.stream().min(BigDecimal::compareTo).orElse(ZERO);
 
-        return "📊 Статистика трейдинга:\n"
-                + "Всего сделок: " + totalTrades + "\n"
-                + "Закрытых позиций: " + realizedPnlList.size() + "\n"
-                + "Win rate: " + winRate.toPlainString() + "%\n"
-                + "Средний P&L: " + fmt(avgPnl) + " ₽\n"
-                + "Лучшая сделка: +" + fmt(bestPnl) + " ₽\n"
-                + "Худшая сделка: " + fmt(worstPnl) + " ₽";
+        return """
+                📊 Статистика трейдинга:
+                Всего сделок: %d
+                Закрытых позиций: %d
+                Win rate: %s%%
+                Средний P&L: %s ₽
+                Лучшая сделка: +%s ₽
+                Худшая сделка: %s ₽""".formatted(
+                totalTrades,
+                realizedPnlList.size(),
+                winRate.toPlainString(),
+                fmt(avgPnl),
+                fmt(bestPnl),
+                fmt(worstPnl));
     }
 
     // -----------------------------------------------------------------------
@@ -1211,7 +1224,7 @@ public class SandboxTradingService implements
         if (prices == null || prices.isEmpty()) {
             return ZERO;
         }
-        return quotationToBigDecimal(prices.get(0).getPrice());
+        return quotationToBigDecimal(prices.getFirst().getPrice());
     }
 
     /** Load price safely — returns ZERO on any error */
