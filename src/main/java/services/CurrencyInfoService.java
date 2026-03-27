@@ -46,7 +46,7 @@ public class CurrencyInfoService {
             if (lastPrices.isEmpty()) {
                 return "\u041f\u043e \u0437\u0430\u043f\u0440\u043e\u0441\u0443 ".concat(currency).concat(" \u043d\u0438\u0447\u0435\u0433\u043e \u043d\u0435 \u043d\u0430\u0448\u043b\u043e\u0441\u044c");
             }
-            builder.append("\u041a\u0443\u0440\u0441 = ").append(String.format("%.2f", (double)lastPrices.get(0).getPrice().getUnits() + (double)lastPrices.get(0).getPrice().getNano() / 1.0E9)).append(" \u0440\u0443\u0431\u043b\u0435\u0439 \u0437\u0430 1 ").append(currency);
+            builder.append("\u041a\u0443\u0440\u0441 = ").append(String.format("%.2f", (double)lastPrices.getFirst().getPrice().getUnits() + (double)lastPrices.getFirst().getPrice().getNano() / 1.0E9)).append(" \u0440\u0443\u0431\u043b\u0435\u0439 \u0437\u0430 1 ").append(currency);
             return builder.toString();
         }
         catch (Throwable t) {
