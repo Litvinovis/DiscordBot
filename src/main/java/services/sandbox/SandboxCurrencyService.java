@@ -1,7 +1,8 @@
 package services.sandbox;
 
-import org.apache.ignite.IgniteCache;
+
 import org.slf4j.Logger;
+import services.sandbox.repository.SandboxUserRepository;
 import org.slf4j.LoggerFactory;
 import services.sandbox.model.SandboxUser;
 
@@ -26,7 +27,7 @@ public class SandboxCurrencyService {
     private static final BigDecimal ZERO = BigDecimal.ZERO;
     private static final int SCALE = 6;
 
-    private final IgniteCache<String, SandboxUser> users;
+    private final SandboxUserRepository users;
     private final CbrRateService cbrRateService;
     private final ConcurrentHashMap<String, ReentrantLock> userLocks;
 
@@ -44,11 +45,11 @@ public class SandboxCurrencyService {
     /**
      * Создаёт сервис валютных операций.
      *
-     * @param users          Ignite-кэш пользователей песочницы
+     * @param users          репозиторий пользователей песочницы
      * @param cbrRateService сервис курсов ЦБ РФ
      * @param userLocks      карта персональных блокировок пользователей
      */
-    public SandboxCurrencyService(IgniteCache<String, SandboxUser> users,
+    public SandboxCurrencyService(SandboxUserRepository users,
                                   CbrRateService cbrRateService,
                                   ConcurrentHashMap<String, ReentrantLock> userLocks) {
         this.users = users;
@@ -81,7 +82,7 @@ public class SandboxCurrencyService {
         ReentrantLock lock = lockFor(userId);
         lock.lock();
         try {
-            SandboxUser user = users.get(userId);
+            SandboxUser user = users.findById(userId);
             if (user == null) {
                 return "Сначала выполните +регистрация";
             }
@@ -111,7 +112,7 @@ public class SandboxCurrencyService {
             holdings.put(code, prev + currencyAmount.doubleValue());
             user.setCurrencyHoldings(holdings);
 
-            users.put(userId, user);
+            users.save(userId, user);
 
             String sym = SYMBOLS.getOrDefault(code, code);
             return "🟢 Куплено " + fmtCcy(currencyAmount) + " " + code + " (" + sym + ")"
@@ -147,7 +148,7 @@ public class SandboxCurrencyService {
         ReentrantLock lock = lockFor(userId);
         lock.lock();
         try {
-            SandboxUser user = users.get(userId);
+            SandboxUser user = users.findById(userId);
             if (user == null) {
                 return "Сначала выполните +регистрация";
             }
@@ -184,7 +185,7 @@ public class SandboxCurrencyService {
             BigDecimal cash = BigDecimal.valueOf(user.getCash());
             user.setCash(cash.add(rubReceived).doubleValue());
 
-            users.put(userId, user);
+            users.save(userId, user);
 
             String sym = SYMBOLS.getOrDefault(code, code);
             return "🔴 Продано " + fmtCcy(currencyAmount) + " " + code + " (" + sym + ")"
@@ -207,7 +208,7 @@ public class SandboxCurrencyService {
      * @return formatted string
      */
     public String currencyPortfolio(String userId) {
-        SandboxUser user = users.get(userId);
+        SandboxUser user = users.findById(userId);
         if (user == null) {
             return "Сначала выполните +регистрация";
         }
@@ -256,7 +257,7 @@ public class SandboxCurrencyService {
      * @return formatted line, or empty string if no holdings
      */
     public String currencyBalanceLine(String userId) {
-        SandboxUser user = users.get(userId);
+        SandboxUser user = users.findById(userId);
         if (user == null) return "";
 
         Map<String, Double> holdings = user.getCurrencyHoldings();
@@ -293,7 +294,7 @@ public class SandboxCurrencyService {
      * Returns the total RUB value of all currency holdings for equity calculation.
      */
     public BigDecimal totalCurrencyValueInRub(String userId) {
-        SandboxUser user = users.get(userId);
+        SandboxUser user = users.findById(userId);
         if (user == null) return ZERO;
 
         Map<String, Double> holdings = user.getCurrencyHoldings();

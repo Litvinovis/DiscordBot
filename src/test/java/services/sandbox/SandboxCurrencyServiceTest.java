@@ -1,6 +1,6 @@
 package services.sandbox;
 
-import org.apache.ignite.IgniteCache;
+import services.sandbox.repository.SandboxUserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import services.sandbox.model.SandboxUser;
@@ -24,7 +24,7 @@ import static org.mockito.Mockito.*;
 @SuppressWarnings("unchecked")
 class SandboxCurrencyServiceTest {
 
-    private IgniteCache<String, SandboxUser> usersCache;
+    private SandboxUserRepository usersCache;
     private CbrRateService cbrRateService;
     private ConcurrentHashMap<String, ReentrantLock> locks;
     private SandboxCurrencyService service;
@@ -34,7 +34,7 @@ class SandboxCurrencyServiceTest {
 
     @BeforeEach
     void setUp() {
-        usersCache = mock(IgniteCache.class);
+        usersCache = mock(SandboxUserRepository.class);
         cbrRateService = mock(CbrRateService.class);
         locks = new ConcurrentHashMap<>();
         service = new SandboxCurrencyService(usersCache, cbrRateService, locks);
@@ -68,7 +68,7 @@ class SandboxCurrencyServiceTest {
     @Test
     void buyCurrency_usd_deductsCashAndAddsHolding() {
         SandboxUser user = newUser();
-        when(usersCache.get(USER_ID)).thenReturn(user);
+        when(usersCache.findById(USER_ID)).thenReturn(user);
         when(cbrRateService.fetchRates()).thenReturn(ratesMap());
 
         String result = service.buyCurrency(USER_ID, "USD", new BigDecimal("9000"));
@@ -79,7 +79,7 @@ class SandboxCurrencyServiceTest {
         assertTrue(result.contains("100"), "Should show 100 USD");
 
         // Verify user was saved
-        verify(usersCache).put(eq(USER_ID), any(SandboxUser.class));
+        verify(usersCache).save(eq(USER_ID), any(SandboxUser.class));
 
         // Verify cash was deducted
         assertEquals(START_CASH - 9000.0, user.getCash(), 0.01);
@@ -92,7 +92,7 @@ class SandboxCurrencyServiceTest {
     @Test
     void buyCurrency_caseSensitivity_lowerCaseConverted() {
         SandboxUser user = newUser();
-        when(usersCache.get(USER_ID)).thenReturn(user);
+        when(usersCache.findById(USER_ID)).thenReturn(user);
         when(cbrRateService.fetchRates()).thenReturn(ratesMap());
 
         String result = service.buyCurrency(USER_ID, "usd", new BigDecimal("900"));
@@ -105,7 +105,7 @@ class SandboxCurrencyServiceTest {
         SandboxUser user = newUser();
         // User already has 50 USD
         user.getCurrencyHoldings().put("USD", 50.0);
-        when(usersCache.get(USER_ID)).thenReturn(user);
+        when(usersCache.findById(USER_ID)).thenReturn(user);
         when(cbrRateService.fetchRates()).thenReturn(ratesMap());
 
         service.buyCurrency(USER_ID, "USD", new BigDecimal("9000")); // +100 USD
@@ -120,7 +120,7 @@ class SandboxCurrencyServiceTest {
 
     @Test
     void buyCurrency_userNotRegistered_returnsError() {
-        when(usersCache.get(USER_ID)).thenReturn(null);
+        when(usersCache.findById(USER_ID)).thenReturn(null);
         when(cbrRateService.fetchRates()).thenReturn(ratesMap());
 
         String result = service.buyCurrency(USER_ID, "USD", new BigDecimal("1000"));
@@ -148,7 +148,7 @@ class SandboxCurrencyServiceTest {
     @Test
     void buyCurrency_insufficientCash_returnsError() {
         SandboxUser user = new SandboxUser(USER_ID, "TestUser", 500.0); // only 500 RUB
-        when(usersCache.get(USER_ID)).thenReturn(user);
+        when(usersCache.findById(USER_ID)).thenReturn(user);
         when(cbrRateService.fetchRates()).thenReturn(ratesMap());
 
         String result = service.buyCurrency(USER_ID, "USD", new BigDecimal("1000"));
@@ -158,7 +158,7 @@ class SandboxCurrencyServiceTest {
     @Test
     void buyCurrency_rateNotAvailable_returnsError() {
         SandboxUser user = newUser();
-        when(usersCache.get(USER_ID)).thenReturn(user);
+        when(usersCache.findById(USER_ID)).thenReturn(user);
         when(cbrRateService.fetchRates()).thenReturn(new HashMap<>()); // empty rates
 
         String result = service.buyCurrency(USER_ID, "USD", new BigDecimal("1000"));
@@ -174,7 +174,7 @@ class SandboxCurrencyServiceTest {
         SandboxUser user = newUser();
         user.getCurrencyHoldings().put("USD", 100.0);
         user.setCash(0.0); // spent all cash buying USD earlier
-        when(usersCache.get(USER_ID)).thenReturn(user);
+        when(usersCache.findById(USER_ID)).thenReturn(user);
         when(cbrRateService.fetchRates()).thenReturn(ratesMap());
 
         String result = service.sellCurrency(USER_ID, "USD", new BigDecimal("50"));
@@ -184,7 +184,7 @@ class SandboxCurrencyServiceTest {
         // 50 USD * 90 RUB = 4500 RUB
         assertEquals(4500.0, user.getCash(), 0.01);
         assertEquals(50.0, user.getCurrencyHoldings().get("USD"), 0.001);
-        verify(usersCache).put(eq(USER_ID), any(SandboxUser.class));
+        verify(usersCache).save(eq(USER_ID), any(SandboxUser.class));
     }
 
     @Test
@@ -192,7 +192,7 @@ class SandboxCurrencyServiceTest {
         SandboxUser user = newUser();
         user.getCurrencyHoldings().put("USD", 100.0);
         user.setCash(0.0);
-        when(usersCache.get(USER_ID)).thenReturn(user);
+        when(usersCache.findById(USER_ID)).thenReturn(user);
         when(cbrRateService.fetchRates()).thenReturn(ratesMap());
 
         service.sellCurrency(USER_ID, "USD", new BigDecimal("100"));
@@ -207,7 +207,7 @@ class SandboxCurrencyServiceTest {
 
     @Test
     void sellCurrency_userNotRegistered_returnsError() {
-        when(usersCache.get(USER_ID)).thenReturn(null);
+        when(usersCache.findById(USER_ID)).thenReturn(null);
 
         String result = service.sellCurrency(USER_ID, "USD", new BigDecimal("10"));
         assertTrue(result.contains("регистрация"));
@@ -217,7 +217,7 @@ class SandboxCurrencyServiceTest {
     void sellCurrency_insufficientHolding_returnsError() {
         SandboxUser user = newUser();
         user.getCurrencyHoldings().put("USD", 10.0);
-        when(usersCache.get(USER_ID)).thenReturn(user);
+        when(usersCache.findById(USER_ID)).thenReturn(user);
         when(cbrRateService.fetchRates()).thenReturn(ratesMap());
 
         String result = service.sellCurrency(USER_ID, "USD", new BigDecimal("100"));
@@ -228,7 +228,7 @@ class SandboxCurrencyServiceTest {
     void sellCurrency_noHolding_returnsError() {
         SandboxUser user = newUser();
         // no USD holding
-        when(usersCache.get(USER_ID)).thenReturn(user);
+        when(usersCache.findById(USER_ID)).thenReturn(user);
         when(cbrRateService.fetchRates()).thenReturn(ratesMap());
 
         String result = service.sellCurrency(USER_ID, "USD", new BigDecimal("10"));
@@ -247,7 +247,7 @@ class SandboxCurrencyServiceTest {
 
     @Test
     void currencyPortfolio_userNotRegistered_returnsError() {
-        when(usersCache.get(USER_ID)).thenReturn(null);
+        when(usersCache.findById(USER_ID)).thenReturn(null);
         String result = service.currencyPortfolio(USER_ID);
         assertTrue(result.contains("регистрация"));
     }
@@ -255,7 +255,7 @@ class SandboxCurrencyServiceTest {
     @Test
     void currencyPortfolio_noHoldings_returnsEmptyMessage() {
         SandboxUser user = newUser();
-        when(usersCache.get(USER_ID)).thenReturn(user);
+        when(usersCache.findById(USER_ID)).thenReturn(user);
         when(cbrRateService.fetchRates()).thenReturn(ratesMap());
 
         String result = service.currencyPortfolio(USER_ID);
@@ -267,7 +267,7 @@ class SandboxCurrencyServiceTest {
         SandboxUser user = newUser();
         user.getCurrencyHoldings().put("USD", 100.0);
         user.getCurrencyHoldings().put("EUR", 50.0);
-        when(usersCache.get(USER_ID)).thenReturn(user);
+        when(usersCache.findById(USER_ID)).thenReturn(user);
         when(cbrRateService.fetchRates()).thenReturn(ratesMap());
 
         String result = service.currencyPortfolio(USER_ID);
@@ -283,7 +283,7 @@ class SandboxCurrencyServiceTest {
     @Test
     void currencyBalanceLine_noHoldings_returnsEmpty() {
         SandboxUser user = newUser();
-        when(usersCache.get(USER_ID)).thenReturn(user);
+        when(usersCache.findById(USER_ID)).thenReturn(user);
         when(cbrRateService.fetchRates()).thenReturn(ratesMap());
 
         String line = service.currencyBalanceLine(USER_ID);
@@ -294,7 +294,7 @@ class SandboxCurrencyServiceTest {
     void currencyBalanceLine_withHolding_containsCurrencyInfo() {
         SandboxUser user = newUser();
         user.getCurrencyHoldings().put("USD", 200.0);
-        when(usersCache.get(USER_ID)).thenReturn(user);
+        when(usersCache.findById(USER_ID)).thenReturn(user);
         when(cbrRateService.fetchRates()).thenReturn(ratesMap());
 
         String line = service.currencyBalanceLine(USER_ID);
@@ -311,7 +311,7 @@ class SandboxCurrencyServiceTest {
     void totalCurrencyValueInRub_withUsd_returnsCorrectValue() {
         SandboxUser user = newUser();
         user.getCurrencyHoldings().put("USD", 100.0); // 100 * 90 = 9000
-        when(usersCache.get(USER_ID)).thenReturn(user);
+        when(usersCache.findById(USER_ID)).thenReturn(user);
         when(cbrRateService.fetchRates()).thenReturn(ratesMap());
 
         BigDecimal total = service.totalCurrencyValueInRub(USER_ID);
@@ -321,7 +321,7 @@ class SandboxCurrencyServiceTest {
     @Test
     void totalCurrencyValueInRub_noHoldings_returnsZero() {
         SandboxUser user = newUser();
-        when(usersCache.get(USER_ID)).thenReturn(user);
+        when(usersCache.findById(USER_ID)).thenReturn(user);
         when(cbrRateService.fetchRates()).thenReturn(ratesMap());
 
         BigDecimal total = service.totalCurrencyValueInRub(USER_ID);
@@ -330,7 +330,7 @@ class SandboxCurrencyServiceTest {
 
     @Test
     void totalCurrencyValueInRub_userNull_returnsZero() {
-        when(usersCache.get(USER_ID)).thenReturn(null);
+        when(usersCache.findById(USER_ID)).thenReturn(null);
 
         BigDecimal total = service.totalCurrencyValueInRub(USER_ID);
         assertEquals(0, total.compareTo(BigDecimal.ZERO));
