@@ -50,7 +50,8 @@ class IgniteHealthServiceTest {
 
     @Test
     void healthyIgnite_noFailuresCounted() {
-        when(sql.execute(any(), anyString())).thenReturn(mockResultSet(true));
+        ResultSet<SqlRow> rs1 = mockResultSet(true);
+        when(sql.execute(any(), anyString())).thenReturn(rs1);
 
         IgniteHealthService service = new IgniteHealthService(manager);
         service.runCheck();
@@ -107,9 +108,10 @@ class IgniteHealthServiceTest {
 
     @Test
     void recoveryAfterFailure_counterStopsGrowing() {
+        ResultSet<SqlRow> rs2 = mockResultSet(true);
         when(sql.execute(any(), anyString()))
                 .thenThrow(new RuntimeException("Transient error"))
-                .thenReturn(mockResultSet(true));
+                .thenReturn(rs2);
 
         IgniteHealthService service = new IgniteHealthService(manager);
         service.runCheck();
@@ -151,7 +153,8 @@ class IgniteHealthServiceTest {
 
     @Test
     void initialFailureCount_isZero() {
-        when(sql.execute(any(), anyString())).thenReturn(mockResultSet(true));
+        ResultSet<SqlRow> rs3 = mockResultSet(true);
+        when(sql.execute(any(), anyString())).thenReturn(rs3);
         IgniteHealthService service = new IgniteHealthService(manager);
         assertEquals(0, service.getHealthCheckFailures(),
                 "Before any check the failure counter must be 0");
