@@ -1,25 +1,20 @@
 package services.sandbox.ignite;
 
+import org.apache.ignite.client.IgniteClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-import org.apache.ignite.IgniteCache;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import services.sandbox.model.LimitOrder;
-import services.sandbox.model.Position;
-import services.sandbox.model.PriceAlert;
-import services.sandbox.model.SandboxUser;
-import services.sandbox.model.StopOrder;
-import services.sandbox.model.TradeRecord;
 
 /**
- * Periodic health-check service for Apache Ignite.
+ * Periodic health-check service for Apache Ignite 3.
  *
- * Every 5 minutes it verifies that all sandbox caches are reachable.
- * On failure it logs a WARNING with details and increments a simple failure counter.
- * No external metrics framework (Prometheus etc.) is used — just an AtomicLong field.
+ * Every 5 minutes it verifies that the Ignite 3 cluster is reachable by
+ * executing a lightweight SQL query. On failure it logs a WARNING with details
+ * and increments a simple failure counter.
  */
 public class IgniteHealthService {
 
@@ -28,12 +23,7 @@ public class IgniteHealthService {
     /** How often to run the health-check (milliseconds, overridable in tests). */
     static final long CHECK_PERIOD_MS = TimeUnit.MINUTES.toMillis(5);
 
-    private final IgniteCache<String, SandboxUser> usersCache;
-    private final IgniteCache<String, Position> positionsCache;
-    private final IgniteCache<String, TradeRecord> tradesCache;
-    private final IgniteCache<String, LimitOrder> limitOrdersCache;
-    private final IgniteCache<String, StopOrder> stopOrdersCache;
-    private final IgniteCache<String, PriceAlert> priceAlertsCache;
+    private final IgniteClient igniteClient;
 
     /** Simple failure counter — incremented every time a health-check fails. */
     private final AtomicLong healthCheckFailures = new AtomicLong(0);
@@ -44,13 +34,13 @@ public class IgniteHealthService {
         return t;
     });
 
+    /**
+     * Создаёт health-check сервис на основе Ignite 3 manager.
+     *
+     * @param manager менеджер Ignite 3
+     */
     public IgniteHealthService(SandboxIgniteManager manager) {
-        this.usersCache = manager.usersCache();
-        this.positionsCache = manager.positionsCache();
-        this.tradesCache = manager.tradesCache();
-        this.limitOrdersCache = manager.limitOrdersCache();
-        this.stopOrdersCache = manager.stopOrdersCache();
-        this.priceAlertsCache = manager.priceAlertsCache();
+        this.igniteClient = manager.getIgniteClient();
     }
 
     /**
@@ -83,31 +73,21 @@ public class IgniteHealthService {
     }
 
     /**
-     * Perform a single health-check: attempt a lightweight operation on every cache.
+     * Perform a single health-check: execute a lightweight SQL query against Ignite 3.
      * Exposed as package-private for testing without starting the scheduler.
      */
     void runCheck() {
         try {
-            checkCache("users", usersCache);
-            checkCache("positions", positionsCache);
-            checkCache("trades", tradesCache);
-            checkCache("limitOrders", limitOrdersCache);
-            checkCache("stopOrders", stopOrdersCache);
-            checkCache("priceAlerts", priceAlertsCache);
-            log.debug("IgniteHealthService: all caches OK");
+            try (var rs = igniteClient.sql().execute(null, "SELECT 1")) {
+                if (rs.hasNext()) {
+                    rs.next(); // consume result
+                }
+            }
+            log.debug("IgniteHealthService: Ignite 3 cluster is OK");
         } catch (Exception e) {
             long failures = healthCheckFailures.incrementAndGet();
             log.warn("IgniteHealthService: health-check FAILED (total failures: {}). Details: {}",
                     failures, e.getMessage());
         }
-    }
-
-    private void checkCache(String cacheName, IgniteCache<?, ?> cache) {
-        if (cache == null) {
-            throw new IllegalStateException("Cache '" + cacheName + "' is null");
-        }
-        // A size() call is a lightweight way to verify the cache is reachable
-        int size = cache.size();
-        log.debug("IgniteHealthService: cache '{}' size={}", cacheName, size);
     }
 }
