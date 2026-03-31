@@ -202,7 +202,16 @@ public final class ConfigLoader {
     }
 
     /**
-     * Возвращает локальный адрес для привязки Ignite-клиента.
+     * Возвращает адрес Ignite 3 thin client (host:port).
+     *
+     * @return адрес (по умолчанию {@code "127.0.0.1:10300"})
+     */
+    public static String getIgnite3Address() {
+        return getString("ignite3.address", "IGNITE3_ADDRESS", "127.0.0.1:10300");
+    }
+
+    /**
+     * Возвращает локальный адрес для привязки Ignite-клиента (legacy, не используется в Ignite 3).
      *
      * @return адрес (по умолчанию {@code "127.0.0.1"})
      */
@@ -211,7 +220,7 @@ public final class ConfigLoader {
     }
 
     /**
-     * Возвращает список адресов для TCP-discovery Ignite-кластера.
+     * Возвращает список адресов для TCP-discovery Ignite-кластера (legacy, не используется в Ignite 3).
      *
      * @return список адресов в формате {@code host:port} или {@code host:portRange}
      */
@@ -232,7 +241,7 @@ public final class ConfigLoader {
     }
 
     /**
-     * Возвращает рабочую директорию для Ignite-клиента.
+     * Возвращает рабочую директорию для Ignite-клиента (legacy, не используется в Ignite 3).
      *
      * @return путь к директории (по умолчанию {@code "/tmp/ignite-stonks-client"})
      */
