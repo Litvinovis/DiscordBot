@@ -93,8 +93,8 @@ class SandboxMigrationServiceTest {
 
         SandboxMigrationService.CacheMigrationResult usersResult = results.get("sandbox_users");
         assertNotNull(usersResult);
-        assertEquals(1, usersResult.migrated);
-        assertEquals(0, usersResult.removed);
+        assertEquals(1, usersResult.migrated());
+        assertEquals(0, usersResult.removed());
     }
 
     // ==================================================================
@@ -146,8 +146,8 @@ class SandboxMigrationServiceTest {
         verify(priceAlertsRepo, never()).delete(any());
 
         for (SandboxMigrationService.CacheMigrationResult r : results.values()) {
-            assertEquals(0, r.migrated, "No entries should be migrated in a clean repo");
-            assertEquals(0, r.removed,  "No entries should be removed from a clean repo");
+            assertEquals(0, r.migrated(), "No entries should be migrated in a clean repo");
+            assertEquals(0, r.removed(),  "No entries should be removed from a clean repo");
         }
     }
 
@@ -174,8 +174,8 @@ class SandboxMigrationServiceTest {
 
         SandboxMigrationService.CacheMigrationResult posResult = results.get("sandbox_positions");
         assertNotNull(posResult);
-        assertEquals(2, posResult.migrated, "2 old entries should be migrated");
-        assertEquals(0, posResult.removed,  "no corrupted entries in this test");
+        assertEquals(2, posResult.migrated(), "2 old entries should be migrated");
+        assertEquals(0, posResult.removed(),  "no corrupted entries in this test");
 
         verify(positionsRepo, times(2)).save(any(), any());
         verify(positionsRepo, never()).delete(any());
@@ -194,8 +194,8 @@ class SandboxMigrationServiceTest {
 
         assertEquals(6, results.size(), "Should have results for all 6 tables");
         for (SandboxMigrationService.CacheMigrationResult r : results.values()) {
-            assertEquals(0, r.migrated);
-            assertEquals(0, r.removed);
+            assertEquals(0, r.migrated());
+            assertEquals(0, r.removed());
         }
     }
 }
