@@ -37,9 +37,9 @@ class IgniteHealthServiceTest {
 
     private ResultSet<SqlRow> mockResultSet(boolean hasNext) {
         ResultSet<SqlRow> rs = mock(ResultSet.class);
-        when(rs.hasNext()).thenReturn(hasNext);
+        doReturn(hasNext).when(rs).hasNext();
         if (hasNext) {
-            when(rs.next()).thenReturn(mock(SqlRow.class));
+            doReturn(mock(SqlRow.class)).when(rs).next();
         }
         return rs;
     }
