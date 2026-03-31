@@ -62,8 +62,8 @@ public class SandboxMigrationService {
         summary.put("sandbox_stop_orders", migrateStopOrders(igniteManager.stopOrdersRepo()));
         summary.put("sandbox_price_alerts", migratePriceAlerts(igniteManager.priceAlertsRepo()));
 
-        int totalMigrated = summary.values().stream().mapToInt(r -> r.migrated).sum();
-        int totalRemoved  = summary.values().stream().mapToInt(r -> r.removed).sum();
+        int totalMigrated = summary.values().stream().mapToInt(CacheMigrationResult::migrated).sum();
+        int totalRemoved  = summary.values().stream().mapToInt(CacheMigrationResult::removed).sum();
         log.info("[Migration] Complete. Migrated={} Removed={} Details={}",
                 totalMigrated, totalRemoved, summary);
 
@@ -291,20 +291,7 @@ public class SandboxMigrationService {
     /**
      * Итог миграции одной таблицы: количество обновлённых и удалённых записей.
      */
-    public static class CacheMigrationResult {
-        public final int migrated;
-        public final int removed;
-
-        /**
-         * Создаёт результат миграции таблицы.
-         *
-         * @param migrated количество обновлённых (смигрированных) записей
-         * @param removed  количество удалённых повреждённых записей
-         */
-        public CacheMigrationResult(int migrated, int removed) {
-            this.migrated = migrated;
-            this.removed  = removed;
-        }
+    public record CacheMigrationResult(int migrated, int removed) {
 
         @Override
         public String toString() {
