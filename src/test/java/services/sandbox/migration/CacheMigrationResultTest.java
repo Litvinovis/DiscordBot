@@ -17,16 +17,16 @@ class CacheMigrationResultTest {
     void constructor_storesValues() {
         SandboxMigrationService.CacheMigrationResult result =
                 new SandboxMigrationService.CacheMigrationResult(5, 2);
-        assertEquals(5, result.migrated);
-        assertEquals(2, result.removed);
+        assertEquals(5, result.migrated());
+        assertEquals(2, result.removed());
     }
 
     @Test
     void constructor_zeroValues() {
         SandboxMigrationService.CacheMigrationResult result =
                 new SandboxMigrationService.CacheMigrationResult(0, 0);
-        assertEquals(0, result.migrated);
-        assertEquals(0, result.removed);
+        assertEquals(0, result.migrated());
+        assertEquals(0, result.removed());
     }
 
     @Test
@@ -64,8 +64,8 @@ class CacheMigrationResultTest {
         SandboxMigrationService.CacheMigrationResult r3 =
                 new SandboxMigrationService.CacheMigrationResult(2, 1);
 
-        int totalMigrated = r1.migrated + r2.migrated + r3.migrated;
-        int totalRemoved  = r1.removed  + r2.removed  + r3.removed;
+        int totalMigrated = r1.migrated() + r2.migrated() + r3.migrated();
+        int totalRemoved  = r1.removed()  + r2.removed()  + r3.removed();
 
         assertEquals(12, totalMigrated);
         assertEquals(4,  totalRemoved);
