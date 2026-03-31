@@ -62,7 +62,8 @@ class IgniteHealthServiceTest {
 
     @Test
     void healthyIgniteEmptyResult_noFailuresCounted() {
-        when(sql.execute(any(), anyString())).thenReturn(mockResultSet(false));
+        ResultSet<SqlRow> rsEmpty = mockResultSet(false);
+        when(sql.execute(any(), anyString())).thenReturn(rsEmpty);
 
         IgniteHealthService service = new IgniteHealthService(manager);
         service.runCheck();
