@@ -1,133 +1,124 @@
-/*
- * Decompiled with CFR 0.152.
- * 
- * Could not load the following classes:
- *  org.apache.ignite.Ignite
- *  org.apache.ignite.IgniteCache
- *  org.apache.ignite.Ignition
- *  org.apache.ignite.configuration.CacheConfiguration
- *  org.apache.ignite.configuration.IgniteConfiguration
- *  org.apache.ignite.spi.discovery.DiscoverySpi
- *  org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi
- *  org.apache.ignite.spi.discovery.tcp.ipfinder.TcpDiscoveryIpFinder
- *  org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder
- */
 package services.sandbox.ignite;
 
-import java.util.List;
-import org.apache.ignite.Ignite;
-import org.apache.ignite.IgniteCache;
-import org.apache.ignite.Ignition;
-import org.apache.ignite.configuration.CacheConfiguration;
-import org.apache.ignite.configuration.IgniteConfiguration;
-import org.apache.ignite.spi.discovery.DiscoverySpi;
-import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
-import org.apache.ignite.spi.discovery.tcp.ipfinder.TcpDiscoveryIpFinder;
-import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
-import services.sandbox.model.LimitOrder;
-import services.sandbox.model.Position;
-import services.sandbox.model.PriceAlert;
-import services.sandbox.model.SandboxUser;
-import services.sandbox.model.StopOrder;
-import services.sandbox.model.TradeRecord;
+import org.apache.ignite.client.IgniteClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import services.sandbox.migration.SandboxMigrationService;
+import services.sandbox.repository.LimitOrderRepository;
+import services.sandbox.repository.PositionRepository;
+import services.sandbox.repository.PriceAlertRepository;
+import services.sandbox.repository.SandboxUserRepository;
+import services.sandbox.repository.StopOrderRepository;
+import services.sandbox.repository.TradeRepository;
 import utils.ConfigLoader;
 
 /**
- * Управляет подключением к Apache Ignite и предоставляет доступ ко всем
- * кэшам песочницы: пользователи, позиции, сделки, лимитные заявки,
+ * Управляет подключением к Apache Ignite 3 и предоставляет доступ ко всем
+ * репозиториям песочницы: пользователи, позиции, сделки, лимитные заявки,
  * стоп-ордера и ценовые алерты.
  *
- * <p>При создании экземпляра запускается Ignite-клиент, создаются или
- * открываются все необходимые кэши, а затем выполняются миграции схемы.
+ * <p>При создании экземпляра устанавливается thin client подключение к Ignite 3,
+ * инициализируется схема таблиц, создаются репозитории, затем выполняются
+ * миграции схемы данных.
  */
 public class SandboxIgniteManager {
-    private final Ignite ignite;
-    private final IgniteCache<String, SandboxUser> usersCache;
-    private final IgniteCache<String, Position> positionsCache;
-    private final IgniteCache<String, TradeRecord> tradesCache;
-    private final IgniteCache<String, LimitOrder> limitOrdersCache;
-    private final IgniteCache<String, StopOrder> stopOrdersCache;
-    private final IgniteCache<String, PriceAlert> priceAlertsCache;
+
+    private static final Logger log = LoggerFactory.getLogger(SandboxIgniteManager.class);
+
+    private final IgniteClient igniteClient;
+    private final SandboxUserRepository usersRepo;
+    private final PositionRepository positionsRepo;
+    private final TradeRepository tradesRepo;
+    private final LimitOrderRepository limitOrdersRepo;
+    private final StopOrderRepository stopOrdersRepo;
+    private final PriceAlertRepository priceAlertsRepo;
 
     /**
-     * Инициализирует Ignite-клиент на основе настроек из {@link utils.ConfigLoader}
-     * и создаёт все кэши песочницы. По завершении запускает миграции схемы.
+     * Инициализирует Ignite 3 thin client и создаёт все репозитории.
+     * По завершении запускает инициализацию схемы и миграции данных.
      */
     public SandboxIgniteManager() {
-        IgniteConfiguration cfg = new IgniteConfiguration();
-        cfg.setIgniteInstanceName("stonks-sandbox-client");
-        cfg.setClientMode(true);
-        cfg.setWorkDirectory(ConfigLoader.getIgniteWorkDir());
-        TcpDiscoverySpi spi = new TcpDiscoverySpi();
-        spi.setLocalAddress(ConfigLoader.getIgniteLocalAddress());
-        TcpDiscoveryVmIpFinder ipFinder = new TcpDiscoveryVmIpFinder();
-        List<String> addrs = ConfigLoader.getIgniteDiscoveryAddresses();
-        ipFinder.setAddresses(addrs);
-        spi.setIpFinder((TcpDiscoveryIpFinder)ipFinder);
-        cfg.setDiscoverySpi((DiscoverySpi)spi);
-        this.ignite = Ignition.start((IgniteConfiguration)cfg);
-        this.usersCache = this.ignite.getOrCreateCache(new CacheConfiguration<String, SandboxUser>("stonks_sandbox_users"));
-        this.positionsCache = this.ignite.getOrCreateCache(new CacheConfiguration<String, Position>("stonks_sandbox_positions"));
-        this.tradesCache = this.ignite.getOrCreateCache(new CacheConfiguration<String, TradeRecord>("stonks_sandbox_trades"));
-        this.limitOrdersCache = this.ignite.getOrCreateCache(new CacheConfiguration<String, LimitOrder>("stonks_sandbox_limit_orders"));
-        this.stopOrdersCache = this.ignite.getOrCreateCache(new CacheConfiguration<String, StopOrder>("stonks_sandbox_stop_orders"));
-        this.priceAlertsCache = this.ignite.getOrCreateCache(new CacheConfiguration<String, PriceAlert>("stonks_sandbox_price_alerts"));
+        String address = ConfigLoader.getIgnite3Address();
+        log.info("SandboxIgniteManager: connecting to Ignite 3 at {}", address);
+        this.igniteClient = IgniteClient.builder()
+                .addresses(address)
+                .build();
+
+        // Инициализируем схему (CREATE TABLE IF NOT EXISTS)
+        new SchemaInitializer(igniteClient).initSchema();
+
+        // Создаём репозитории (ленивая инициализация view внутри)
+        this.usersRepo = new SandboxUserRepository(igniteClient);
+        this.positionsRepo = new PositionRepository(igniteClient);
+        this.tradesRepo = new TradeRepository(igniteClient);
+        this.limitOrdersRepo = new LimitOrderRepository(igniteClient);
+        this.stopOrdersRepo = new StopOrderRepository(igniteClient);
+        this.priceAlertsRepo = new PriceAlertRepository(igniteClient);
+
+        // Запускаем миграции схемы данных
         new SandboxMigrationService(this).runMigrations();
     }
 
     /**
-     * Возвращает кэш пользователей песочницы.
+     * Возвращает подключённый клиент Apache Ignite 3.
      *
-     * @return кэш {@code stonks_sandbox_users}
+     * @return клиент Ignite 3
      */
-    public IgniteCache<String, SandboxUser> usersCache() {
-        return this.usersCache;
+    public IgniteClient getIgniteClient() {
+        return igniteClient;
     }
 
     /**
-     * Возвращает кэш открытых позиций пользователей.
+     * Возвращает репозиторий пользователей песочницы.
      *
-     * @return кэш {@code stonks_sandbox_positions}
+     * @return репозиторий {@code sandbox_users}
      */
-    public IgniteCache<String, Position> positionsCache() {
-        return this.positionsCache;
+    public SandboxUserRepository usersRepo() {
+        return usersRepo;
     }
 
     /**
-     * Возвращает кэш истории сделок.
+     * Возвращает репозиторий позиций.
      *
-     * @return кэш {@code stonks_sandbox_trades}
+     * @return репозиторий {@code sandbox_positions}
      */
-    public IgniteCache<String, TradeRecord> tradesCache() {
-        return this.tradesCache;
+    public PositionRepository positionsRepo() {
+        return positionsRepo;
     }
 
     /**
-     * Возвращает кэш активных лимитных заявок.
+     * Возвращает репозиторий истории сделок.
      *
-     * @return кэш {@code stonks_sandbox_limit_orders}
+     * @return репозиторий {@code sandbox_trades}
      */
-    public IgniteCache<String, LimitOrder> limitOrdersCache() {
-        return this.limitOrdersCache;
+    public TradeRepository tradesRepo() {
+        return tradesRepo;
     }
 
     /**
-     * Возвращает кэш стоп-ордеров (стоп-лосс и тейк-профит).
+     * Возвращает репозиторий лимитных заявок.
      *
-     * @return кэш {@code stonks_sandbox_stop_orders}
+     * @return репозиторий {@code sandbox_limit_orders}
      */
-    public IgniteCache<String, StopOrder> stopOrdersCache() {
-        return this.stopOrdersCache;
+    public LimitOrderRepository limitOrdersRepo() {
+        return limitOrdersRepo;
     }
 
     /**
-     * Возвращает кэш ценовых алертов.
+     * Возвращает репозиторий стоп-ордеров.
      *
-     * @return кэш {@code stonks_sandbox_price_alerts}
+     * @return репозиторий {@code sandbox_stop_orders}
      */
-    public IgniteCache<String, PriceAlert> priceAlertsCache() {
-        return this.priceAlertsCache;
+    public StopOrderRepository stopOrdersRepo() {
+        return stopOrdersRepo;
+    }
+
+    /**
+     * Возвращает репозиторий ценовых алертов.
+     *
+     * @return репозиторий {@code sandbox_price_alerts}
+     */
+    public PriceAlertRepository priceAlertsRepo() {
+        return priceAlertsRepo;
     }
 }
-
