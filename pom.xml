@@ -21,7 +21,7 @@
         <maven.shade.plugin.version>3.6.2</maven.shade.plugin.version>
 
         <!-- Dependency versions -->
-        <snakeyaml.version>2.2</snakeyaml.version>
+        <snakeyaml.version>2.6</snakeyaml.version>
         <logback.version>1.5.32</logback.version>
         <jda.version>5.2.1</jda.version>
         <tinkoff.sdk.version>1.48</tinkoff.sdk.version>
