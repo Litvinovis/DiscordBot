@@ -45,12 +45,17 @@ public class SandboxIgniteManager {
     public SandboxIgniteManager() {
         this.address = ConfigLoader.getIgnite3Address();
         log.info("SandboxIgniteManager: connecting to Ignite 3 at {}", address);
-        this.igniteClient = IgniteClient.builder()
-                .addresses(address)
-                .build();
-
-        // Инициализируем схему (CREATE TABLE IF NOT EXISTS)
-        new SchemaInitializer(igniteClient).initSchema();
+        try {
+            this.igniteClient = IgniteClient.builder()
+                    .addresses(address)
+                    .build();
+            // Инициализируем схему (CREATE TABLE IF NOT EXISTS)
+            new SchemaInitializer(igniteClient).initSchema();
+            // Запускаем миграции схемы данных
+            new SandboxMigrationService(this).runMigrations();
+        } catch (Exception e) {
+            log.warn("SandboxIgniteManager: не удалось подключиться при старте ({}), переподключение будет выполнено автоматически", e.getMessage());
+        }
 
         // Создаём репозитории — передаём supplier, чтобы при переподключении
         // они автоматически получали свежий клиент
@@ -60,9 +65,6 @@ public class SandboxIgniteManager {
         this.limitOrdersRepo = new LimitOrderRepository(this::getIgniteClient);
         this.stopOrdersRepo = new StopOrderRepository(this::getIgniteClient);
         this.priceAlertsRepo = new PriceAlertRepository(this::getIgniteClient);
-
-        // Запускаем миграции схемы данных
-        new SandboxMigrationService(this).runMigrations();
     }
 
     /**
