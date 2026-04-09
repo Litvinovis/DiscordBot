@@ -49,9 +49,15 @@ public class SandboxUserRepository {
 
     private KeyValueView<Tuple, Tuple> view() {
         IgniteClient current = clientSupplier.get();
+        if (current == null) {
+            throw new IllegalStateException("Ignite 3 недоступен — соединение ещё не установлено");
+        }
         if (kvView == null || current != lastClient) {
             synchronized (this) {
                 current = clientSupplier.get();
+                if (current == null) {
+                    throw new IllegalStateException("Ignite 3 недоступен — соединение ещё не установлено");
+                }
                 if (kvView == null || current != lastClient) {
                     kvView = current.tables().table(TABLE_NAME).keyValueView();
                     lastClient = current;
@@ -85,7 +91,9 @@ public class SandboxUserRepository {
      */
     public List<SandboxUser> findAll() {
         List<SandboxUser> result = new ArrayList<>();
-        try (var rs = clientSupplier.get().sql().execute(null, "SELECT * FROM " + TABLE_NAME)) {
+        IgniteClient client = clientSupplier.get();
+        if (client == null) return result;
+        try (var rs = client.sql().execute(null, "SELECT * FROM " + TABLE_NAME)) {
             while (rs.hasNext()) {
                 var row = rs.next();
                 String userId = row.stringValue("USER_ID");

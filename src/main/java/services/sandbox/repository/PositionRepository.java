@@ -36,9 +36,15 @@ public class PositionRepository {
 
     private KeyValueView<Tuple, Tuple> view() {
         IgniteClient current = clientSupplier.get();
+        if (current == null) {
+            throw new IllegalStateException("Ignite 3 недоступен — соединение ещё не установлено");
+        }
         if (kvView == null || current != lastClient) {
             synchronized (this) {
                 current = clientSupplier.get();
+                if (current == null) {
+                    throw new IllegalStateException("Ignite 3 недоступен — соединение ещё не установлено");
+                }
                 if (kvView == null || current != lastClient) {
                     kvView = current.tables().table(TABLE_NAME).keyValueView();
                     lastClient = current;
@@ -72,7 +78,9 @@ public class PositionRepository {
      */
     public List<Position> findAll() {
         List<Position> result = new ArrayList<>();
-        try (var rs = clientSupplier.get().sql().execute(null, "SELECT * FROM " + TABLE_NAME)) {
+        IgniteClient _client = clientSupplier.get();
+        if (_client == null) return result;
+        try (var rs = _client.sql().execute(null, "SELECT * FROM " + TABLE_NAME)) {
             while (rs.hasNext()) {
                 var row = rs.next();
                 Position pos = new Position();
@@ -95,7 +103,9 @@ public class PositionRepository {
      */
     public List<Position> findByUserId(String userId) {
         List<Position> result = new ArrayList<>();
-        try (var rs = clientSupplier.get().sql().execute(null,
+        IgniteClient _client = clientSupplier.get();
+        if (_client == null) return result;
+        try (var rs = _client.sql().execute(null,
                 "SELECT * FROM " + TABLE_NAME + " WHERE user_id = ?", userId)) {
             while (rs.hasNext()) {
                 var row = rs.next();
