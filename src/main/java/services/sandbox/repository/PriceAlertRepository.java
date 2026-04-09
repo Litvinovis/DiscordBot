@@ -1,6 +1,7 @@
 package services.sandbox.repository;
 
 import org.apache.ignite.client.IgniteClient;
+import java.util.function.Supplier;
 import org.apache.ignite.table.KeyValueView;
 import org.apache.ignite.table.Tuple;
 import org.slf4j.Logger;
@@ -21,7 +22,8 @@ public class PriceAlertRepository {
     private static final Logger log = LoggerFactory.getLogger(PriceAlertRepository.class);
     private static final String TABLE_NAME = "sandbox_price_alerts";
 
-    private final IgniteClient igniteClient;
+    private final Supplier<IgniteClient> clientSupplier;
+    private volatile IgniteClient lastClient;
     private volatile KeyValueView<Tuple, Tuple> kvView;
 
     /**
@@ -29,13 +31,20 @@ public class PriceAlertRepository {
      *
      * @param igniteClient подключённый клиент Ignite 3
      */
-    public PriceAlertRepository(IgniteClient igniteClient) {
-        this.igniteClient = igniteClient;
+    public PriceAlertRepository(Supplier<IgniteClient> clientSupplier) {
+        this.clientSupplier = clientSupplier;
     }
 
     private KeyValueView<Tuple, Tuple> view() {
-        if (kvView == null) {
-            kvView = igniteClient.tables().table(TABLE_NAME).keyValueView();
+        IgniteClient current = clientSupplier.get();
+        if (kvView == null || current != lastClient) {
+            synchronized (this) {
+                current = clientSupplier.get();
+                if (kvView == null || current != lastClient) {
+                    kvView = current.tables().table(TABLE_NAME).keyValueView();
+                    lastClient = current;
+                }
+            }
         }
         return kvView;
     }
@@ -64,7 +73,7 @@ public class PriceAlertRepository {
      */
     public List<PriceAlert> findAll() {
         List<PriceAlert> result = new ArrayList<>();
-        try (var rs = igniteClient.sql().execute(null, "SELECT * FROM " + TABLE_NAME)) {
+        try (var rs = clientSupplier.get().sql().execute(null, "SELECT * FROM " + TABLE_NAME)) {
             while (rs.hasNext()) {
                 var row = rs.next();
                 String id = row.stringValue("ID");

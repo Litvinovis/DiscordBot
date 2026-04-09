@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 /**
  * Репозиторий пользователей песочницы.
@@ -21,6 +22,10 @@ import java.util.Map;
  * <p>Использует {@link KeyValueView} Apache Ignite 3 для операций по ключу
  * и SQL через {@link IgniteClient#sql()} для выборок всех записей.
  * Колонка {@code currency_holdings} хранится как JSON VARCHAR.
+ *
+ * <p>Получает клиент через {@link Supplier}, что позволяет автоматически
+ * подхватить новый {@link IgniteClient} после переподключения — view сбрасывается
+ * при смене объекта клиента.
  */
 public class SandboxUserRepository {
 
@@ -28,21 +33,30 @@ public class SandboxUserRepository {
     private static final String TABLE_NAME = "sandbox_users";
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    private final IgniteClient igniteClient;
+    private final Supplier<IgniteClient> clientSupplier;
+    private volatile IgniteClient lastClient;
     private volatile KeyValueView<Tuple, Tuple> kvView;
 
     /**
      * Создаёт репозиторий. View инициализируется лениво при первом обращении.
+     * При смене клиента (переподключение) view сбрасывается автоматически.
      *
-     * @param igniteClient подключённый клиент Ignite 3
+     * @param clientSupplier поставщик актуального клиента Ignite 3
      */
-    public SandboxUserRepository(IgniteClient igniteClient) {
-        this.igniteClient = igniteClient;
+    public SandboxUserRepository(Supplier<IgniteClient> clientSupplier) {
+        this.clientSupplier = clientSupplier;
     }
 
     private KeyValueView<Tuple, Tuple> view() {
-        if (kvView == null) {
-            kvView = igniteClient.tables().table(TABLE_NAME).keyValueView();
+        IgniteClient current = clientSupplier.get();
+        if (kvView == null || current != lastClient) {
+            synchronized (this) {
+                current = clientSupplier.get();
+                if (kvView == null || current != lastClient) {
+                    kvView = current.tables().table(TABLE_NAME).keyValueView();
+                    lastClient = current;
+                }
+            }
         }
         return kvView;
     }
@@ -71,7 +85,7 @@ public class SandboxUserRepository {
      */
     public List<SandboxUser> findAll() {
         List<SandboxUser> result = new ArrayList<>();
-        try (var rs = igniteClient.sql().execute(null, "SELECT * FROM " + TABLE_NAME)) {
+        try (var rs = clientSupplier.get().sql().execute(null, "SELECT * FROM " + TABLE_NAME)) {
             while (rs.hasNext()) {
                 var row = rs.next();
                 String userId = row.stringValue("USER_ID");
