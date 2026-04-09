@@ -64,6 +64,11 @@ public class IgniteHealthService {
                 TimeUnit.SECONDS
         );
         log.info("IgniteHealthService запущен (период={}с)", periodSeconds);
+        // Немедленно запускаем переподключение если Ignite недоступен при старте
+        if (manager.getIgniteClient() == null) {
+            log.warn("IgniteHealthService: Ignite недоступен при старте, немедленно запускаю переподключение");
+            scheduleReconnect();
+        }
     }
 
     /**
@@ -87,6 +92,12 @@ public class IgniteHealthService {
      */
     void runCheck() {
         IgniteClient client = manager.getIgniteClient();
+        if (client == null) {
+            long failures = healthCheckFailures.incrementAndGet();
+            log.warn("IgniteHealthService: проверка ПРОВАЛЕНА — client == null (всего сбоев: {})", failures);
+            scheduleReconnect();
+            return;
+        }
         try {
             try (var rs = client.sql().execute(null, "SELECT 1")) {
                 if (rs.hasNext()) {
