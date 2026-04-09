@@ -25,7 +25,7 @@
         <logback.version>1.5.32</logback.version>
         <jda.version>5.2.1</jda.version>
         <tinkoff.sdk.version>1.48</tinkoff.sdk.version>
-        <ignite.version>3.0.0</ignite.version>
+        <ignite.version>3.1.0</ignite.version>
         <jackson.version>2.21.2</jackson.version>
         <lombok.version>1.18.44</lombok.version>
         <metrics.version>4.2.38</metrics.version>
