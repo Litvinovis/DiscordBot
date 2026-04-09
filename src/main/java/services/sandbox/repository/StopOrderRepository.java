@@ -38,9 +38,15 @@ public class StopOrderRepository {
 
     private KeyValueView<Tuple, Tuple> view() {
         IgniteClient current = clientSupplier.get();
+        if (current == null) {
+            throw new IllegalStateException("Ignite 3 недоступен — соединение ещё не установлено");
+        }
         if (kvView == null || current != lastClient) {
             synchronized (this) {
                 current = clientSupplier.get();
+                if (current == null) {
+                    throw new IllegalStateException("Ignite 3 недоступен — соединение ещё не установлено");
+                }
                 if (kvView == null || current != lastClient) {
                     kvView = current.tables().table(TABLE_NAME).keyValueView();
                     lastClient = current;
@@ -74,7 +80,9 @@ public class StopOrderRepository {
      */
     public List<StopOrder> findAll() {
         List<StopOrder> result = new ArrayList<>();
-        try (var rs = clientSupplier.get().sql().execute(null, "SELECT * FROM " + TABLE_NAME)) {
+        IgniteClient _client = clientSupplier.get();
+        if (_client == null) return result;
+        try (var rs = _client.sql().execute(null, "SELECT * FROM " + TABLE_NAME)) {
             while (rs.hasNext()) {
                 var row = rs.next();
                 String id = row.stringValue("ID");
