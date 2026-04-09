@@ -20,12 +20,17 @@ import utils.ConfigLoader;
  * <p>При создании экземпляра устанавливается thin client подключение к Ignite 3,
  * инициализируется схема таблиц, создаются репозитории, затем выполняются
  * миграции схемы данных.
+ *
+ * <p>При потере соединения с кластером вызов {@link #reconnect()} создаёт новый
+ * {@link IgniteClient}, переинициализирует схему и сбрасывает кэшированные view
+ * во всех репозиториях.
  */
 public class SandboxIgniteManager {
 
     private static final Logger log = LoggerFactory.getLogger(SandboxIgniteManager.class);
 
-    private final IgniteClient igniteClient;
+    private final String address;
+    private volatile IgniteClient igniteClient;
     private final SandboxUserRepository usersRepo;
     private final PositionRepository positionsRepo;
     private final TradeRepository tradesRepo;
@@ -38,7 +43,7 @@ public class SandboxIgniteManager {
      * По завершении запускает инициализацию схемы и миграции данных.
      */
     public SandboxIgniteManager() {
-        String address = ConfigLoader.getIgnite3Address();
+        this.address = ConfigLoader.getIgnite3Address();
         log.info("SandboxIgniteManager: connecting to Ignite 3 at {}", address);
         this.igniteClient = IgniteClient.builder()
                 .addresses(address)
@@ -47,25 +52,55 @@ public class SandboxIgniteManager {
         // Инициализируем схему (CREATE TABLE IF NOT EXISTS)
         new SchemaInitializer(igniteClient).initSchema();
 
-        // Создаём репозитории (ленивая инициализация view внутри)
-        this.usersRepo = new SandboxUserRepository(igniteClient);
-        this.positionsRepo = new PositionRepository(igniteClient);
-        this.tradesRepo = new TradeRepository(igniteClient);
-        this.limitOrdersRepo = new LimitOrderRepository(igniteClient);
-        this.stopOrdersRepo = new StopOrderRepository(igniteClient);
-        this.priceAlertsRepo = new PriceAlertRepository(igniteClient);
+        // Создаём репозитории — передаём supplier, чтобы при переподключении
+        // они автоматически получали свежий клиент
+        this.usersRepo = new SandboxUserRepository(this::getIgniteClient);
+        this.positionsRepo = new PositionRepository(this::getIgniteClient);
+        this.tradesRepo = new TradeRepository(this::getIgniteClient);
+        this.limitOrdersRepo = new LimitOrderRepository(this::getIgniteClient);
+        this.stopOrdersRepo = new StopOrderRepository(this::getIgniteClient);
+        this.priceAlertsRepo = new PriceAlertRepository(this::getIgniteClient);
 
         // Запускаем миграции схемы данных
         new SandboxMigrationService(this).runMigrations();
     }
 
     /**
-     * Возвращает подключённый клиент Apache Ignite 3.
+     * Возвращает текущий подключённый клиент Apache Ignite 3.
      *
      * @return клиент Ignite 3
      */
     public IgniteClient getIgniteClient() {
         return igniteClient;
+    }
+
+    /**
+     * Переподключается к Apache Ignite 3: закрывает старый клиент, создаёт новый,
+     * переинициализирует схему. Репозитории автоматически получат новый клиент
+     * через supplier при следующем обращении к их view.
+     *
+     * @return {@code true} если переподключение прошло успешно
+     */
+    public synchronized boolean reconnect() {
+        log.info("SandboxIgniteManager: reconnecting to Ignite 3 at {}...", address);
+        try {
+            if (igniteClient != null) {
+                try {
+                    igniteClient.close();
+                } catch (Exception ex) {
+                    log.warn("SandboxIgniteManager: error closing old client: {}", ex.getMessage());
+                }
+            }
+            igniteClient = IgniteClient.builder()
+                    .addresses(address)
+                    .build();
+            new SchemaInitializer(igniteClient).initSchema();
+            log.info("SandboxIgniteManager: reconnected successfully to {}", address);
+            return true;
+        } catch (Exception e) {
+            log.error("SandboxIgniteManager: reconnect failed: {}", e.getMessage(), e);
+            return false;
+        }
     }
 
     /**
