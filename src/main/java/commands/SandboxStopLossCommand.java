@@ -7,7 +7,7 @@ import services.sandbox.SandboxTradingService;
 /**
  * Handles "+стоп-лосс TICKER PRICE" command.
  */
-public class SandboxStopLossCommand implements BotCommand {
+public class SandboxStopLossCommand extends AbstractCommand {
 
     private final SandboxTradingService sandboxTradingService;
 
@@ -32,13 +32,5 @@ public class SandboxStopLossCommand implements BotCommand {
             return "Укажите корректную цену: +стоп-лосс ТИКЕР ЦЕНА";
         }
         return sandboxTradingService.setStopLoss(event.getAuthor().getId(), parts[1], price);
-    }
-
-    private BigDecimal parseBigDecimal(String s) {
-        try {
-            return new BigDecimal(s.replace(',', '.'));
-        } catch (Exception e) {
-            return null;
-        }
     }
 }

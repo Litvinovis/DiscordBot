@@ -1,16 +1,13 @@
 package services.sandbox.repository;
 
 import org.apache.ignite.client.IgniteClient;
-import java.util.function.Supplier;
-import org.apache.ignite.table.KeyValueView;
 import org.apache.ignite.table.Tuple;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import services.sandbox.model.StopOrder;
 
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 
 /**
  * Репозиторий стоп-ордеров (SL/TP) песочницы.
@@ -18,42 +15,17 @@ import java.util.List;
  * <p>Поле {@code type} хранится как {@code order_type} (SQL-зарезервированное слово).
  * Поле {@code createdAt} — как BIGINT (epoch millis).
  */
-public class StopOrderRepository {
+public class StopOrderRepository extends BaseIgniteRepository {
 
-    private static final Logger log = LoggerFactory.getLogger(StopOrderRepository.class);
     private static final String TABLE_NAME = "sandbox_stop_orders";
-
-    private final Supplier<IgniteClient> clientSupplier;
-    private volatile IgniteClient lastClient;
-    private volatile KeyValueView<Tuple, Tuple> kvView;
 
     /**
      * Создаёт репозиторий. View инициализируется лениво при первом обращении.
      *
-     * @param igniteClient подключённый клиент Ignite 3
+     * @param clientSupplier поставщик актуального клиента Ignite 3
      */
     public StopOrderRepository(Supplier<IgniteClient> clientSupplier) {
-        this.clientSupplier = clientSupplier;
-    }
-
-    private KeyValueView<Tuple, Tuple> view() {
-        IgniteClient current = clientSupplier.get();
-        if (current == null) {
-            throw new IllegalStateException("Ignite 3 недоступен — соединение ещё не установлено");
-        }
-        if (kvView == null || current != lastClient) {
-            synchronized (this) {
-                current = clientSupplier.get();
-                if (current == null) {
-                    throw new IllegalStateException("Ignite 3 недоступен — соединение ещё не установлено");
-                }
-                if (kvView == null || current != lastClient) {
-                    kvView = current.tables().table(TABLE_NAME).keyValueView();
-                    lastClient = current;
-                }
-            }
-        }
-        return kvView;
+        super(clientSupplier, TABLE_NAME);
     }
 
     /**
@@ -61,8 +33,7 @@ public class StopOrderRepository {
      */
     public void save(String key, StopOrder order) {
         Tuple k = Tuple.create().set("id", key);
-        Tuple v = modelToRow(order);
-        view().put(null, k, v);
+        view().put(null, k, modelToRow(order));
     }
 
     /**
@@ -80,9 +51,9 @@ public class StopOrderRepository {
      */
     public List<StopOrder> findAll() {
         List<StopOrder> result = new ArrayList<>();
-        IgniteClient _client = clientSupplier.get();
-        if (_client == null) return result;
-        try (var rs = _client.sql().execute(null, "SELECT * FROM " + TABLE_NAME)) {
+        IgniteClient cl = client();
+        if (cl == null) return result;
+        try (var rs = cl.sql().execute(null, "SELECT * FROM " + TABLE_NAME)) {
             while (rs.hasNext()) {
                 var row = rs.next();
                 String id = row.stringValue("ID");

@@ -7,7 +7,7 @@ import services.sandbox.SandboxTradingService;
 /**
  * Handles "+тейк-профит TICKER PRICE" command.
  */
-public class SandboxTakeProfitCommand implements BotCommand {
+public class SandboxTakeProfitCommand extends AbstractCommand {
 
     private final SandboxTradingService sandboxTradingService;
 
@@ -32,13 +32,5 @@ public class SandboxTakeProfitCommand implements BotCommand {
             return "Укажите корректную цену: +тейк-профит ТИКЕР ЦЕНА";
         }
         return sandboxTradingService.setTakeProfit(event.getAuthor().getId(), parts[1], price);
-    }
-
-    private BigDecimal parseBigDecimal(String s) {
-        try {
-            return new BigDecimal(s.replace(',', '.'));
-        } catch (Exception e) {
-            return null;
-        }
     }
 }
