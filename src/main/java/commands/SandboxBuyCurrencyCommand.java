@@ -10,7 +10,7 @@ import java.math.BigDecimal;
  *
  * <p>Example: {@code +купить-валюту USD 1000} — buys USD for 1000 RUB at the current CBR rate.
  */
-public class SandboxBuyCurrencyCommand implements BotCommand {
+public class SandboxBuyCurrencyCommand extends AbstractCommand {
 
     private final SandboxCurrencyService sandboxCurrencyService;
 
@@ -39,13 +39,5 @@ public class SandboxBuyCurrencyCommand implements BotCommand {
                 parts[1],
                 amount
         );
-    }
-
-    private BigDecimal parseBigDecimal(String s) {
-        try {
-            return new BigDecimal(s.replace(',', '.'));
-        } catch (Exception e) {
-            return null;
-        }
     }
 }

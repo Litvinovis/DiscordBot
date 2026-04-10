@@ -3,10 +3,7 @@ package services.sandbox.repository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.ignite.client.IgniteClient;
-import org.apache.ignite.table.KeyValueView;
 import org.apache.ignite.table.Tuple;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import services.sandbox.model.SandboxUser;
 
 import java.time.LocalDate;
@@ -19,23 +16,14 @@ import java.util.function.Supplier;
 /**
  * Репозиторий пользователей песочницы.
  *
- * <p>Использует {@link KeyValueView} Apache Ignite 3 для операций по ключу
+ * <p>Использует {@link org.apache.ignite.table.KeyValueView} Apache Ignite 3 для операций по ключу
  * и SQL через {@link IgniteClient#sql()} для выборок всех записей.
  * Колонка {@code currency_holdings} хранится как JSON VARCHAR.
- *
- * <p>Получает клиент через {@link Supplier}, что позволяет автоматически
- * подхватить новый {@link IgniteClient} после переподключения — view сбрасывается
- * при смене объекта клиента.
  */
-public class SandboxUserRepository {
+public class SandboxUserRepository extends BaseIgniteRepository {
 
-    private static final Logger log = LoggerFactory.getLogger(SandboxUserRepository.class);
     private static final String TABLE_NAME = "sandbox_users";
     private static final ObjectMapper MAPPER = new ObjectMapper();
-
-    private final Supplier<IgniteClient> clientSupplier;
-    private volatile IgniteClient lastClient;
-    private volatile KeyValueView<Tuple, Tuple> kvView;
 
     /**
      * Создаёт репозиторий. View инициализируется лениво при первом обращении.
@@ -44,27 +32,7 @@ public class SandboxUserRepository {
      * @param clientSupplier поставщик актуального клиента Ignite 3
      */
     public SandboxUserRepository(Supplier<IgniteClient> clientSupplier) {
-        this.clientSupplier = clientSupplier;
-    }
-
-    private KeyValueView<Tuple, Tuple> view() {
-        IgniteClient current = clientSupplier.get();
-        if (current == null) {
-            throw new IllegalStateException("Ignite 3 недоступен — соединение ещё не установлено");
-        }
-        if (kvView == null || current != lastClient) {
-            synchronized (this) {
-                current = clientSupplier.get();
-                if (current == null) {
-                    throw new IllegalStateException("Ignite 3 недоступен — соединение ещё не установлено");
-                }
-                if (kvView == null || current != lastClient) {
-                    kvView = current.tables().table(TABLE_NAME).keyValueView();
-                    lastClient = current;
-                }
-            }
-        }
-        return kvView;
+        super(clientSupplier, TABLE_NAME);
     }
 
     /**
@@ -91,9 +59,9 @@ public class SandboxUserRepository {
      */
     public List<SandboxUser> findAll() {
         List<SandboxUser> result = new ArrayList<>();
-        IgniteClient client = clientSupplier.get();
-        if (client == null) return result;
-        try (var rs = client.sql().execute(null, "SELECT * FROM " + TABLE_NAME)) {
+        IgniteClient cl = client();
+        if (cl == null) return result;
+        try (var rs = cl.sql().execute(null, "SELECT * FROM " + TABLE_NAME)) {
             while (rs.hasNext()) {
                 var row = rs.next();
                 String userId = row.stringValue("USER_ID");
