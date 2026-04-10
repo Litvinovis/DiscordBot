@@ -104,7 +104,11 @@ public class SandboxTradingService implements
 
     public SandboxCurrencyService createCurrencyService() {
         if (currencyService == null) {
-            currencyService = new SandboxCurrencyService(users, new CbrRateService(), userLocks);
+            synchronized (this) {
+                if (currencyService == null) {
+                    currencyService = new SandboxCurrencyService(users, new CbrRateService(), userLocks);
+                }
+            }
         }
         return currencyService;
     }
@@ -134,7 +138,7 @@ public class SandboxTradingService implements
         }
     }
 
-    public synchronized String assets() {
+    public String assets() {
         if (shareByTicker.isEmpty()) {
             return "Список активов пуст.";
         }
@@ -260,7 +264,7 @@ public class SandboxTradingService implements
         return (buy ? "🟢 Куплено " : "🔴 Продано ") + qty + " " + ticker + " по " + fmt(price) + " " + cur + ". Комиссия " + fmt(fee) + " " + cur;
     }
 
-    public synchronized String portfolio(String userId) {
+    public String portfolio(String userId) {
         SandboxUser user = users.findById(userId);
         if (user == null) {
             return "Сначала выполните +регистрация";
@@ -306,7 +310,7 @@ public class SandboxTradingService implements
         return sb.toString();
     }
 
-    public synchronized String balance(String userId) {
+    public String balance(String userId) {
         SandboxUser user = users.findById(userId);
         if (user == null) {
             return "Сначала выполните +регистрация";
@@ -344,7 +348,7 @@ public class SandboxTradingService implements
         return result.toString();
     }
 
-    public synchronized String margin(String userId) {
+    public String margin(String userId) {
         SandboxUser user = users.findById(userId);
         if (user == null) {
             return "Сначала выполните +регистрация";
@@ -378,7 +382,7 @@ public class SandboxTradingService implements
                 leverageStatus);
     }
 
-    public synchronized String price(String ticker) {
+    public String price(String ticker) {
         Share s = shareByTicker.get(ticker.toUpperCase(Locale.ROOT));
         if (s == null) {
             return "Тикер не найден.";
@@ -390,7 +394,7 @@ public class SandboxTradingService implements
         return ticker.toUpperCase() + " = " + fmt(p) + " " + currencySymbol(s.getCurrency());
     }
 
-    public synchronized String top(String period) {
+    public String top(String period) {
         List<SandboxUser> all = users.findAll();
         if (all.isEmpty()) {
             return "Нет зарегистрированных пользователей.";
@@ -409,7 +413,7 @@ public class SandboxTradingService implements
         return sb.toString();
     }
 
-    public synchronized String myRank(String userId) {
+    public String myRank(String userId) {
         SandboxUser target = users.findById(userId);
         if (target == null) {
             return "Сначала выполните +регистрация";
@@ -434,7 +438,7 @@ public class SandboxTradingService implements
                 ROI: %s%s%%""".formatted(rank, all.size(), fmt(eq), roiSign, roi.toPlainString());
     }
 
-    public synchronized String history(String userId) {
+    public String history(String userId) {
         SandboxUser user = users.findById(userId);
         if (user == null) {
             return "Сначала выполните +регистрация";
@@ -458,7 +462,7 @@ public class SandboxTradingService implements
         return sb.toString().trim();
     }
 
-    public synchronized String stats(String userId) {
+    public String stats(String userId) {
         SandboxUser user = users.findById(userId);
         if (user == null) {
             return "Сначала выполните +регистрация";
@@ -576,7 +580,7 @@ public class SandboxTradingService implements
                 + " @ " + fmt(limitPrice) + " ₽ принята (ID: " + id.substring(0, 8) + "...)";
     }
 
-    public synchronized String myOrders(String userId) {
+    public String myOrders(String userId) {
         SandboxUser user = users.findById(userId);
         if (user == null) return "Сначала выполните +регистрация";
         List<LimitOrder> orders = limitOrders.findAll().stream()

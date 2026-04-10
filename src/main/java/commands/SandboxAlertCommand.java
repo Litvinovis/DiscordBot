@@ -7,7 +7,7 @@ import services.sandbox.SandboxTradingService;
 /**
  * Handles "+алерт TICKER PRICE" command.
  */
-public class SandboxAlertCommand implements BotCommand {
+public class SandboxAlertCommand extends AbstractCommand {
 
     private final SandboxTradingService sandboxTradingService;
 
@@ -32,13 +32,5 @@ public class SandboxAlertCommand implements BotCommand {
             return "Использование: +алерт ТИКЕР ЦЕНА";
         }
         return sandboxTradingService.setAlert(event.getAuthor().getId(), parts[1], price);
-    }
-
-    private BigDecimal parseBigDecimal(String s) {
-        try {
-            return new BigDecimal(s.replace(',', '.'));
-        } catch (Exception e) {
-            return null;
-        }
     }
 }

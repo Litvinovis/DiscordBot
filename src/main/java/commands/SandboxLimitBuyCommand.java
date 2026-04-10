@@ -7,7 +7,7 @@ import services.sandbox.SandboxTradingService;
 /**
  * Handles "+лимит-куплю TICKER QTY PRICE" command.
  */
-public class SandboxLimitBuyCommand implements BotCommand {
+public class SandboxLimitBuyCommand extends AbstractCommand {
 
     private final SandboxTradingService sandboxTradingService;
 
@@ -34,21 +34,5 @@ public class SandboxLimitBuyCommand implements BotCommand {
         }
         return sandboxTradingService.placeLimitBuy(
                 event.getAuthor().getId(), event.getAuthor().getName(), parts[1], qty, price);
-    }
-
-    private int parseInt(String s) {
-        try {
-            return Integer.parseInt(s);
-        } catch (Exception e) {
-            return -1;
-        }
-    }
-
-    private BigDecimal parseBigDecimal(String s) {
-        try {
-            return new BigDecimal(s.replace(',', '.'));
-        } catch (Exception e) {
-            return null;
-        }
     }
 }

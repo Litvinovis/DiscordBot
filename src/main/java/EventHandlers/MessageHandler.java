@@ -1,6 +1,5 @@
 package EventHandlers;
 
-import com.codahale.metrics.Counter;
 import commands.BotCommand;
 import commands.CurrencyInfoCommand;
 import commands.HelpCommand;
@@ -56,7 +55,6 @@ public class MessageHandler extends ListenerAdapter {
     private static final Logger log = LoggerFactory.getLogger(MessageHandler.class);
     private final Logger logger = LoggerFactory.getLogger("default-logger");
     private static final Set<String> ALLOW_CHANNEL_IDS = Set.copyOf(ConfigLoader.getAllowedChannelIds());
-    public static final Counter JOB_COPY_SUCCESS = new Counter();
 
     private final List<BotCommand> commands;
 

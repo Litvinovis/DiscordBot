@@ -6,7 +6,7 @@ import services.sandbox.SandboxTradingService;
 /**
  * Handles "+продать TICKER QTY" command.
  */
-public class SandboxSellCommand implements BotCommand {
+public class SandboxSellCommand extends AbstractCommand {
 
     private final SandboxTradingService sandboxTradingService;
 
@@ -32,13 +32,5 @@ public class SandboxSellCommand implements BotCommand {
                 parts[1],
                 parseInt(parts[2])
         );
-    }
-
-    private int parseInt(String s) {
-        try {
-            return Integer.parseInt(s);
-        } catch (Exception e) {
-            return -1;
-        }
     }
 }
