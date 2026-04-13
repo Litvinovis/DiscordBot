@@ -59,15 +59,29 @@ public class App {
         IgniteHealthService igniteHealthService = new IgniteHealthService(sandboxTradingService.getIgniteManager());
         igniteHealthService.start();
 
-        try {
-            JDA jda = JDABuilder.createDefault(discordToken).enableIntents(GatewayIntent.MESSAGE_CONTENT, new GatewayIntent[0]).addEventListeners(new MessageHandler(api, sandboxTradingService)).setActivity(Activity.playing("NASDAQ")).build();
-            jda.awaitReady();
-            new StatisticsSenderService(api, jda);
-            new SandboxReportScheduler(sandboxTradingService, jda);
-            new SandboxOrderScheduler(sandboxTradingService, jda);
-            start.info("Бот Discord успешно инициализирован");
-        } catch (Exception e) {
-            start.error("Ошибка инициализации бота Discord", (Throwable)e);
+        int discordDelaySec = 5;
+        while (true) {
+            try {
+                JDA jda = JDABuilder.createDefault(discordToken).enableIntents(GatewayIntent.MESSAGE_CONTENT, new GatewayIntent[0]).addEventListeners(new MessageHandler(api, sandboxTradingService)).setActivity(Activity.playing("NASDAQ")).build();
+                jda.awaitReady();
+                new StatisticsSenderService(api, jda);
+                new SandboxReportScheduler(sandboxTradingService, jda);
+                new SandboxOrderScheduler(sandboxTradingService, jda);
+                start.info("Бот Discord успешно инициализирован");
+                break;
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            } catch (Exception e) {
+                start.warn("Не удалось подключиться к Discord ({}), повтор через {} сек", e.getMessage(), discordDelaySec);
+                try {
+                    Thread.sleep(discordDelaySec * 1000L);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+                discordDelaySec = Math.min(discordDelaySec * 2, 60);
+            }
         }
     }
 }
