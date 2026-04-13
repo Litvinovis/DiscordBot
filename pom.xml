@@ -23,7 +23,7 @@
         <!-- Dependency versions -->
         <snakeyaml.version>2.6</snakeyaml.version>
         <logback.version>1.5.32</logback.version>
-        <jda.version>5.2.1</jda.version>
+        <jda.version>6.4.1</jda.version>
         <tinkoff.sdk.version>1.48</tinkoff.sdk.version>
         <ignite.version>3.1.0</ignite.version>
         <jackson.version>2.21.2</jackson.version>
