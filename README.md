@@ -184,7 +184,7 @@ WantedBy=multi-user.target
 ```
 src/main/java/
 ├── App.java                          # Точка входа
-├── events/
+├── EventHandlers/
 │   └── MessageHandler.java           # Обработка команд Discord
 ├── services/
 │   ├── CurrencyInfoService.java      # Информация о валютах

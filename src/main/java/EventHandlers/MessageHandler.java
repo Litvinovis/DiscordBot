@@ -1,4 +1,4 @@
-package events;
+package EventHandlers;
 
 import commands.BotCommand;
 import commands.CurrencyInfoCommand;

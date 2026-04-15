@@ -1,4 +1,4 @@
-import events.MessageHandler;
+import EventHandlers.MessageHandler;
 import lombok.Generated;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
