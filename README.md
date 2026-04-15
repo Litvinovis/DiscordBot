@@ -10,10 +10,10 @@ Discord-бот для симуляции торговли акциями. Под
 
 | Компонент | Версия |
 |---|---|
-| Java | 17 |
-| JDA (Discord API) | 5.2.1 |
+| Java | 21 |
+| JDA (Discord API) | 6.4.1 |
 | T-Bank Invest Java SDK | 1.48 |
-| Apache Ignite | 2.17.0 |
+| Apache Ignite | 3.1.0 (thin client) |
 | Logback | 1.5.32 |
 | Lombok | 1.18.44 |
 | Maven | 3.x |
@@ -101,7 +101,7 @@ cp .env.example .env
 
 ### Требования
 
-- JDK 17+
+- JDK 21+
 - Maven 3.6+
 
 ### Сборка fat-jar
