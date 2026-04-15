@@ -273,7 +273,7 @@ public final class ConfigLoader {
         String text = getString(yamlPath, envKey, defaultValue.toPlainString());
         try {
             return new BigDecimal(text);
-        } catch (Exception ignored) {
+        } catch (Exception _) {
             return defaultValue;
         }
     }
@@ -337,7 +337,7 @@ public final class ConfigLoader {
                 if (loaded instanceof Map<?, ?> map) {
                     return (Map<String, Object>) map;
                 }
-            } catch (IOException ignored) {
+            } catch (IOException _) {
             }
         }
 
@@ -348,7 +348,7 @@ public final class ConfigLoader {
                     return (Map<String, Object>) map;
                 }
             }
-        } catch (IOException ignored) {
+        } catch (IOException _) {
         }
 
         return Collections.emptyMap();
