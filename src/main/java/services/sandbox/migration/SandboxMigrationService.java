@@ -108,7 +108,7 @@ public class SandboxMigrationService {
         }
 
         for (String key : badKeys) {
-            try { repo.delete(key); } catch (Exception ignored) {}
+            try { repo.delete(key); } catch (Exception _) {}
         }
         log.info("[Migration] table='{}' migrated={} removed={}", tableName, migrated, badKeys.size());
         return new CacheMigrationResult(migrated, badKeys.size());
@@ -142,7 +142,7 @@ public class SandboxMigrationService {
         }
 
         for (String key : badKeys) {
-            try { repo.delete(key); } catch (Exception ignored) {}
+            try { repo.delete(key); } catch (Exception _) {}
         }
         log.info("[Migration] table='{}' migrated={} removed={}", tableName, migrated, badKeys.size());
         return new CacheMigrationResult(migrated, badKeys.size());
@@ -176,7 +176,7 @@ public class SandboxMigrationService {
         }
 
         for (String key : badKeys) {
-            try { repo.delete(key); } catch (Exception ignored) {}
+            try { repo.delete(key); } catch (Exception _) {}
         }
         log.info("[Migration] table='{}' migrated={} removed={}", tableName, migrated, badKeys.size());
         return new CacheMigrationResult(migrated, badKeys.size());
@@ -210,7 +210,7 @@ public class SandboxMigrationService {
         }
 
         for (String key : badKeys) {
-            try { repo.delete(key); } catch (Exception ignored) {}
+            try { repo.delete(key); } catch (Exception _) {}
         }
         log.info("[Migration] table='{}' migrated={} removed={}", tableName, migrated, badKeys.size());
         return new CacheMigrationResult(migrated, badKeys.size());
@@ -244,7 +244,7 @@ public class SandboxMigrationService {
         }
 
         for (String key : badKeys) {
-            try { repo.delete(key); } catch (Exception ignored) {}
+            try { repo.delete(key); } catch (Exception _) {}
         }
         log.info("[Migration] table='{}' migrated={} removed={}", tableName, migrated, badKeys.size());
         return new CacheMigrationResult(migrated, badKeys.size());
@@ -278,7 +278,7 @@ public class SandboxMigrationService {
         }
 
         for (String key : badKeys) {
-            try { repo.delete(key); } catch (Exception ignored) {}
+            try { repo.delete(key); } catch (Exception _) {}
         }
         log.info("[Migration] table='{}' migrated={} removed={}", tableName, migrated, badKeys.size());
         return new CacheMigrationResult(migrated, badKeys.size());
