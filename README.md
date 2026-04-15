@@ -10,7 +10,7 @@ Discord-бот для симуляции торговли акциями. Под
 
 | Компонент | Версия |
 |---|---|
-| Java | 21 |
+| Java | 25 |
 | JDA (Discord API) | 6.4.1 |
 | T-Bank Invest Java SDK | 1.48 |
 | Apache Ignite | 3.1.0 (thin client) |
@@ -101,7 +101,7 @@ cp .env.example .env
 
 ### Требования
 
-- JDK 21+
+- JDK 25+
 - Maven 3.6+
 
 ### Сборка fat-jar
@@ -144,7 +144,7 @@ CI/CD настроен в `.github/workflows/deploy.yml` и запускаетс
 ### Требования к runner
 
 - Self-hosted GitHub Actions runner на сервере деплоя.
-- Java 21 (устанавливается шагом `actions/setup-java`).
+- Java 25 (устанавливается шагом `actions/setup-java`).
 - Systemd-сервис `bot-discord`, который запускает `DiscordBot.jar` с нужными переменными окружения.
 - Runner имеет права на `sudo systemctl restart bot-discord` и `sudo cp`.
 
