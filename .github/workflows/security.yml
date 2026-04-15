@@ -3,6 +3,8 @@ name: Security Scan
 on:
   push:
     branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
   schedule:
     - cron: '0 2 * * 1'  # Еженедельно в понедельник
   workflow_dispatch:
@@ -11,6 +13,8 @@ jobs:
   sast:
     name: SAST — SpotBugs + FindSecBugs
     runs-on: self-hosted
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK 21
