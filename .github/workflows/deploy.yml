@@ -45,6 +45,12 @@ jobs:
           # Deploy new jar
           sudo cp target/${JAR_NAME} ${DEPLOY_DIR}/${JAR_NAME}
 
+          # Deploy launch script if present in repo
+          if [ -f discordbot.sh ]; then
+            sudo cp discordbot.sh ${DEPLOY_DIR}/discordbot.sh
+            sudo chmod +x ${DEPLOY_DIR}/discordbot.sh
+          fi
+
           # Restart service
           sudo systemctl restart ${SERVICE}
 
