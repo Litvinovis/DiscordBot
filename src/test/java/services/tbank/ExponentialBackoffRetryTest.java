@@ -24,11 +24,11 @@ class ExponentialBackoffRetryTest {
     }
 
     // -----------------------------------------------------------------------
-    // Test 2: non-rate-limit exception is re-thrown immediately
+    // Test 2: non-retryable exception is re-thrown immediately
     // -----------------------------------------------------------------------
 
     @Test
-    void nonRateLimitException_isRethrownImmediately() {
+    void nonRetryableException_isRethrownImmediately() {
         AtomicInteger callCount = new AtomicInteger(0);
 
         RuntimeException ex = assertThrows(RuntimeException.class, () ->
@@ -40,72 +40,85 @@ class ExponentialBackoffRetryTest {
 
         assertEquals("Some other error", ex.getMessage());
         // Should not retry on non-rate-limit errors
-        assertEquals(1, callCount.get(), "Must not retry on non-rate-limit errors");
+        assertEquals(1, callCount.get(), "Must not retry on non-retryable errors");
     }
 
     // -----------------------------------------------------------------------
-    // Test 3: isRateLimitError detects 429 in the message
+    // Test 3: isRetryableError detects various transient errors
     // -----------------------------------------------------------------------
 
     @Test
-    void isRateLimitError_detectsWith429() {
+    void isRetryableError_detectsWith429() {
         RuntimeException e = new RuntimeException("HTTP 429: Too Many Requests");
-        assertTrue(ExponentialBackoffRetry.isRateLimitError(e));
+        assertTrue(ExponentialBackoffRetry.isRetryableError(e));
     }
 
     @Test
-    void isRateLimitError_detectsTooManyRequests() {
+    void isRetryableError_detectsTooManyRequests() {
         RuntimeException e = new RuntimeException("too many requests from client");
-        assertTrue(ExponentialBackoffRetry.isRateLimitError(e));
+        assertTrue(ExponentialBackoffRetry.isRetryableError(e));
     }
 
     @Test
-    void isRateLimitError_detectsRateLimit() {
+    void isRetryableError_detectsRateLimit() {
         RuntimeException e = new RuntimeException("rate limit exceeded");
-        assertTrue(ExponentialBackoffRetry.isRateLimitError(e));
+        assertTrue(ExponentialBackoffRetry.isRetryableError(e));
     }
 
     @Test
-    void isRateLimitError_detectsResourceExhausted() {
+    void isRetryableError_detectsResourceExhausted() {
         RuntimeException e = new RuntimeException("RESOURCE_EXHAUSTED: quota exceeded");
-        assertTrue(ExponentialBackoffRetry.isRateLimitError(e));
+        assertTrue(ExponentialBackoffRetry.isRetryableError(e));
     }
 
     @Test
-    void isRateLimitError_caseInsensitive() {
+    void isRetryableError_caseInsensitive() {
         RuntimeException e = new RuntimeException("RATE LIMIT EXCEEDED");
-        assertTrue(ExponentialBackoffRetry.isRateLimitError(e));
+        assertTrue(ExponentialBackoffRetry.isRetryableError(e));
     }
 
     @Test
-    void isRateLimitError_normalError_returnsFalse() {
+    void isRetryableError_normalError_returnsFalse() {
         RuntimeException e = new RuntimeException("Connection refused");
-        assertFalse(ExponentialBackoffRetry.isRateLimitError(e));
+        assertFalse(ExponentialBackoffRetry.isRetryableError(e));
     }
 
     @Test
-    void isRateLimitError_nullMessage_returnsFalse() {
+    void isRetryableError_detectsGrpcUnavailable() {
+        RuntimeException e = new RuntimeException("UNAVAILABLE: io exception");
+        assertTrue(ExponentialBackoffRetry.isRetryableError(e));
+    }
+
+    @Test
+    void isRetryableError_detectsConnectionReset() {
+        RuntimeException cause = new RuntimeException("Connection reset");
+        RuntimeException wrapper = new RuntimeException("UNAVAILABLE: io exception", cause);
+        assertTrue(ExponentialBackoffRetry.isRetryableError(wrapper));
+    }
+
+    @Test
+    void isRetryableError_nullMessage_returnsFalse() {
         RuntimeException e = new RuntimeException((String) null);
-        assertFalse(ExponentialBackoffRetry.isRateLimitError(e));
+        assertFalse(ExponentialBackoffRetry.isRetryableError(e));
     }
 
     // -----------------------------------------------------------------------
-    // Test 4: isRateLimitError checks cause chain
+    // Test 4: isRetryableError checks cause chain
     // -----------------------------------------------------------------------
 
     @Test
-    void isRateLimitError_detectsInCause() {
+    void isRetryableError_detectsInCause() {
         RuntimeException cause = new RuntimeException("HTTP 429");
         RuntimeException wrapper = new RuntimeException("Wrapped error", cause);
-        assertTrue(ExponentialBackoffRetry.isRateLimitError(wrapper));
+        assertTrue(ExponentialBackoffRetry.isRetryableError(wrapper));
     }
 
     @Test
-    void isRateLimitError_deepCause_detected() {
+    void isRetryableError_deepCause_detected() {
         RuntimeException root = new RuntimeException("resource exhausted");
         RuntimeException mid = new RuntimeException("API call failed", root);
         RuntimeException top = new RuntimeException("Service unavailable", mid);
-        assertTrue(ExponentialBackoffRetry.isRateLimitError(top));
+        assertTrue(ExponentialBackoffRetry.isRetryableError(top));
     }
 
     // -----------------------------------------------------------------------
