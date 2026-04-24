@@ -5,13 +5,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Utility for retrying an operation with exponential backoff on rate-limit errors.
+ * Utility for retrying an operation with exponential backoff on transient errors.
  *
  * <p>Strategy: start with {@code initialDelayMs}, double on each attempt, cap at
  * {@code maxDelayMs}, stop after {@code maxAttempts} attempts total.
  *
- * <p>Recognises rate-limit conditions by checking if the exception message contains
- * "429", "rate", "too many requests", or "resource exhausted" (case-insensitive).
+ * <p>Recognises retryable conditions by checking if the exception message contains
+ * "429", "rate", "too many requests", "resource exhausted", "unavailable", or
+ * "connection reset" (case-insensitive).
  */
 public class ExponentialBackoffRetry {
 
@@ -28,12 +29,12 @@ public class ExponentialBackoffRetry {
     }
 
     /**
-     * Execute {@code action} with exponential backoff on rate-limit errors.
+     * Execute {@code action} with exponential backoff on transient errors.
      *
      * @param action the operation to perform
      * @param <T>    return type
      * @return the result of {@code action}
-     * @throws RuntimeException if all retries are exhausted or a non-rate-limit error occurs
+     * @throws RuntimeException if all retries are exhausted or a non-retryable error occurs
      */
     public static <T> T execute(Supplier<T> action) {
         long delayMs = INITIAL_DELAY_MS;
@@ -43,15 +44,15 @@ public class ExponentialBackoffRetry {
             try {
                 return action.get();
             } catch (Exception ex) {
-                if (!isRateLimitError(ex)) {
+                if (!isRetryableError(ex)) {
                     throw ex;
                 }
                 if (attempt >= MAX_ATTEMPTS) {
-                    log.warn("Rate limit: all {} attempts exhausted. Last error: {}", MAX_ATTEMPTS, ex.getMessage());
+                    log.warn("Transient error: all {} attempts exhausted. Last error: {}", MAX_ATTEMPTS, ex.getMessage());
                     throw ex;
                 }
                 long sleepMs = Math.min(delayMs, MAX_DELAY_MS);
-                log.warn("Rate limit detected (attempt {}/{}). Retrying in {} ms. Error: {}",
+                log.warn("Transient error detected (attempt {}/{}). Retrying in {} ms. Error: {}",
                         attempt, MAX_ATTEMPTS, sleepMs, ex.getMessage());
                 try {
                     Thread.sleep(sleepMs);
@@ -65,9 +66,10 @@ public class ExponentialBackoffRetry {
     }
 
     /**
-     * Returns true if the exception (or any of its causes) looks like a rate-limit / 429 error.
+     * Returns true if the exception (or any of its causes) is a transient error worth retrying:
+     * rate-limit (429), gRPC UNAVAILABLE, or connection reset.
      */
-    static boolean isRateLimitError(Throwable t) {
+    static boolean isRetryableError(Throwable t) {
         Throwable current = t;
         while (current != null) {
             String msg = current.getMessage();
@@ -77,7 +79,9 @@ public class ExponentialBackoffRetry {
                         || lower.contains("too many requests")
                         || lower.contains("rate limit")
                         || lower.contains("resource exhausted")
-                        || lower.contains("resource_exhausted")) {
+                        || lower.contains("resource_exhausted")
+                        || lower.contains("unavailable")
+                        || lower.contains("connection reset")) {
                     return true;
                 }
             }
