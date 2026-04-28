@@ -1,117 +1,89 @@
 package services.sandbox.repository;
 
-import org.apache.ignite.client.IgniteClient;
-import org.apache.ignite.table.Tuple;
 import services.sandbox.model.LimitOrder;
 
+import javax.sql.DataSource;
+import java.sql.*;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
 
-/**
- * Репозиторий активных лимитных заявок песочницы.
- *
- * <p>Поле {@code side} хранится как {@code trade_side},
- * {@code createdAt} — как BIGINT (epoch millis).
- */
 public class LimitOrderRepository extends BaseIgniteRepository {
 
-    private static final String TABLE_NAME = "sandbox_limit_orders";
-
-    /**
-     * Создаёт репозиторий. View инициализируется лениво при первом обращении.
-     *
-     * @param clientSupplier поставщик актуального клиента Ignite 3
-     */
-    public LimitOrderRepository(Supplier<IgniteClient> clientSupplier) {
-        super(clientSupplier, TABLE_NAME);
+    public LimitOrderRepository(DataSource dataSource) {
+        super(dataSource);
     }
 
-    /**
-     * Сохраняет лимитную заявку по ключу (orderId).
-     */
     public void save(String key, LimitOrder order) {
-        Tuple k = Tuple.create().set("id", key);
-        view().put(null, k, modelToRow(order));
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(
+                 "INSERT INTO sandbox_limit_orders (id, user_id, user_name, ticker, trade_side, qty, limit_price, created_at, schema_version) " +
+                 "VALUES (?,?,?,?,?,?,?,?,?) " +
+                 "ON CONFLICT (id) DO UPDATE SET user_id=EXCLUDED.user_id, user_name=EXCLUDED.user_name, " +
+                 "ticker=EXCLUDED.ticker, trade_side=EXCLUDED.trade_side, qty=EXCLUDED.qty, " +
+                 "limit_price=EXCLUDED.limit_price, created_at=EXCLUDED.created_at, schema_version=EXCLUDED.schema_version")) {
+            ps.setString(1, key);
+            ps.setString(2, order.getUserId());
+            ps.setString(3, order.getUserName());
+            ps.setString(4, order.getTicker());
+            ps.setString(5, order.getSide());
+            ps.setInt(6, order.getQty());
+            ps.setDouble(7, order.getLimitPrice());
+            ps.setLong(8, order.getCreatedAt() != null ? order.getCreatedAt().toEpochMilli() : 0L);
+            ps.setInt(9, order.getSchemaVersion());
+            ps.executeUpdate();
+        } catch (Exception e) {
+            log.error("LimitOrderRepository.save({}) failed: {}", key, e.getMessage(), e);
+        }
     }
 
-    /**
-     * Возвращает лимитную заявку по id или {@code null}.
-     */
     public LimitOrder findById(String key) {
-        Tuple k = Tuple.create().set("id", key);
-        Tuple row = view().get(null, k);
-        if (row == null) return null;
-        return rowToModel(key, row);
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement("SELECT * FROM sandbox_limit_orders WHERE id = ?")) {
+            ps.setString(1, key);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return mapRow(rs);
+            }
+        } catch (Exception e) {
+            log.error("LimitOrderRepository.findById({}) failed: {}", key, e.getMessage(), e);
+        }
+        return null;
     }
 
-    /**
-     * Возвращает все лимитные заявки через SQL SELECT.
-     */
     public List<LimitOrder> findAll() {
         List<LimitOrder> result = new ArrayList<>();
-        IgniteClient cl = client();
-        if (cl == null) return result;
-        try (var rs = cl.sql().execute(null, "SELECT * FROM " + TABLE_NAME)) {
-            while (rs.hasNext()) {
-                var row = rs.next();
-                String id = row.stringValue("ID");
-                LimitOrder order = new LimitOrder(
-                        id,
-                        row.stringValue("USER_ID"),
-                        row.stringValue("USER_NAME"),
-                        row.stringValue("TICKER"),
-                        row.stringValue("TRADE_SIDE"),
-                        row.intValue("QTY"),
-                        row.doubleValue("LIMIT_PRICE"),
-                        Instant.ofEpochMilli(row.longValue("CREATED_AT"))
-                );
-                order.setSchemaVersion(row.intValue("SCHEMA_VERSION"));
-                result.add(order);
-            }
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement("SELECT * FROM sandbox_limit_orders");
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) result.add(mapRow(rs));
         } catch (Exception e) {
             log.error("LimitOrderRepository.findAll() failed: {}", e.getMessage(), e);
         }
         return result;
     }
 
-    /**
-     * Удаляет лимитную заявку по id.
-     */
     public void delete(String key) {
-        Tuple k = Tuple.create().set("id", key);
-        view().remove(null, k);
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement("DELETE FROM sandbox_limit_orders WHERE id = ?")) {
+            ps.setString(1, key);
+            ps.executeUpdate();
+        } catch (Exception e) {
+            log.error("LimitOrderRepository.delete({}) failed: {}", key, e.getMessage(), e);
+        }
     }
 
-    // -----------------------------------------------------------------------
-    // Mapping helpers
-    // -----------------------------------------------------------------------
-
-    private LimitOrder rowToModel(String key, Tuple row) {
+    private LimitOrder mapRow(ResultSet rs) throws SQLException {
         LimitOrder order = new LimitOrder(
-                key,
-                row.stringValue("user_id"),
-                row.stringValue("user_name"),
-                row.stringValue("ticker"),
-                row.stringValue("trade_side"),
-                row.intValue("qty"),
-                row.doubleValue("limit_price"),
-                Instant.ofEpochMilli(row.longValue("created_at"))
+                rs.getString("id"),
+                rs.getString("user_id"),
+                rs.getString("user_name"),
+                rs.getString("ticker"),
+                rs.getString("trade_side"),
+                rs.getInt("qty"),
+                rs.getDouble("limit_price"),
+                Instant.ofEpochMilli(rs.getLong("created_at"))
         );
-        order.setSchemaVersion(row.intValue("schema_version"));
+        order.setSchemaVersion(rs.getInt("schema_version"));
         return order;
-    }
-
-    private Tuple modelToRow(LimitOrder order) {
-        return Tuple.create()
-                .set("user_id", order.getUserId())
-                .set("user_name", order.getUserName())
-                .set("ticker", order.getTicker())
-                .set("trade_side", order.getSide())
-                .set("qty", order.getQty())
-                .set("limit_price", order.getLimitPrice())
-                .set("created_at", order.getCreatedAt() != null ? order.getCreatedAt().toEpochMilli() : 0L)
-                .set("schema_version", order.getSchemaVersion());
     }
 }
