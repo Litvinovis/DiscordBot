@@ -202,51 +202,30 @@ public final class ConfigLoader {
     }
 
     /**
-     * Возвращает адрес Ignite 3 thin client (host:port).
+     * Возвращает JDBC URL базы данных PostgreSQL.
      *
-     * @return адрес (по умолчанию {@code "127.0.0.1:10300"})
+     * @return JDBC URL (по умолчанию {@code "jdbc:postgresql://127.0.0.1:5432/stonks"})
      */
-    public static String getIgnite3Address() {
-        return getString("ignite3.address", "IGNITE3_ADDRESS", "127.0.0.1:10300");
+    public static String getDbUrl() {
+        return getString("db.url", "DB_URL", "jdbc:postgresql://127.0.0.1:5432/stonks");
     }
 
     /**
-     * Возвращает локальный адрес для привязки Ignite-клиента (legacy, не используется в Ignite 3).
+     * Возвращает имя пользователя PostgreSQL.
      *
-     * @return адрес (по умолчанию {@code "127.0.0.1"})
+     * @return имя пользователя (по умолчанию {@code "stonks"})
      */
-    public static String getIgniteLocalAddress() {
-        return getString("ignite.local-address", "IGNITE_LOCAL_ADDRESS", "127.0.0.1");
+    public static String getDbUsername() {
+        return getString("db.username", "DB_USER", "stonks");
     }
 
     /**
-     * Возвращает список адресов для TCP-discovery Ignite-кластера (legacy, не используется в Ignite 3).
+     * Возвращает пароль пользователя PostgreSQL.
      *
-     * @return список адресов в формате {@code host:port} или {@code host:portRange}
+     * @return пароль (по умолчанию {@code "stonks_pg_2026"})
      */
-    public static List<String> getIgniteDiscoveryAddresses() {
-        String fromEnv = System.getenv("IGNITE_DISCOVERY_ADDRESSES");
-        if (fromEnv != null && !fromEnv.isBlank()) {
-            return parseCsv(fromEnv);
-        }
-        Object value = getNestedValue(CONFIG, "ignite.discovery-addresses");
-        if (value instanceof List<?> list) {
-            return list.stream()
-                    .map(Object::toString)
-                    .map(String::trim)
-                    .filter(s -> !s.isEmpty())
-                    .toList();
-        }
-        return List.of("127.0.0.1:47500..47509");
-    }
-
-    /**
-     * Возвращает рабочую директорию для Ignite-клиента (legacy, не используется в Ignite 3).
-     *
-     * @return путь к директории (по умолчанию {@code "/tmp/ignite-stonks-client"})
-     */
-    public static String getIgniteWorkDir() {
-        return getString("ignite.work-dir", "IGNITE_WORK_DIR", "/tmp/ignite-stonks-client");
+    public static String getDbPassword() {
+        return getString("db.password", "DB_PASSWORD", "stonks_pg_2026");
     }
 
     private static String getString(String yamlPath, String envKey, String defaultValue) {
