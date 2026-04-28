@@ -1,110 +1,85 @@
 package services.sandbox.repository;
 
-import org.apache.ignite.client.IgniteClient;
-import org.apache.ignite.table.Tuple;
 import services.sandbox.model.PriceAlert;
 
+import javax.sql.DataSource;
+import java.sql.*;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
 
-/**
- * Репозиторий ценовых алертов песочницы.
- *
- * <p>Поле {@code createdAt} хранится как BIGINT (epoch millis).
- */
 public class PriceAlertRepository extends BaseIgniteRepository {
 
-    private static final String TABLE_NAME = "sandbox_price_alerts";
-
-    /**
-     * Создаёт репозиторий. View инициализируется лениво при первом обращении.
-     *
-     * @param clientSupplier поставщик актуального клиента Ignite 3
-     */
-    public PriceAlertRepository(Supplier<IgniteClient> clientSupplier) {
-        super(clientSupplier, TABLE_NAME);
+    public PriceAlertRepository(DataSource dataSource) {
+        super(dataSource);
     }
 
-    /**
-     * Сохраняет ценовой алерт по ключу (alertId).
-     */
     public void save(String key, PriceAlert alert) {
-        Tuple k = Tuple.create().set("id", key);
-        view().put(null, k, modelToRow(alert));
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(
+                 "INSERT INTO sandbox_price_alerts (id, user_id, ticker, target_price, above, created_at, schema_version) " +
+                 "VALUES (?,?,?,?,?,?,?) " +
+                 "ON CONFLICT (id) DO UPDATE SET user_id=EXCLUDED.user_id, ticker=EXCLUDED.ticker, " +
+                 "target_price=EXCLUDED.target_price, above=EXCLUDED.above, " +
+                 "created_at=EXCLUDED.created_at, schema_version=EXCLUDED.schema_version")) {
+            ps.setString(1, key);
+            ps.setString(2, alert.getUserId());
+            ps.setString(3, alert.getTicker());
+            ps.setDouble(4, alert.getTargetPrice());
+            ps.setBoolean(5, alert.isAbove());
+            ps.setLong(6, alert.getCreatedAt() != null ? alert.getCreatedAt().toEpochMilli() : 0L);
+            ps.setInt(7, alert.getSchemaVersion());
+            ps.executeUpdate();
+        } catch (Exception e) {
+            log.error("PriceAlertRepository.save({}) failed: {}", key, e.getMessage(), e);
+        }
     }
 
-    /**
-     * Возвращает ценовой алерт по id или {@code null}.
-     */
     public PriceAlert findById(String key) {
-        Tuple k = Tuple.create().set("id", key);
-        Tuple row = view().get(null, k);
-        if (row == null) return null;
-        return rowToModel(key, row);
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement("SELECT * FROM sandbox_price_alerts WHERE id = ?")) {
+            ps.setString(1, key);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return mapRow(rs);
+            }
+        } catch (Exception e) {
+            log.error("PriceAlertRepository.findById({}) failed: {}", key, e.getMessage(), e);
+        }
+        return null;
     }
 
-    /**
-     * Возвращает все ценовые алерты через SQL SELECT.
-     */
     public List<PriceAlert> findAll() {
         List<PriceAlert> result = new ArrayList<>();
-        IgniteClient cl = client();
-        if (cl == null) return result;
-        try (var rs = cl.sql().execute(null, "SELECT * FROM " + TABLE_NAME)) {
-            while (rs.hasNext()) {
-                var row = rs.next();
-                String id = row.stringValue("ID");
-                PriceAlert alert = new PriceAlert(
-                        id,
-                        row.stringValue("USER_ID"),
-                        row.stringValue("TICKER"),
-                        row.doubleValue("TARGET_PRICE"),
-                        row.booleanValue("ABOVE"),
-                        Instant.ofEpochMilli(row.longValue("CREATED_AT"))
-                );
-                alert.setSchemaVersion(row.intValue("SCHEMA_VERSION"));
-                result.add(alert);
-            }
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement("SELECT * FROM sandbox_price_alerts");
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) result.add(mapRow(rs));
         } catch (Exception e) {
             log.error("PriceAlertRepository.findAll() failed: {}", e.getMessage(), e);
         }
         return result;
     }
 
-    /**
-     * Удаляет ценовой алерт по id.
-     */
     public void delete(String key) {
-        Tuple k = Tuple.create().set("id", key);
-        view().remove(null, k);
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement("DELETE FROM sandbox_price_alerts WHERE id = ?")) {
+            ps.setString(1, key);
+            ps.executeUpdate();
+        } catch (Exception e) {
+            log.error("PriceAlertRepository.delete({}) failed: {}", key, e.getMessage(), e);
+        }
     }
 
-    // -----------------------------------------------------------------------
-    // Mapping helpers
-    // -----------------------------------------------------------------------
-
-    private PriceAlert rowToModel(String key, Tuple row) {
+    private PriceAlert mapRow(ResultSet rs) throws SQLException {
         PriceAlert alert = new PriceAlert(
-                key,
-                row.stringValue("user_id"),
-                row.stringValue("ticker"),
-                row.doubleValue("target_price"),
-                row.booleanValue("above"),
-                Instant.ofEpochMilli(row.longValue("created_at"))
+                rs.getString("id"),
+                rs.getString("user_id"),
+                rs.getString("ticker"),
+                rs.getDouble("target_price"),
+                rs.getBoolean("above"),
+                Instant.ofEpochMilli(rs.getLong("created_at"))
         );
-        alert.setSchemaVersion(row.intValue("schema_version"));
+        alert.setSchemaVersion(rs.getInt("schema_version"));
         return alert;
-    }
-
-    private Tuple modelToRow(PriceAlert alert) {
-        return Tuple.create()
-                .set("user_id", alert.getUserId())
-                .set("ticker", alert.getTicker())
-                .set("target_price", alert.getTargetPrice())
-                .set("above", alert.isAbove())
-                .set("created_at", alert.getCreatedAt() != null ? alert.getCreatedAt().toEpochMilli() : 0L)
-                .set("schema_version", alert.getSchemaVersion());
     }
 }

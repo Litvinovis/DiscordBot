@@ -2,147 +2,110 @@ package services.sandbox.repository;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.ignite.client.IgniteClient;
-import org.apache.ignite.table.Tuple;
 import services.sandbox.model.SandboxUser;
 
+import javax.sql.DataSource;
+import java.sql.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Supplier;
 
-/**
- * Репозиторий пользователей песочницы.
- *
- * <p>Использует {@link org.apache.ignite.table.KeyValueView} Apache Ignite 3 для операций по ключу
- * и SQL через {@link IgniteClient#sql()} для выборок всех записей.
- * Колонка {@code currency_holdings} хранится как JSON VARCHAR.
- */
 public class SandboxUserRepository extends BaseIgniteRepository {
 
-    private static final String TABLE_NAME = "sandbox_users";
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    /**
-     * Создаёт репозиторий. View инициализируется лениво при первом обращении.
-     * При смене клиента (переподключение) view сбрасывается автоматически.
-     *
-     * @param clientSupplier поставщик актуального клиента Ignite 3
-     */
-    public SandboxUserRepository(Supplier<IgniteClient> clientSupplier) {
-        super(clientSupplier, TABLE_NAME);
+    public SandboxUserRepository(DataSource dataSource) {
+        super(dataSource);
     }
 
-    /**
-     * Сохраняет пользователя по ключу userId.
-     */
     public void save(String key, SandboxUser user) {
-        Tuple k = Tuple.create().set("user_id", key);
-        Tuple v = modelToRow(user);
-        view().put(null, k, v);
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(
+                 "INSERT INTO sandbox_users (user_id, user_name, cash, borrowed, total_fees, " +
+                 "daily_baseline_date, daily_baseline_equity, weekly_baseline_date, weekly_baseline_equity, " +
+                 "monthly_baseline_date, monthly_baseline_equity, currency_holdings, schema_version) " +
+                 "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) " +
+                 "ON CONFLICT (user_id) DO UPDATE SET user_name=EXCLUDED.user_name, cash=EXCLUDED.cash, " +
+                 "borrowed=EXCLUDED.borrowed, total_fees=EXCLUDED.total_fees, " +
+                 "daily_baseline_date=EXCLUDED.daily_baseline_date, daily_baseline_equity=EXCLUDED.daily_baseline_equity, " +
+                 "weekly_baseline_date=EXCLUDED.weekly_baseline_date, weekly_baseline_equity=EXCLUDED.weekly_baseline_equity, " +
+                 "monthly_baseline_date=EXCLUDED.monthly_baseline_date, monthly_baseline_equity=EXCLUDED.monthly_baseline_equity, " +
+                 "currency_holdings=EXCLUDED.currency_holdings, schema_version=EXCLUDED.schema_version")) {
+            ps.setString(1, key);
+            ps.setString(2, user.getUserName());
+            ps.setDouble(3, user.getCash());
+            ps.setDouble(4, user.getBorrowed());
+            ps.setDouble(5, user.getTotalFees());
+            ps.setString(6, user.getDailyBaselineDate() != null ? user.getDailyBaselineDate().toString() : null);
+            ps.setDouble(7, user.getDailyBaselineEquity());
+            ps.setString(8, user.getWeeklyBaselineDate() != null ? user.getWeeklyBaselineDate().toString() : null);
+            ps.setDouble(9, user.getWeeklyBaselineEquity());
+            ps.setString(10, user.getMonthlyBaselineDate() != null ? user.getMonthlyBaselineDate().toString() : null);
+            ps.setDouble(11, user.getMonthlyBaselineEquity());
+            ps.setString(12, serializeHoldings(user.getCurrencyHoldings()));
+            ps.setInt(13, user.getSchemaVersion());
+            ps.executeUpdate();
+        } catch (Exception e) {
+            log.error("SandboxUserRepository.save({}) failed: {}", key, e.getMessage(), e);
+        }
     }
 
-    /**
-     * Возвращает пользователя по userId или {@code null}, если не найден.
-     */
     public SandboxUser findById(String key) {
-        Tuple k = Tuple.create().set("user_id", key);
-        Tuple row = view().get(null, k);
-        if (row == null) return null;
-        return rowToModel(key, row);
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement("SELECT * FROM sandbox_users WHERE user_id = ?")) {
+            ps.setString(1, key);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return mapRow(rs);
+            }
+        } catch (Exception e) {
+            log.error("SandboxUserRepository.findById({}) failed: {}", key, e.getMessage(), e);
+        }
+        return null;
     }
 
-    /**
-     * Возвращает список всех пользователей через SQL SELECT.
-     */
     public List<SandboxUser> findAll() {
         List<SandboxUser> result = new ArrayList<>();
-        IgniteClient cl = client();
-        if (cl == null) return result;
-        try (var rs = cl.sql().execute(null, "SELECT * FROM " + TABLE_NAME)) {
-            while (rs.hasNext()) {
-                var row = rs.next();
-                String userId = row.stringValue("USER_ID");
-                SandboxUser user = new SandboxUser();
-                user.setUserId(userId);
-                user.setUserName(row.stringValue("USER_NAME"));
-                user.setCash(row.doubleValue("CASH"));
-                user.setBorrowed(row.doubleValue("BORROWED"));
-                user.setTotalFees(row.doubleValue("TOTAL_FEES"));
-                String dailyDate = row.stringValue("DAILY_BASELINE_DATE");
-                if (dailyDate != null) user.setDailyBaselineDate(LocalDate.parse(dailyDate));
-                user.setDailyBaselineEquity(row.doubleValue("DAILY_BASELINE_EQUITY"));
-                String weeklyDate = row.stringValue("WEEKLY_BASELINE_DATE");
-                if (weeklyDate != null) user.setWeeklyBaselineDate(LocalDate.parse(weeklyDate));
-                user.setWeeklyBaselineEquity(row.doubleValue("WEEKLY_BASELINE_EQUITY"));
-                String monthlyDate = row.stringValue("MONTHLY_BASELINE_DATE");
-                if (monthlyDate != null) user.setMonthlyBaselineDate(LocalDate.parse(monthlyDate));
-                user.setMonthlyBaselineEquity(row.doubleValue("MONTHLY_BASELINE_EQUITY"));
-                String holdingsJson = row.stringValue("CURRENCY_HOLDINGS");
-                user.setCurrencyHoldings(parseHoldings(holdingsJson));
-                user.setSchemaVersion(row.intValue("SCHEMA_VERSION"));
-                result.add(user);
-            }
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement("SELECT * FROM sandbox_users");
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) result.add(mapRow(rs));
         } catch (Exception e) {
             log.error("SandboxUserRepository.findAll() failed: {}", e.getMessage(), e);
         }
         return result;
     }
 
-    /**
-     * Удаляет пользователя по userId.
-     */
     public void delete(String key) {
-        Tuple k = Tuple.create().set("user_id", key);
-        view().remove(null, k);
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement("DELETE FROM sandbox_users WHERE user_id = ?")) {
+            ps.setString(1, key);
+            ps.executeUpdate();
+        } catch (Exception e) {
+            log.error("SandboxUserRepository.delete({}) failed: {}", key, e.getMessage(), e);
+        }
     }
 
-    // -----------------------------------------------------------------------
-    // Mapping helpers
-    // -----------------------------------------------------------------------
-
-    private SandboxUser rowToModel(String key, Tuple row) {
+    private SandboxUser mapRow(ResultSet rs) throws SQLException {
         SandboxUser user = new SandboxUser();
-        user.setUserId(key);
-        user.setUserName(row.stringValue("user_name"));
-        user.setCash(row.doubleValue("cash"));
-        user.setBorrowed(row.doubleValue("borrowed"));
-        user.setTotalFees(row.doubleValue("total_fees"));
-        String dailyDate = row.stringValue("daily_baseline_date");
-        if (dailyDate != null) user.setDailyBaselineDate(LocalDate.parse(dailyDate));
-        user.setDailyBaselineEquity(row.doubleValue("daily_baseline_equity"));
-        String weeklyDate = row.stringValue("weekly_baseline_date");
-        if (weeklyDate != null) user.setWeeklyBaselineDate(LocalDate.parse(weeklyDate));
-        user.setWeeklyBaselineEquity(row.doubleValue("weekly_baseline_equity"));
-        String monthlyDate = row.stringValue("monthly_baseline_date");
-        if (monthlyDate != null) user.setMonthlyBaselineDate(LocalDate.parse(monthlyDate));
-        user.setMonthlyBaselineEquity(row.doubleValue("monthly_baseline_equity"));
-        String holdingsJson = row.stringValue("currency_holdings");
-        user.setCurrencyHoldings(parseHoldings(holdingsJson));
-        user.setSchemaVersion(row.intValue("schema_version"));
+        user.setUserId(rs.getString("user_id"));
+        user.setUserName(rs.getString("user_name"));
+        user.setCash(rs.getDouble("cash"));
+        user.setBorrowed(rs.getDouble("borrowed"));
+        user.setTotalFees(rs.getDouble("total_fees"));
+        String daily = rs.getString("daily_baseline_date");
+        if (daily != null) user.setDailyBaselineDate(LocalDate.parse(daily));
+        user.setDailyBaselineEquity(rs.getDouble("daily_baseline_equity"));
+        String weekly = rs.getString("weekly_baseline_date");
+        if (weekly != null) user.setWeeklyBaselineDate(LocalDate.parse(weekly));
+        user.setWeeklyBaselineEquity(rs.getDouble("weekly_baseline_equity"));
+        String monthly = rs.getString("monthly_baseline_date");
+        if (monthly != null) user.setMonthlyBaselineDate(LocalDate.parse(monthly));
+        user.setMonthlyBaselineEquity(rs.getDouble("monthly_baseline_equity"));
+        user.setCurrencyHoldings(parseHoldings(rs.getString("currency_holdings")));
+        user.setSchemaVersion(rs.getInt("schema_version"));
         return user;
-    }
-
-    private Tuple modelToRow(SandboxUser user) {
-        String holdingsJson = serializeHoldings(user.getCurrencyHoldings());
-        return Tuple.create()
-                .set("user_name", user.getUserName())
-                .set("cash", user.getCash())
-                .set("borrowed", user.getBorrowed())
-                .set("total_fees", user.getTotalFees())
-                .set("daily_baseline_date",
-                        user.getDailyBaselineDate() != null ? user.getDailyBaselineDate().toString() : null)
-                .set("daily_baseline_equity", user.getDailyBaselineEquity())
-                .set("weekly_baseline_date",
-                        user.getWeeklyBaselineDate() != null ? user.getWeeklyBaselineDate().toString() : null)
-                .set("weekly_baseline_equity", user.getWeeklyBaselineEquity())
-                .set("monthly_baseline_date",
-                        user.getMonthlyBaselineDate() != null ? user.getMonthlyBaselineDate().toString() : null)
-                .set("monthly_baseline_equity", user.getMonthlyBaselineEquity())
-                .set("currency_holdings", holdingsJson)
-                .set("schema_version", user.getSchemaVersion());
     }
 
     private Map<String, Double> parseHoldings(String json) {
