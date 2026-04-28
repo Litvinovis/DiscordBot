@@ -98,20 +98,11 @@ class ConfigLoaderTest {
     }
 
     @Test
-    void igniteLocalAddress_defaultIs127001() {
-        String addr = ConfigLoader.getIgniteLocalAddress();
-        assertNotNull(addr);
-        assertFalse(addr.isBlank(), "Ignite local address must not be blank");
-        assertEquals("127.0.0.1", addr);
-    }
-
-    @Test
-    void igniteDiscoveryAddresses_defaultContainsLocalhostRange() {
-        List<String> addrs = ConfigLoader.getIgniteDiscoveryAddresses();
-        assertNotNull(addrs);
-        assertFalse(addrs.isEmpty(), "Discovery addresses must not be empty");
-        assertTrue(addrs.get(0).startsWith("127.0.0.1"),
-                "Default discovery address must start with 127.0.0.1");
+    void dbUrl_defaultIsNotBlank() {
+        String url = ConfigLoader.getDbUrl();
+        assertNotNull(url);
+        assertFalse(url.isBlank());
+        assertTrue(url.startsWith("jdbc:postgresql://"));
     }
 
     // -----------------------------------------------------------------------

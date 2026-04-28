@@ -98,10 +98,6 @@ public class SandboxTradingService implements
                 .collect(Collectors.toMap(e -> e.getValue().getUid(), Map.Entry::getKey));
     }
 
-    public SandboxIgniteManager getIgniteManager() {
-        return igniteManager;
-    }
-
     public SandboxCurrencyService createCurrencyService() {
         if (currencyService == null) {
             synchronized (this) {

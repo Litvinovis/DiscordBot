@@ -1,6 +1,7 @@
 package services.sandbox.ignite;
 
-import org.apache.ignite.client.IgniteClient;
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import services.sandbox.migration.SandboxMigrationService;
@@ -12,25 +13,13 @@ import services.sandbox.repository.StopOrderRepository;
 import services.sandbox.repository.TradeRepository;
 import utils.ConfigLoader;
 
-/**
- * Управляет подключением к Apache Ignite 3 и предоставляет доступ ко всем
- * репозиториям песочницы: пользователи, позиции, сделки, лимитные заявки,
- * стоп-ордера и ценовые алерты.
- *
- * <p>При создании экземпляра устанавливается thin client подключение к Ignite 3,
- * инициализируется схема таблиц, создаются репозитории, затем выполняются
- * миграции схемы данных.
- *
- * <p>При потере соединения с кластером вызов {@link #reconnect()} создаёт новый
- * {@link IgniteClient}, переинициализирует схему и сбрасывает кэшированные view
- * во всех репозиториях.
- */
+import javax.sql.DataSource;
+
 public class SandboxIgniteManager {
 
     private static final Logger log = LoggerFactory.getLogger(SandboxIgniteManager.class);
 
-    private final String address;
-    private volatile IgniteClient igniteClient;
+    private final DataSource dataSource;
     private final SandboxUserRepository usersRepo;
     private final PositionRepository positionsRepo;
     private final TradeRepository tradesRepo;
@@ -38,124 +27,31 @@ public class SandboxIgniteManager {
     private final StopOrderRepository stopOrdersRepo;
     private final PriceAlertRepository priceAlertsRepo;
 
-    /**
-     * Инициализирует Ignite 3 thin client и создаёт все репозитории.
-     * По завершении запускает инициализацию схемы и миграции данных.
-     */
     public SandboxIgniteManager() {
-        this.address = ConfigLoader.getIgnite3Address();
-        log.info("SandboxIgniteManager: connecting to Ignite 3 at {}", address);
-        try {
-            this.igniteClient = IgniteClient.builder()
-                    .addresses(address)
-                    .build();
-            // Инициализируем схему (CREATE TABLE IF NOT EXISTS)
-            new SchemaInitializer(igniteClient).initSchema();
-            // Запускаем миграции схемы данных
-            new SandboxMigrationService(this).runMigrations();
-        } catch (Exception e) {
-            log.warn("SandboxIgniteManager: не удалось подключиться при старте ({}), переподключение будет выполнено автоматически", e.getMessage());
-        }
+        HikariConfig hikariConfig = new HikariConfig();
+        hikariConfig.setJdbcUrl(ConfigLoader.getDbUrl());
+        hikariConfig.setUsername(ConfigLoader.getDbUsername());
+        hikariConfig.setPassword(ConfigLoader.getDbPassword());
+        hikariConfig.setMaximumPoolSize(5);
+        this.dataSource = new HikariDataSource(hikariConfig);
 
-        // Создаём репозитории — передаём supplier, чтобы при переподключении
-        // они автоматически получали свежий клиент
-        this.usersRepo = new SandboxUserRepository(this::getIgniteClient);
-        this.positionsRepo = new PositionRepository(this::getIgniteClient);
-        this.tradesRepo = new TradeRepository(this::getIgniteClient);
-        this.limitOrdersRepo = new LimitOrderRepository(this::getIgniteClient);
-        this.stopOrdersRepo = new StopOrderRepository(this::getIgniteClient);
-        this.priceAlertsRepo = new PriceAlertRepository(this::getIgniteClient);
+        new SchemaInitializer(dataSource).initSchema();
+        new SandboxMigrationService(this).runMigrations();
+
+        this.usersRepo      = new SandboxUserRepository(dataSource);
+        this.positionsRepo  = new PositionRepository(dataSource);
+        this.tradesRepo     = new TradeRepository(dataSource);
+        this.limitOrdersRepo = new LimitOrderRepository(dataSource);
+        this.stopOrdersRepo = new StopOrderRepository(dataSource);
+        this.priceAlertsRepo = new PriceAlertRepository(dataSource);
+
+        log.info("SandboxIgniteManager: connected to PostgreSQL at {}", ConfigLoader.getDbUrl());
     }
 
-    /**
-     * Возвращает текущий подключённый клиент Apache Ignite 3.
-     *
-     * @return клиент Ignite 3
-     */
-    public IgniteClient getIgniteClient() {
-        return igniteClient;
-    }
-
-    /**
-     * Переподключается к Apache Ignite 3: закрывает старый клиент, создаёт новый,
-     * переинициализирует схему. Репозитории автоматически получат новый клиент
-     * через supplier при следующем обращении к их view.
-     *
-     * @return {@code true} если переподключение прошло успешно
-     */
-    public synchronized boolean reconnect() {
-        log.info("SandboxIgniteManager: reconnecting to Ignite 3 at {}...", address);
-        try {
-            if (igniteClient != null) {
-                try {
-                    igniteClient.close();
-                } catch (Exception ex) {
-                    log.warn("SandboxIgniteManager: error closing old client: {}", ex.getMessage());
-                }
-            }
-            igniteClient = IgniteClient.builder()
-                    .addresses(address)
-                    .build();
-            new SchemaInitializer(igniteClient).initSchema();
-            log.info("SandboxIgniteManager: reconnected successfully to {}", address);
-            return true;
-        } catch (Exception e) {
-            log.error("SandboxIgniteManager: reconnect failed: {}", e.getMessage(), e);
-            return false;
-        }
-    }
-
-    /**
-     * Возвращает репозиторий пользователей песочницы.
-     *
-     * @return репозиторий {@code sandbox_users}
-     */
-    public SandboxUserRepository usersRepo() {
-        return usersRepo;
-    }
-
-    /**
-     * Возвращает репозиторий позиций.
-     *
-     * @return репозиторий {@code sandbox_positions}
-     */
-    public PositionRepository positionsRepo() {
-        return positionsRepo;
-    }
-
-    /**
-     * Возвращает репозиторий истории сделок.
-     *
-     * @return репозиторий {@code sandbox_trades}
-     */
-    public TradeRepository tradesRepo() {
-        return tradesRepo;
-    }
-
-    /**
-     * Возвращает репозиторий лимитных заявок.
-     *
-     * @return репозиторий {@code sandbox_limit_orders}
-     */
-    public LimitOrderRepository limitOrdersRepo() {
-        return limitOrdersRepo;
-    }
-
-    /**
-     * Возвращает репозиторий стоп-ордеров.
-     *
-     * @return репозиторий {@code sandbox_stop_orders}
-     */
-    public StopOrderRepository stopOrdersRepo() {
-        return stopOrdersRepo;
-    }
-
-    /**
-     * Возвращает репозиторий ценовых алертов.
-     *
-     * @return репозиторий {@code sandbox_price_alerts}
-     */
-    public PriceAlertRepository priceAlertsRepo() {
-        return priceAlertsRepo;
-    }
+    public SandboxUserRepository usersRepo()        { return usersRepo; }
+    public PositionRepository positionsRepo()       { return positionsRepo; }
+    public TradeRepository tradesRepo()             { return tradesRepo; }
+    public LimitOrderRepository limitOrdersRepo()   { return limitOrdersRepo; }
+    public StopOrderRepository stopOrdersRepo()     { return stopOrdersRepo; }
+    public PriceAlertRepository priceAlertsRepo()   { return priceAlertsRepo; }
 }

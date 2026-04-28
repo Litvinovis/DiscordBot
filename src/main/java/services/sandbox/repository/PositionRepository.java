@@ -1,93 +1,71 @@
 package services.sandbox.repository;
 
-import org.apache.ignite.client.IgniteClient;
-import org.apache.ignite.table.Tuple;
 import services.sandbox.model.Position;
 
+import javax.sql.DataSource;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
 
-/**
- * Репозиторий открытых позиций пользователей песочницы.
- *
- * <p>Первичный ключ: составная строка {@code userId::ticker} (position_key).
- */
 public class PositionRepository extends BaseIgniteRepository {
 
-    private static final String TABLE_NAME = "sandbox_positions";
-
-    /**
-     * Создаёт репозиторий. View инициализируется лениво при первом обращении.
-     *
-     * @param clientSupplier поставщик актуального клиента Ignite 3
-     */
-    public PositionRepository(Supplier<IgniteClient> clientSupplier) {
-        super(clientSupplier, TABLE_NAME);
+    public PositionRepository(DataSource dataSource) {
+        super(dataSource);
     }
 
-    /**
-     * Сохраняет позицию по составному ключу {@code positionKey}.
-     */
     public void save(String key, Position position) {
-        Tuple k = Tuple.create().set("position_key", key);
-        view().put(null, k, modelToRow(position));
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(
+                 "INSERT INTO sandbox_positions (position_key, user_id, ticker, instrument_id, quantity, avg_price, schema_version) " +
+                 "VALUES (?,?,?,?,?,?,?) " +
+                 "ON CONFLICT (position_key) DO UPDATE SET user_id=EXCLUDED.user_id, ticker=EXCLUDED.ticker, " +
+                 "instrument_id=EXCLUDED.instrument_id, quantity=EXCLUDED.quantity, " +
+                 "avg_price=EXCLUDED.avg_price, schema_version=EXCLUDED.schema_version")) {
+            ps.setString(1, key);
+            ps.setString(2, position.getUserId());
+            ps.setString(3, position.getTicker());
+            ps.setString(4, position.getInstrumentId());
+            ps.setInt(5, position.getQuantity());
+            ps.setDouble(6, position.getAvgPrice());
+            ps.setInt(7, position.getSchemaVersion());
+            ps.executeUpdate();
+        } catch (Exception e) {
+            log.error("PositionRepository.save({}) failed: {}", key, e.getMessage(), e);
+        }
     }
 
-    /**
-     * Возвращает позицию по ключу или {@code null}, если не найдена.
-     */
     public Position findById(String key) {
-        Tuple k = Tuple.create().set("position_key", key);
-        Tuple row = view().get(null, k);
-        if (row == null) return null;
-        return rowToModel(key, row);
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement("SELECT * FROM sandbox_positions WHERE position_key = ?")) {
+            ps.setString(1, key);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return mapRow(rs);
+            }
+        } catch (Exception e) {
+            log.error("PositionRepository.findById({}) failed: {}", key, e.getMessage(), e);
+        }
+        return null;
     }
 
-    /**
-     * Возвращает список всех позиций через SQL SELECT.
-     */
     public List<Position> findAll() {
         List<Position> result = new ArrayList<>();
-        IgniteClient cl = client();
-        if (cl == null) return result;
-        try (var rs = cl.sql().execute(null, "SELECT * FROM " + TABLE_NAME)) {
-            while (rs.hasNext()) {
-                var row = rs.next();
-                Position pos = new Position();
-                pos.setUserId(row.stringValue("USER_ID"));
-                pos.setTicker(row.stringValue("TICKER"));
-                pos.setInstrumentId(row.stringValue("INSTRUMENT_ID"));
-                pos.setQuantity(row.intValue("QUANTITY"));
-                pos.setAvgPrice(row.doubleValue("AVG_PRICE"));
-                pos.setSchemaVersion(row.intValue("SCHEMA_VERSION"));
-                result.add(pos);
-            }
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement("SELECT * FROM sandbox_positions");
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) result.add(mapRow(rs));
         } catch (Exception e) {
             log.error("PositionRepository.findAll() failed: {}", e.getMessage(), e);
         }
         return result;
     }
 
-    /**
-     * Возвращает все позиции указанного пользователя через SQL.
-     */
     public List<Position> findByUserId(String userId) {
         List<Position> result = new ArrayList<>();
-        IgniteClient cl = client();
-        if (cl == null) return result;
-        try (var rs = cl.sql().execute(null,
-                "SELECT * FROM " + TABLE_NAME + " WHERE user_id = ?", userId)) {
-            while (rs.hasNext()) {
-                var row = rs.next();
-                Position pos = new Position();
-                pos.setUserId(userId);
-                pos.setTicker(row.stringValue("TICKER"));
-                pos.setInstrumentId(row.stringValue("INSTRUMENT_ID"));
-                pos.setQuantity(row.intValue("QUANTITY"));
-                pos.setAvgPrice(row.doubleValue("AVG_PRICE"));
-                pos.setSchemaVersion(row.intValue("SCHEMA_VERSION"));
-                result.add(pos);
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement("SELECT * FROM sandbox_positions WHERE user_id = ?")) {
+            ps.setString(1, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) result.add(mapRow(rs));
             }
         } catch (Exception e) {
             log.error("PositionRepository.findByUserId({}) failed: {}", userId, e.getMessage(), e);
@@ -95,36 +73,24 @@ public class PositionRepository extends BaseIgniteRepository {
         return result;
     }
 
-    /**
-     * Удаляет позицию по ключу.
-     */
     public void delete(String key) {
-        Tuple k = Tuple.create().set("position_key", key);
-        view().remove(null, k);
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement("DELETE FROM sandbox_positions WHERE position_key = ?")) {
+            ps.setString(1, key);
+            ps.executeUpdate();
+        } catch (Exception e) {
+            log.error("PositionRepository.delete({}) failed: {}", key, e.getMessage(), e);
+        }
     }
 
-    // -----------------------------------------------------------------------
-    // Mapping helpers
-    // -----------------------------------------------------------------------
-
-    private Position rowToModel(String key, Tuple row) {
+    private Position mapRow(ResultSet rs) throws SQLException {
         Position pos = new Position();
-        pos.setUserId(row.stringValue("user_id"));
-        pos.setTicker(row.stringValue("ticker"));
-        pos.setInstrumentId(row.stringValue("instrument_id"));
-        pos.setQuantity(row.intValue("quantity"));
-        pos.setAvgPrice(row.doubleValue("avg_price"));
-        pos.setSchemaVersion(row.intValue("schema_version"));
+        pos.setUserId(rs.getString("user_id"));
+        pos.setTicker(rs.getString("ticker"));
+        pos.setInstrumentId(rs.getString("instrument_id"));
+        pos.setQuantity(rs.getInt("quantity"));
+        pos.setAvgPrice(rs.getDouble("avg_price"));
+        pos.setSchemaVersion(rs.getInt("schema_version"));
         return pos;
-    }
-
-    private Tuple modelToRow(Position pos) {
-        return Tuple.create()
-                .set("user_id", pos.getUserId())
-                .set("ticker", pos.getTicker())
-                .set("instrument_id", pos.getInstrumentId())
-                .set("quantity", pos.getQuantity())
-                .set("avg_price", pos.getAvgPrice())
-                .set("schema_version", pos.getSchemaVersion());
     }
 }

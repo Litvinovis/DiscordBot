@@ -10,7 +10,6 @@ import services.StatisticsSenderService;
 import services.sandbox.SandboxOrderScheduler;
 import services.sandbox.SandboxReportScheduler;
 import services.sandbox.SandboxTradingService;
-import services.sandbox.ignite.IgniteHealthService;
 import services.tbank.TInvestApi;
 import utils.ConfigLoader;
 
@@ -54,10 +53,6 @@ public class App {
         }
         TInvestApi api = TInvestApi.create(tinkoffToken, "sandbox".equalsIgnoreCase(apiMode), target);
         SandboxTradingService sandboxTradingService = new SandboxTradingService(api);
-
-        // Start Ignite health-check service
-        IgniteHealthService igniteHealthService = new IgniteHealthService(sandboxTradingService.getIgniteManager());
-        igniteHealthService.start();
 
         int discordDelaySec = 5;
         while (true) {

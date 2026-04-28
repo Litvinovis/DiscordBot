@@ -25,7 +25,8 @@
         <logback.version>1.5.32</logback.version>
         <jda.version>6.4.1</jda.version>
         <tinkoff.sdk.version>1.48</tinkoff.sdk.version>
-        <ignite.version>3.1.0</ignite.version>
+        <postgresql.version>42.7.5</postgresql.version>
+        <hikari.version>6.3.0</hikari.version>
         <jackson.version>2.21.2</jackson.version>
         <lombok.version>1.18.46</lombok.version>
 <protobuf.version>4.34.1</protobuf.version>
@@ -143,11 +144,18 @@
             <version>${tinkoff.sdk.version}</version>
         </dependency>
 
-        <!-- Apache Ignite 3 thin client for sandbox persistence -->
+        <!-- PostgreSQL JDBC driver -->
         <dependency>
-            <groupId>org.apache.ignite</groupId>
-            <artifactId>ignite-client</artifactId>
-            <version>${ignite.version}</version>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>${postgresql.version}</version>
+        </dependency>
+
+        <!-- HikariCP connection pool -->
+        <dependency>
+            <groupId>com.zaxxer</groupId>
+            <artifactId>HikariCP</artifactId>
+            <version>${hikari.version}</version>
         </dependency>
 
         <!-- Jackson for JSON serialization of Map<String,Double> currency_holdings -->
