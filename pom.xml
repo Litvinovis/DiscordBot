@@ -27,7 +27,7 @@
         <tinkoff.sdk.version>1.48</tinkoff.sdk.version>
         <ignite.version>3.1.0</ignite.version>
         <jackson.version>2.21.2</jackson.version>
-        <lombok.version>1.18.44</lombok.version>
+        <lombok.version>1.18.46</lombok.version>
 <protobuf.version>4.34.1</protobuf.version>
         <junit.version>5.11.4</junit.version>
         <mockito.version>5.23.0</mockito.version>
