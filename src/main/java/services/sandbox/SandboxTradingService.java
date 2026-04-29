@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory;
 import ru.tinkoff.piapi.contract.v1.LastPrice;
 import ru.tinkoff.piapi.contract.v1.Quotation;
 import ru.tinkoff.piapi.contract.v1.Share;
-import services.sandbox.ignite.SandboxIgniteManager;
+import services.sandbox.db.SandboxIgniteManager;
 import services.sandbox.model.LimitOrder;
 import services.sandbox.model.Position;
 import services.sandbox.model.PriceAlert;
@@ -45,8 +45,8 @@ import utils.ConfigLoader;
 /**
  * Основной сервис торговой песочницы Stonks Bot.
  *
- * Все данные хранятся в Apache Ignite 3 через репозитории, управляемые
- * {@link services.sandbox.ignite.SandboxIgniteManager}.
+ * Все данные хранятся в PostgreSQL через репозитории, управляемые
+ * {@link services.sandbox.db.SandboxIgniteManager}.
  */
 public class SandboxTradingService implements
         services.sandbox.api.ISandboxOrderService,

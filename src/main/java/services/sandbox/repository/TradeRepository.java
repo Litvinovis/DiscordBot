@@ -8,7 +8,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
-public class TradeRepository extends BaseIgniteRepository {
+public class TradeRepository extends BaseRepository {
 
     public TradeRepository(DataSource dataSource) {
         super(dataSource);

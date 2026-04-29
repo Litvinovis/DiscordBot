@@ -12,7 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class SandboxUserRepository extends BaseIgniteRepository {
+public class SandboxUserRepository extends BaseRepository {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 

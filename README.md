@@ -2,7 +2,7 @@
 
 Discord-бот для симуляции торговли акциями. Подключается к T-Bank Invest API (Тинькофф) для получения реальных котировок, а внутри ведёт виртуальный торговый счёт каждого участника сервера с балансом, портфелем, лимитными заявками, стоп-лоссами и тейк-профитами.
 
-Данные хранятся в Apache Ignite, что обеспечивает сохранность состояния между перезапусками бота.
+Данные хранятся в PostgreSQL, что обеспечивает сохранность состояния между перезапусками бота.
 
 ---
 
@@ -13,7 +13,8 @@ Discord-бот для симуляции торговли акциями. Под
 | Java | 25 |
 | JDA (Discord API) | 6.4.1 |
 | T-Bank Invest Java SDK | 1.48 |
-| Apache Ignite | 3.1.0 (thin client) |
+| PostgreSQL | 16 |
+| HikariCP | 6.3.0 |
 | Logback | 1.5.32 |
 | Lombok | 1.18.44 |
 | Maven | 3.x |
@@ -67,12 +68,6 @@ Discord-бот для симуляции торговли акциями. Под
 
 Бот читает настройки из переменных окружения (приоритет) или из файла `application.yml` / `config/application.yml`.
 
-Скопируй `.env.example` в `.env` и заполни значениями:
-
-```bash
-cp .env.example .env
-```
-
 ### Обязательные переменные
 
 | Переменная | Описание |
@@ -89,11 +84,11 @@ cp .env.example .env
 | `SANDBOX_START_BALANCE` | `1000000.00` | Стартовый баланс песочницы (₽) |
 | `SANDBOX_COMMISSION_RATE` | `0.001` | Комиссия (0.1%) |
 | `SANDBOX_MAX_LEVERAGE` | `3.0` | Максимальное плечо |
-| `IGNITE_LOCAL_ADDRESS` | `127.0.0.1` | IP-адрес узла Ignite |
-| `IGNITE_DISCOVERY_ADDRESSES` | `127.0.0.1:47500..47509` | Адреса discovery через запятую |
-| `IGNITE_WORK_DIR` | `/tmp/ignite-stonks-client` | Рабочая директория Ignite |
+| `DB_URL` | `jdbc:postgresql://127.0.0.1:5432/stonks` | JDBC URL базы данных |
+| `DB_USER` | `stonks` | Пользователь PostgreSQL |
+| `DB_PASSWORD` | — | Пароль пользователя PostgreSQL |
 
-> **Важно:** файлы `.env` и `application.yml` добавлены в `.gitignore` — они не попадут в репозиторий.
+> **Важно:** файл `application.yml` добавлен в `.gitignore` — он не попадёт в репозиторий.
 
 ---
 
@@ -103,6 +98,7 @@ cp .env.example .env
 
 - JDK 25+
 - Maven 3.6+
+- PostgreSQL 16+
 
 ### Сборка fat-jar
 
@@ -120,12 +116,7 @@ export TINKOFF_TOKEN=your-tinkoff-token
 java -jar target/DiscordBot.jar
 ```
 
-Или с файлом конфига рядом с jar:
-
-```bash
-java -jar DiscordBot.jar
-# бот ищет application.yml и config/application.yml в рабочей директории
-```
+Схема БД создаётся автоматически при первом запуске (`schema.sql`).
 
 ---
 
@@ -184,6 +175,7 @@ WantedBy=multi-user.target
 ```
 src/main/java/
 ├── App.java                          # Точка входа
+├── commands/                         # Команды бота
 ├── events/
 │   └── MessageHandler.java           # Обработка команд Discord
 ├── services/
@@ -195,9 +187,11 @@ src/main/java/
 │   │   ├── SandboxTradingService.java    # Логика торговли
 │   │   ├── SandboxOrderScheduler.java    # Исполнение лимитных заявок
 │   │   ├── SandboxReportScheduler.java   # Ежедневные отчёты
-│   │   ├── ignite/SandboxIgniteManager.java  # Управление Ignite
-│   │   ├── migration/SandboxMigrationService.java  # Миграция схемы
-│   │   └── model/                    # Модели данных
+│   │   ├── db/SandboxIgniteManager.java  # Подключение к PostgreSQL (HikariCP)
+│   │   ├── db/SchemaInitializer.java     # Инициализация схемы из schema.sql
+│   │   ├── migration/SandboxMigrationService.java  # Миграция данных при старте
+│   │   ├── model/                    # Модели данных
+│   │   └── repository/               # JDBC-репозитории
 │   ├── statTask/                     # Задачи сбора статистики
 │   └── tbank/TInvestApi.java         # Обёртка над T-Bank gRPC API
 └── utils/
