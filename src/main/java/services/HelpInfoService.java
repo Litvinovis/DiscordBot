@@ -3,6 +3,8 @@
  */
 package services;
 
+import org.springframework.stereotype.Service;
+
 import services.tbank.TInvestApi;
 
 /**
@@ -10,6 +12,7 @@ import services.tbank.TInvestApi;
  *
  * <p>Возвращает статический список доступных команд бота.
  */
+@Service
 public class HelpInfoService {
     private final TInvestApi api;
 

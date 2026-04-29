@@ -1,11 +1,14 @@
 package commands;
 
+import org.springframework.stereotype.Component;
+
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import services.sandbox.SandboxTradingService;
 
 /**
  * Handles "+отмена-заявки ORDER_ID" command.
  */
+@Component
 public class SandboxCancelOrderCommand implements BotCommand {
 
     private final SandboxTradingService sandboxTradingService;

@@ -1,11 +1,14 @@
 package commands;
 
+import org.springframework.stereotype.Component;
+
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import services.SharesInfoService;
 
 /**
  * Handles "+акция TICKER" command.
  */
+@Component
 public class SharesInfoCommand implements BotCommand {
 
     private final SharesInfoService sharesInfoService;

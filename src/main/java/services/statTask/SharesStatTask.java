@@ -1,6 +1,18 @@
 package services.statTask;
 
+import com.discord.stonks.config.DiscordProperties;
 import com.google.common.base.Strings;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import ru.tinkoff.piapi.contract.v1.LastPrice;
+import ru.tinkoff.piapi.contract.v1.Share;
+import services.tbank.TInvestApi;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
@@ -9,55 +21,34 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import net.dv8tion.jda.api.JDA;
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import ru.tinkoff.piapi.contract.v1.LastPrice;
-import ru.tinkoff.piapi.contract.v1.Share;
-import services.tbank.TInvestApi;
-import utils.ConfigLoader;
 
 /**
- * Задача формирования ежедневного отчёта по изменению котировок акций.
- *
- * <p>Анализирует все доступные акции, разбивая их на три группы: общий список,
- * российские бумаги (MOEX/RTS) и иностранные акции СПБ Биржи (FQBR).
- * Для каждой группы публикует топ-5 лидеров и аутсайдеров за день.
- * Первый запуск только сохраняет начальные значения (без отправки отчёта).
+ * Ежедневный отчёт по изменению котировок акций.
  */
-public class SharesStatTask implements Runnable {
+@Component
+public class SharesStatTask {
     private static final Logger logger = LoggerFactory.getLogger(SharesStatTask.class);
     private static final int SCALE = 8;
     private static final int MAX_INSTRUMENTS_PER_REQUEST = 3000;
     private static final int MAX_SHARES_TO_PROCESS = 1000;
     private static final List<String> RUSSIAN_EXCHANGES = List.of("MOEX", "RTS");
-    /** FQBR is the T-Bank class code for SPB Exchange foreign stocks — now included. */
     private static final List<String> SPB_CLASS_CODES = List.of("FQBR");
 
     private final TInvestApi api;
     private final JDA jda;
+    private final DiscordProperties discordProperties;
     private final StringBuilder builder = new StringBuilder();
     private final Map<String, BigDecimal> oldData = new HashMap<>();
     private final Map<String, BigDecimal> newData = new HashMap<>();
     private final List<String> badCode = List.of("SPEQ", "SMAL", "SPBXM_OTC", "A29", "A30");
 
-    /**
-     * Создаёт задачу отчётности по акциям.
-     *
-     * @param api клиент T-Invest API для получения котировок
-     * @param jda экземпляр JDA для публикации отчёта в Discord
-     */
-    public SharesStatTask(TInvestApi api, JDA jda) {
+    public SharesStatTask(TInvestApi api, JDA jda, DiscordProperties discordProperties) {
         this.api = api;
         this.jda = jda;
+        this.discordProperties = discordProperties;
     }
 
-    /**
-     * Выполняет задачу: формирует отчёт по изменению котировок акций и отправляет его в Discord.
-     */
-    @Override
+    @Scheduled(cron = "${reports.shares-cron}")
     public void run() {
         try {
             String message = this.createMessage();
@@ -70,8 +61,8 @@ public class SharesStatTask implements Runnable {
     }
 
     private void sendReport(String message) {
-        String guildId = ConfigLoader.getReportGuildId();
-        String channelName = ConfigLoader.getReportChannelName();
+        String guildId = discordProperties.reportGuildId();
+        String channelName = discordProperties.reportChannelName();
         if (Strings.isNullOrEmpty(guildId) || Strings.isNullOrEmpty(channelName)) {
             logger.error("Не заданы параметры guildId или channelName для отправки отчета");
             return;
