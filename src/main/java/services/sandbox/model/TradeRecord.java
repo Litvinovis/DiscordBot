@@ -8,7 +8,7 @@ import java.time.Instant;
  *
  * <p>Хранит направление (BUY/SELL), тикер, цену, количество лотов,
  * комиссию и время исполнения.
- * Используется как сущность Ignite-кэша {@code stonks_sandbox_trades}.
+ * Хранится в PostgreSQL-таблице {@code sandbox_trades}.
  */
 public class TradeRecord implements Serializable {
     private static final long serialVersionUID = 1L;

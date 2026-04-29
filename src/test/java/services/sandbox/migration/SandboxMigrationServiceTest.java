@@ -2,7 +2,7 @@ package services.sandbox.migration;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import services.sandbox.ignite.SandboxIgniteManager;
+import services.sandbox.db.SandboxIgniteManager;
 import services.sandbox.model.LimitOrder;
 import services.sandbox.model.Position;
 import services.sandbox.model.PriceAlert;

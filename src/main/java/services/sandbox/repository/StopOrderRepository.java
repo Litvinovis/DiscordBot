@@ -8,7 +8,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
-public class StopOrderRepository extends BaseIgniteRepository {
+public class StopOrderRepository extends BaseRepository {
 
     public StopOrderRepository(DataSource dataSource) {
         super(dataSource);

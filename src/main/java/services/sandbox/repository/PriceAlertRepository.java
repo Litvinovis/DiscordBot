@@ -8,7 +8,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
-public class PriceAlertRepository extends BaseIgniteRepository {
+public class PriceAlertRepository extends BaseRepository {
 
     public PriceAlertRepository(DataSource dataSource) {
         super(dataSource);

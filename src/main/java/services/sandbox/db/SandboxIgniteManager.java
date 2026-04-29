@@ -1,4 +1,4 @@
-package services.sandbox.ignite;
+package services.sandbox.db;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
