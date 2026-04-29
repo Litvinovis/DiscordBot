@@ -2,6 +2,7 @@ package services.sandbox;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -24,6 +25,7 @@ import java.util.Set;
  *
  * <p>Returns rates as RUB-per-1-unit-of-foreign-currency (or per-nominal).
  */
+@Service
 public class CbrRateService {
 
     private static final Logger log = LoggerFactory.getLogger(CbrRateService.class);

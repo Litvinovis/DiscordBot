@@ -26,7 +26,10 @@ import org.slf4j.LoggerFactory;
 import ru.tinkoff.piapi.contract.v1.LastPrice;
 import ru.tinkoff.piapi.contract.v1.Quotation;
 import ru.tinkoff.piapi.contract.v1.Share;
-import services.sandbox.db.SandboxIgniteManager;
+import com.discord.stonks.config.SandboxProperties;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.stereotype.Service;
 import services.sandbox.model.LimitOrder;
 import services.sandbox.model.Position;
 import services.sandbox.model.PriceAlert;
@@ -40,14 +43,12 @@ import services.sandbox.repository.SandboxUserRepository;
 import services.sandbox.repository.StopOrderRepository;
 import services.sandbox.repository.TradeRepository;
 import services.tbank.TInvestApi;
-import utils.ConfigLoader;
 
 /**
  * Основной сервис торговой песочницы Stonks Bot.
- *
- * Все данные хранятся в PostgreSQL через репозитории, управляемые
- * {@link services.sandbox.db.SandboxIgniteManager}.
+ * Все данные хранятся в PostgreSQL через репозитории, управляемые Spring DataSource.
  */
+@Service
 public class SandboxTradingService implements
         services.sandbox.api.ISandboxOrderService,
         services.sandbox.api.ISandboxPortfolioService,
@@ -60,7 +61,6 @@ public class SandboxTradingService implements
     private static final int SCALE = 8;
 
     private final TInvestApi api;
-    private final SandboxIgniteManager igniteManager;
     private final SandboxUserRepository users;
     private final PositionRepository positions;
     private final TradeRepository trades;
@@ -69,26 +69,41 @@ public class SandboxTradingService implements
     private final PriceAlertRepository priceAlerts;
     private final Map<String, Share> shareByTicker;
     private final Map<String, String> tickerByUid;
-    private final BigDecimal startBalance = ConfigLoader.getSandboxStartBalance();
-    private final BigDecimal commissionRate = ConfigLoader.getSandboxCommissionRate();
-    private final BigDecimal maxLeverage = ConfigLoader.getSandboxMaxLeverage();
-    private final BigDecimal maintenanceMargin = ConfigLoader.getSandboxMaintenanceMargin();
+    private final BigDecimal startBalance;
+    private final BigDecimal commissionRate;
+    private final BigDecimal maxLeverage;
+    private final BigDecimal maintenanceMargin;
 
-    private final ConcurrentHashMap<String, ReentrantLock> userLocks = new ConcurrentHashMap<>();
-    private volatile SandboxCurrencyService currencyService;
-    private volatile JDA jda;
+    public final ConcurrentHashMap<String, ReentrantLock> userLocks = new ConcurrentHashMap<>();
 
-    public SandboxTradingService(TInvestApi api) {
+    @Autowired @Lazy
+    private JDA jda;
+
+    @Autowired @Lazy
+    private SandboxCurrencyService currencyService;
+
+    // currencyService injected lazily after context is fully ready (avoids circular dep)
+    public SandboxTradingService(TInvestApi api,
+                                  SandboxProperties props,
+                                  SandboxUserRepository users,
+                                  PositionRepository positions,
+                                  TradeRepository trades,
+                                  LimitOrderRepository limitOrders,
+                                  StopOrderRepository stopOrders,
+                                  PriceAlertRepository priceAlerts) {
         this.api = api;
-        SandboxIgniteManager manager = new SandboxIgniteManager();
-        this.igniteManager = manager;
-        this.users = manager.usersRepo();
-        this.positions = manager.positionsRepo();
-        this.trades = manager.tradesRepo();
-        this.limitOrders = manager.limitOrdersRepo();
-        this.stopOrders = manager.stopOrdersRepo();
-        this.priceAlerts = manager.priceAlertsRepo();
-        Set<String> allowed = ConfigLoader.getSandboxAllowedTickers().stream()
+        this.users = users;
+        this.positions = positions;
+        this.trades = trades;
+        this.limitOrders = limitOrders;
+        this.stopOrders = stopOrders;
+        this.priceAlerts = priceAlerts;
+        this.startBalance = props.startBalance();
+        this.commissionRate = props.commissionRate();
+        this.maxLeverage = props.maxLeverage();
+        this.maintenanceMargin = props.maintenanceMargin();
+
+        Set<String> allowed = props.allowedTickers().stream()
                 .map(String::toUpperCase)
                 .collect(Collectors.toSet());
         this.shareByTicker = api.getInstrumentsService().getAllSharesSync().stream()
@@ -96,21 +111,6 @@ public class SandboxTradingService implements
                 .collect(Collectors.toMap(s -> s.getTicker().toUpperCase(), s -> s, (a, b) -> a));
         this.tickerByUid = shareByTicker.entrySet().stream()
                 .collect(Collectors.toMap(e -> e.getValue().getUid(), Map.Entry::getKey));
-    }
-
-    public SandboxCurrencyService createCurrencyService() {
-        if (currencyService == null) {
-            synchronized (this) {
-                if (currencyService == null) {
-                    currencyService = new SandboxCurrencyService(users, new CbrRateService(), userLocks);
-                }
-            }
-        }
-        return currencyService;
-    }
-
-    public void setJda(JDA jda) {
-        this.jda = jda;
     }
 
     private ReentrantLock lockFor(String userId) {
@@ -298,7 +298,7 @@ public class SandboxTradingService implements
         }
         String totalSign = totalPnl.compareTo(ZERO) >= 0 ? "+" : "";
         sb.append("Итого P&L акции: ").append(totalSign).append(fmt(totalPnl)).append(" ₽");
-        SandboxCurrencyService ccs = createCurrencyService();
+        SandboxCurrencyService ccs = currencyService;
         String ccyPortfolio = ccs.currencyPortfolio(userId);
         if (ccyPortfolio != null && !ccyPortfolio.equals("Валютных позиций нет.")) {
             sb.append("\n\n").append(ccyPortfolio);
@@ -330,7 +330,7 @@ public class SandboxTradingService implements
         }
         StringBuilder result = new StringBuilder();
         result.append("💰 Рублёвый счёт: ").append(fmt(BigDecimal.valueOf(user.getCash()))).append(" ₽\n");
-        SandboxCurrencyService ccs = createCurrencyService();
+        SandboxCurrencyService ccs = currencyService;
         String ccyLine = ccs.currencyBalanceLine(userId);
         if (ccyLine != null && !ccyLine.isBlank()) {
             result.append(ccyLine).append("\n");

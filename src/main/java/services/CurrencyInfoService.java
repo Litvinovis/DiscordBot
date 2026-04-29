@@ -7,6 +7,8 @@
  */
 package services;
 
+import org.springframework.stereotype.Service;
+
 import java.util.List;
 import ru.tinkoff.piapi.contract.v1.Currency;
 import ru.tinkoff.piapi.contract.v1.LastPrice;
@@ -18,6 +20,7 @@ import services.tbank.TInvestApi;
  * <p>По тикеру ISO-кода (например, «USD») находит FIGI инструмента и
  * возвращает текущий курс относительно рубля.
  */
+@Service
 public class CurrencyInfoService {
     private final TInvestApi api;
 

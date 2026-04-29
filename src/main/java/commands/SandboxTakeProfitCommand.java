@@ -1,5 +1,7 @@
 package commands;
 
+import org.springframework.stereotype.Component;
+
 import java.math.BigDecimal;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import services.sandbox.SandboxTradingService;
@@ -7,6 +9,7 @@ import services.sandbox.SandboxTradingService;
 /**
  * Handles "+тейк-профит TICKER PRICE" command.
  */
+@Component
 public class SandboxTakeProfitCommand extends AbstractCommand {
 
     private final SandboxTradingService sandboxTradingService;

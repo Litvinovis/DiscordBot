@@ -1,6 +1,18 @@
 package services.statTask;
 
+import com.discord.stonks.config.DiscordProperties;
 import com.google.common.base.Strings;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import ru.tinkoff.piapi.contract.v1.Currency;
+import ru.tinkoff.piapi.contract.v1.LastPrice;
+import services.tbank.TInvestApi;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
@@ -9,47 +21,28 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import net.dv8tion.jda.api.JDA;
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import ru.tinkoff.piapi.contract.v1.Currency;
-import ru.tinkoff.piapi.contract.v1.LastPrice;
-import services.tbank.TInvestApi;
-import utils.ConfigLoader;
 
 /**
- * Задача формирования ежедневного отчёта по изменению курсов валют.
- *
- * <p>При каждом запуске сравнивает текущие котировки всех валют с предыдущим
- * снимком и публикует в Discord-канал топ-5 лучших и худших валют к рублю.
- * Первый запуск только сохраняет начальные значения (без отправки отчёта).
+ * Ежедневный отчёт по изменению курсов валют.
  */
-public class CurrencyStatTask implements Runnable {
+@Component
+public class CurrencyStatTask {
     private static final Logger logger = LoggerFactory.getLogger(CurrencyStatTask.class);
     private static final int SCALE = 8;
     private final TInvestApi api;
     private final JDA jda;
+    private final DiscordProperties discordProperties;
     private final StringBuilder builder = new StringBuilder();
     private Map<String, BigDecimal> oldData = new HashMap<>();
     private final Map<String, BigDecimal> newData = new HashMap<>();
 
-    /**
-     * Создаёт задачу отчётности по валютам.
-     *
-     * @param api клиент T-Invest API для получения котировок
-     * @param jda экземпляр JDA для публикации отчёта в Discord
-     */
-    public CurrencyStatTask(TInvestApi api, JDA jda) {
+    public CurrencyStatTask(TInvestApi api, JDA jda, DiscordProperties discordProperties) {
         this.api = api;
         this.jda = jda;
+        this.discordProperties = discordProperties;
     }
 
-    /**
-     * Выполняет задачу: формирует отчёт по изменению курсов валют и отправляет его в Discord.
-     */
-    @Override
+    @Scheduled(cron = "${reports.currency-cron}")
     public void run() {
         try {
             String message = this.createMessage();
@@ -62,8 +55,8 @@ public class CurrencyStatTask implements Runnable {
     }
 
     private void sendReport(String message) {
-        String guildId = ConfigLoader.getReportGuildId();
-        String channelName = ConfigLoader.getReportChannelName();
+        String guildId = discordProperties.reportGuildId();
+        String channelName = discordProperties.reportChannelName();
         if (Strings.isNullOrEmpty(guildId) || Strings.isNullOrEmpty(channelName)) {
             logger.error("Не заданы параметры guildId или channelName для отправки отчета");
             return;

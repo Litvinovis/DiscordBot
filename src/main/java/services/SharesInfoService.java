@@ -10,6 +10,8 @@
  */
 package services;
 
+import org.springframework.stereotype.Service;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +29,7 @@ import services.tbank.TInvestApi;
  * <p>Ищет акции по точному тикеру или по вхождению строки в название.
  * Возвращает цену каждого найденного инструмента.
  */
+@Service
 public class SharesInfoService {
     @Generated
     private static final Logger log = LoggerFactory.getLogger(SharesInfoService.class);
