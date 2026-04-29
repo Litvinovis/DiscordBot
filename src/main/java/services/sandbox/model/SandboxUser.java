@@ -10,7 +10,7 @@ import java.util.Map;
  *
  * <p>Хранит рублёвый баланс, заёмные средства, комиссии, базовые значения
  * equity для расчёта доходности за день/неделю/месяц, а также валютные позиции.
- * Используется как сущность Ignite-кэша {@code stonks_sandbox_users}.
+ * Хранится в PostgreSQL-таблице {@code sandbox_users}.
  */
 public class SandboxUser implements Serializable {
     private static final long serialVersionUID = 1L;

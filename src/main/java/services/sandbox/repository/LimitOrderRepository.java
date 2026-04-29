@@ -8,7 +8,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
-public class LimitOrderRepository extends BaseIgniteRepository {
+public class LimitOrderRepository extends BaseRepository {
 
     public LimitOrderRepository(DataSource dataSource) {
         super(dataSource);

@@ -7,7 +7,7 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class PositionRepository extends BaseIgniteRepository {
+public class PositionRepository extends BaseRepository {
 
     public PositionRepository(DataSource dataSource) {
         super(dataSource);
