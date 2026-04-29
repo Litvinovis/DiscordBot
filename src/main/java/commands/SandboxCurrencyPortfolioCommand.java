@@ -1,11 +1,14 @@
 package commands;
 
+import org.springframework.stereotype.Component;
+
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import services.sandbox.SandboxCurrencyService;
 
 /**
  * Handles "+валюта-портфель" command — shows the user's currency holdings.
  */
+@Component
 public class SandboxCurrencyPortfolioCommand implements BotCommand {
 
     private final SandboxCurrencyService sandboxCurrencyService;

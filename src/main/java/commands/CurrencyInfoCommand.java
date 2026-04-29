@@ -1,11 +1,14 @@
 package commands;
 
+import org.springframework.stereotype.Component;
+
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import services.CurrencyInfoService;
 
 /**
  * Handles "+валюта TICKER" command.
  */
+@Component
 public class CurrencyInfoCommand implements BotCommand {
 
     private final CurrencyInfoService currencyInfoService;

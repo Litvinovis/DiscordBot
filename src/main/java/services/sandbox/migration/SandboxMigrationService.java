@@ -2,7 +2,9 @@ package services.sandbox.migration;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import services.sandbox.db.SandboxIgniteManager;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.stereotype.Component;
 import services.sandbox.model.LimitOrder;
 import services.sandbox.model.Position;
 import services.sandbox.model.PriceAlert;
@@ -31,35 +33,46 @@ import java.util.Map;
  *
  * <p>Data is read via {@code SELECT * FROM table} through the repository {@code findAll()}.
  */
-public class SandboxMigrationService {
+@Component
+public class SandboxMigrationService implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(SandboxMigrationService.class);
 
-    private final SandboxIgniteManager igniteManager;
+    private final SandboxUserRepository usersRepo;
+    private final PositionRepository positionsRepo;
+    private final TradeRepository tradesRepo;
+    private final LimitOrderRepository limitOrdersRepo;
+    private final StopOrderRepository stopOrdersRepo;
+    private final PriceAlertRepository priceAlertsRepo;
 
-    /**
-     * Создаёт сервис миграций.
-     *
-     * @param igniteManager менеджер репозиториев
-     */
-    public SandboxMigrationService(SandboxIgniteManager igniteManager) {
-        this.igniteManager = igniteManager;
+    public SandboxMigrationService(SandboxUserRepository usersRepo,
+                                    PositionRepository positionsRepo,
+                                    TradeRepository tradesRepo,
+                                    LimitOrderRepository limitOrdersRepo,
+                                    StopOrderRepository stopOrdersRepo,
+                                    PriceAlertRepository priceAlertsRepo) {
+        this.usersRepo = usersRepo;
+        this.positionsRepo = positionsRepo;
+        this.tradesRepo = tradesRepo;
+        this.limitOrdersRepo = limitOrdersRepo;
+        this.stopOrdersRepo = stopOrdersRepo;
+        this.priceAlertsRepo = priceAlertsRepo;
     }
 
-    /**
-     * Runs migrations for all 6 tables and logs a summary.
-     *
-     * @return map of table-name -> {@link CacheMigrationResult}
-     */
+    @Override
+    public void run(ApplicationArguments args) {
+        runMigrations();
+    }
+
     public Map<String, CacheMigrationResult> runMigrations() {
         Map<String, CacheMigrationResult> summary = new LinkedHashMap<>();
 
-        summary.put("sandbox_users",       migrateUsers(igniteManager.usersRepo()));
-        summary.put("sandbox_positions",   migratePositions(igniteManager.positionsRepo()));
-        summary.put("sandbox_trades",      migrateTrades(igniteManager.tradesRepo()));
-        summary.put("sandbox_limit_orders", migrateLimitOrders(igniteManager.limitOrdersRepo()));
-        summary.put("sandbox_stop_orders", migrateStopOrders(igniteManager.stopOrdersRepo()));
-        summary.put("sandbox_price_alerts", migratePriceAlerts(igniteManager.priceAlertsRepo()));
+        summary.put("sandbox_users",        migrateUsers(usersRepo));
+        summary.put("sandbox_positions",    migratePositions(positionsRepo));
+        summary.put("sandbox_trades",       migrateTrades(tradesRepo));
+        summary.put("sandbox_limit_orders", migrateLimitOrders(limitOrdersRepo));
+        summary.put("sandbox_stop_orders",  migrateStopOrders(stopOrdersRepo));
+        summary.put("sandbox_price_alerts", migratePriceAlerts(priceAlertsRepo));
 
         int totalMigrated = summary.values().stream().mapToInt(CacheMigrationResult::migrated).sum();
         int totalRemoved  = summary.values().stream().mapToInt(CacheMigrationResult::removed).sum();

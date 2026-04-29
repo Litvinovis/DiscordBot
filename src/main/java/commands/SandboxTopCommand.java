@@ -1,5 +1,7 @@
 package commands;
 
+import org.springframework.stereotype.Component;
+
 import java.util.Locale;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import services.sandbox.SandboxTradingService;
@@ -8,6 +10,7 @@ import services.sandbox.SandboxTradingService;
  * Handles "+топ PERIOD" command.
  * Valid periods: день, неделя, месяц, все, всё
  */
+@Component
 public class SandboxTopCommand implements BotCommand {
 
     private final SandboxTradingService sandboxTradingService;

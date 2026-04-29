@@ -1,11 +1,14 @@
 package commands;
 
+import org.springframework.stereotype.Component;
+
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import services.sandbox.SandboxTradingService;
 
 /**
  * Handles "+купить TICKER QTY" command.
  */
+@Component
 public class SandboxBuyCommand extends AbstractCommand {
 
     private final SandboxTradingService sandboxTradingService;

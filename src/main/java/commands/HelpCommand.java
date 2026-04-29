@@ -1,11 +1,14 @@
 package commands;
 
+import org.springframework.stereotype.Component;
+
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import services.HelpInfoService;
 
 /**
  * Handles "+помощь" command.
  */
+@Component
 public class HelpCommand implements BotCommand {
 
     private final HelpInfoService helpInfoService;

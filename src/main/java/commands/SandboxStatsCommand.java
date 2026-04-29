@@ -1,11 +1,14 @@
 package commands;
 
+import org.springframework.stereotype.Component;
+
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import services.sandbox.SandboxTradingService;
 
 /**
  * Handles "+стата" / "+статистика" commands.
  */
+@Component
 public class SandboxStatsCommand implements BotCommand {
 
     private final SandboxTradingService sandboxTradingService;
