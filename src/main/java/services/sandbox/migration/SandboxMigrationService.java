@@ -2,7 +2,7 @@ package services.sandbox.migration;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import services.sandbox.ignite.SandboxIgniteManager;
+import services.sandbox.db.SandboxIgniteManager;
 import services.sandbox.model.LimitOrder;
 import services.sandbox.model.Position;
 import services.sandbox.model.PriceAlert;
@@ -23,14 +23,13 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Runs schema migrations across all 6 Ignite 3 sandbox tables on startup.
+ * Runs data migrations across all 6 sandbox tables on startup.
  *
  * <p>For each table row the service checks the {@code schemaVersion}. If it is below
  * the current version, the record is upgraded and re-saved. Corrupt records that
  * cannot be read are collected and removed after the scan.
  *
- * <p>Data is read via {@code SELECT * FROM table} through the repository {@code findAll()}
- * method, which uses {@link org.apache.ignite.client.IgniteClient#sql()}.
+ * <p>Data is read via {@code SELECT * FROM table} through the repository {@code findAll()}.
  */
 public class SandboxMigrationService {
 
@@ -39,9 +38,9 @@ public class SandboxMigrationService {
     private final SandboxIgniteManager igniteManager;
 
     /**
-     * Создаёт сервис миграций с указанным менеджером Ignite 3.
+     * Создаёт сервис миграций.
      *
-     * @param igniteManager менеджер репозиториев Ignite 3
+     * @param igniteManager менеджер репозиториев
      */
     public SandboxMigrationService(SandboxIgniteManager igniteManager) {
         this.igniteManager = igniteManager;
