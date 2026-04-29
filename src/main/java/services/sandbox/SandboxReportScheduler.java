@@ -1,62 +1,45 @@
-/*
- * Decompiled with CFR 0.152.
- * 
- * Could not load the following classes:
- *  net.dv8tion.jda.api.JDA
- *  net.dv8tion.jda.api.entities.channel.middleman.MessageChannel
- */
 package services.sandbox;
 
-import java.time.Duration;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.util.List;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import com.discord.stonks.config.DiscordProperties;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
-import services.sandbox.SandboxTradingService;
-import utils.ConfigLoader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
 
-/**
- * Планировщик ежедневных отчётов по итогам торгов в песочнице.
- *
- * <p>Каждый день в 10:00 по екатеринбургскому времени отправляет в первый
- * разрешённый Discord-канал топ-5 участников за текущий день.
- */
+@Component
 public class SandboxReportScheduler {
-    private static final ZoneId ZONE = ZoneId.of("Asia/Yekaterinburg");
-    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
-    /**
-     * Создаёт и запускает планировщик ежедневных отчётов.
-     *
-     * @param service сервис торговли в песочнице
-     * @param jda     экземпляр JDA для отправки сообщений в канал
-     */
-    public SandboxReportScheduler(SandboxTradingService service, JDA jda) {
-        List<String> channels = ConfigLoader.getAllowedChannelIds();
-        if (channels.isEmpty()) {
+    private static final Logger log = LoggerFactory.getLogger(SandboxReportScheduler.class);
+
+    private final SandboxTradingService service;
+    private final JDA jda;
+    private final String channelId;
+
+    public SandboxReportScheduler(SandboxTradingService service,
+                                   JDA jda,
+                                   DiscordProperties discordProperties) {
+        this.service = service;
+        this.jda = jda;
+        var ids = discordProperties.allowedChannelIds();
+        this.channelId = ids.isEmpty() ? "" : ids.getFirst();
+    }
+
+    @Scheduled(cron = "${reports.sandbox-report-cron}", zone = "Asia/Yekaterinburg")
+    public void sendDailyReport() {
+        if (channelId.isBlank()) {
+            log.warn("SandboxReportScheduler: channelId не задан, пропуск отчёта");
             return;
         }
-        String channelId = channels.getFirst();
-        long initialDelay = this.initialDelayTo10am();
-        this.scheduler.scheduleAtFixedRate(() -> {
-            MessageChannel channel = (MessageChannel)jda.getChannelById(MessageChannel.class, channelId);
+        try {
+            MessageChannel channel = jda.getChannelById(MessageChannel.class, channelId);
             if (channel != null) {
-                channel.sendMessage((CharSequence)service.top("\u0434\u0435\u043d\u044c")).queue();
+                channel.sendMessage(service.top("день")).queue();
             }
-        }, initialDelay, TimeUnit.DAYS.toSeconds(1L), TimeUnit.SECONDS);
-    }
-
-    private long initialDelayTo10am() {
-        ZonedDateTime now = ZonedDateTime.now(ZONE);
-        ZonedDateTime next = now.withHour(10).withMinute(0).withSecond(0).withNano(0);
-        if (!next.isAfter(now)) {
-            next = next.plusDays(1L);
+        } catch (Exception e) {
+            log.error("Ошибка при отправке ежедневного отчёта: {}", e.getMessage(), e);
         }
-        return Duration.between(now, next).getSeconds();
     }
 }
-

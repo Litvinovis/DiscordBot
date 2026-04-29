@@ -2,9 +2,9 @@ package services.sandbox;
 
 
 import org.slf4j.Logger;
-import services.sandbox.repository.SandboxUserRepository;
 import org.slf4j.LoggerFactory;
 import services.sandbox.model.SandboxUser;
+import services.sandbox.repository.SandboxUserRepository;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -15,11 +15,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * Handles forex (currency) buy/sell operations for sandbox users.
- *
- * <p>Rates are fetched from the CBR XML API via {@link CbrRateService}.
- * All cash is held in RUB; currency positions are stored in
- * {@link SandboxUser#getCurrencyHoldings()}.
+ * Сервис валютных операций в песочнице.
+ * Создаётся как Spring bean в JdaConfig, чтобы разделять userLocks с SandboxTradingService.
  */
 public class SandboxCurrencyService {
 
@@ -31,7 +28,6 @@ public class SandboxCurrencyService {
     private final CbrRateService cbrRateService;
     private final ConcurrentHashMap<String, ReentrantLock> userLocks;
 
-    /** Currency symbols for display */
     private static final Map<String, String> SYMBOLS = Map.of(
             "USD", "$",
             "EUR", "€",
@@ -42,13 +38,6 @@ public class SandboxCurrencyService {
             "HKD", "HK$"
     );
 
-    /**
-     * Создаёт сервис валютных операций.
-     *
-     * @param users          репозиторий пользователей песочницы
-     * @param cbrRateService сервис курсов ЦБ РФ
-     * @param userLocks      карта персональных блокировок пользователей
-     */
     public SandboxCurrencyService(SandboxUserRepository users,
                                   CbrRateService cbrRateService,
                                   ConcurrentHashMap<String, ReentrantLock> userLocks) {

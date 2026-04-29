@@ -2,7 +2,6 @@ package services.sandbox.migration;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import services.sandbox.db.SandboxIgniteManager;
 import services.sandbox.model.LimitOrder;
 import services.sandbox.model.Position;
 import services.sandbox.model.PriceAlert;
@@ -17,7 +16,6 @@ import services.sandbox.repository.StopOrderRepository;
 import services.sandbox.repository.TradeRepository;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -27,38 +25,29 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
-/**
- * Unit tests for {@link SandboxMigrationService}.
- *
- * All Ignite 3 infrastructure is mocked — no cluster is started.
- */
 @SuppressWarnings("unchecked")
 class SandboxMigrationServiceTest {
 
-    private SandboxIgniteManager manager;
     private SandboxUserRepository usersRepo;
     private PositionRepository positionsRepo;
     private TradeRepository tradesRepo;
     private LimitOrderRepository limitOrdersRepo;
     private StopOrderRepository stopOrdersRepo;
     private PriceAlertRepository priceAlertsRepo;
+    private SandboxMigrationService svc;
 
     @BeforeEach
     void setUp() {
-        manager          = mock(SandboxIgniteManager.class);
-        usersRepo        = mock(SandboxUserRepository.class);
-        positionsRepo    = mock(PositionRepository.class);
-        tradesRepo       = mock(TradeRepository.class);
-        limitOrdersRepo  = mock(LimitOrderRepository.class);
-        stopOrdersRepo   = mock(StopOrderRepository.class);
-        priceAlertsRepo  = mock(PriceAlertRepository.class);
+        usersRepo       = mock(SandboxUserRepository.class);
+        positionsRepo   = mock(PositionRepository.class);
+        tradesRepo      = mock(TradeRepository.class);
+        limitOrdersRepo = mock(LimitOrderRepository.class);
+        stopOrdersRepo  = mock(StopOrderRepository.class);
+        priceAlertsRepo = mock(PriceAlertRepository.class);
 
-        when(manager.usersRepo()).thenReturn(usersRepo);
-        when(manager.positionsRepo()).thenReturn(positionsRepo);
-        when(manager.tradesRepo()).thenReturn(tradesRepo);
-        when(manager.limitOrdersRepo()).thenReturn(limitOrdersRepo);
-        when(manager.stopOrdersRepo()).thenReturn(stopOrdersRepo);
-        when(manager.priceAlertsRepo()).thenReturn(priceAlertsRepo);
+        svc = new SandboxMigrationService(
+                usersRepo, positionsRepo, tradesRepo,
+                limitOrdersRepo, stopOrdersRepo, priceAlertsRepo);
     }
 
     private void stubAllReposEmpty() {
@@ -69,10 +58,6 @@ class SandboxMigrationServiceTest {
         when(stopOrdersRepo.findAll()).thenReturn(Collections.emptyList());
         when(priceAlertsRepo.findAll()).thenReturn(Collections.emptyList());
     }
-
-    // ==================================================================
-    // Test 1: entries with schemaVersion=0 get upgraded to current version
-    // ==================================================================
 
     @Test
     void normalMigration_oldEntries_getUpgradedToCurrentVersion() {
@@ -86,7 +71,6 @@ class SandboxMigrationServiceTest {
         when(stopOrdersRepo.findAll()).thenReturn(Collections.emptyList());
         when(priceAlertsRepo.findAll()).thenReturn(Collections.emptyList());
 
-        SandboxMigrationService svc = new SandboxMigrationService(manager);
         Map<String, SandboxMigrationService.CacheMigrationResult> results = svc.runMigrations();
 
         verify(usersRepo, times(1)).save(eq("u1"), any(SandboxUser.class));
@@ -96,10 +80,6 @@ class SandboxMigrationServiceTest {
         assertEquals(1, usersResult.migrated());
         assertEquals(0, usersResult.removed());
     }
-
-    // ==================================================================
-    // Test 2: already-migrated entries cause no writes
-    // ==================================================================
 
     @Test
     void cleanRepo_allAtCurrentVersion_noWritesHappen() {
@@ -128,7 +108,6 @@ class SandboxMigrationServiceTest {
         when(stopOrdersRepo.findAll()).thenReturn(List.of(so));
         when(priceAlertsRepo.findAll()).thenReturn(List.of(pa));
 
-        SandboxMigrationService svc = new SandboxMigrationService(manager);
         Map<String, SandboxMigrationService.CacheMigrationResult> results = svc.runMigrations();
 
         verify(usersRepo,       never()).save(any(), any());
@@ -151,14 +130,10 @@ class SandboxMigrationServiceTest {
         }
     }
 
-    // ==================================================================
-    // Test 3: mixed — some old, some current
-    // ==================================================================
-
     @Test
     void mixedRepo_correctlyCountsMigrated() {
-        Position old1 = new Position("u1", "SBER", "i1", 10, 300.0); // schemaVersion=0
-        Position old2 = new Position("u2", "GAZP", "i2", 20, 180.0); // schemaVersion=0
+        Position old1 = new Position("u1", "SBER", "i1", 10, 300.0);
+        Position old2 = new Position("u2", "GAZP", "i2", 20, 180.0);
         Position current = new Position("u3", "LKOH", "i3", 5, 7500.0);
         current.setSchemaVersion(Position.CURRENT_SCHEMA_VERSION);
 
@@ -169,7 +144,6 @@ class SandboxMigrationServiceTest {
         when(stopOrdersRepo.findAll()).thenReturn(Collections.emptyList());
         when(priceAlertsRepo.findAll()).thenReturn(Collections.emptyList());
 
-        SandboxMigrationService svc = new SandboxMigrationService(manager);
         Map<String, SandboxMigrationService.CacheMigrationResult> results = svc.runMigrations();
 
         SandboxMigrationService.CacheMigrationResult posResult = results.get("sandbox_positions");
@@ -181,15 +155,10 @@ class SandboxMigrationServiceTest {
         verify(positionsRepo, never()).delete(any());
     }
 
-    // ==================================================================
-    // Test 4: all repos empty — summary is all zeros
-    // ==================================================================
-
     @Test
     void emptyRepos_summaryAllZeros() {
         stubAllReposEmpty();
 
-        SandboxMigrationService svc = new SandboxMigrationService(manager);
         Map<String, SandboxMigrationService.CacheMigrationResult> results = svc.runMigrations();
 
         assertEquals(6, results.size(), "Should have results for all 6 tables");

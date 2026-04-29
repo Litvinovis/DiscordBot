@@ -1,5 +1,7 @@
 package commands;
 
+import org.springframework.stereotype.Component;
+
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import services.sandbox.SandboxCurrencyService;
 
@@ -10,6 +12,7 @@ import java.math.BigDecimal;
  *
  * <p>Example: {@code +купить-валюту USD 1000} — buys USD for 1000 RUB at the current CBR rate.
  */
+@Component
 public class SandboxBuyCurrencyCommand extends AbstractCommand {
 
     private final SandboxCurrencyService sandboxCurrencyService;

@@ -1,11 +1,14 @@
 package commands;
 
+import org.springframework.stereotype.Component;
+
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import services.sandbox.SandboxTradingService;
 
 /**
  * Handles "+мои-заявки" command.
  */
+@Component
 public class SandboxMyOrdersCommand implements BotCommand {
 
     private final SandboxTradingService sandboxTradingService;
