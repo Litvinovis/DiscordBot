@@ -34,6 +34,8 @@ import services.sandbox.model.Position;
 import services.sandbox.model.PriceAlert;
 import services.sandbox.model.SandboxUser;
 import services.sandbox.model.StopOrder;
+import services.sandbox.model.StopOrderType;
+import services.sandbox.model.TradeSide;
 import services.sandbox.model.TradeRecord;
 import services.sandbox.repository.LimitOrderRepository;
 import services.sandbox.repository.PositionRepository;
@@ -250,7 +252,7 @@ public class SandboxTradingService implements
 
         users.save(userId, user);
         String tradeId = UUID.randomUUID().toString();
-        trades.save(tradeId, new TradeRecord(tradeId, userId, ticker, buy ? "BUY" : "SELL", qty,
+        trades.save(tradeId, new TradeRecord(tradeId, userId, ticker, buy ? TradeSide.BUY : TradeSide.SELL, qty,
                 price.doubleValue(), fee.doubleValue(), Instant.now()));
         String cur = formatter.currencySymbol(share.getCurrency());
         return (buy ? "🟢 Куплено " : "🔴 Продано ") + qty + " " + ticker + " по " + formatter.format(price)
@@ -415,7 +417,7 @@ public class SandboxTradingService implements
         for (TradeRecord r : sorted) {
             BigDecimal rPrice = BigDecimal.valueOf(r.getPrice());
             BigDecimal rFee = BigDecimal.valueOf(r.getFee());
-            if ("BUY".equals(r.getSide())) {
+            if (r.getSide() == TradeSide.BUY) {
                 BigDecimal prevAvg = avgCostByTicker.getOrDefault(r.getTicker(), ZERO);
                 int prevQty = qtyByTicker.getOrDefault(r.getTicker(), 0);
                 int newQty = prevQty + r.getQty();
@@ -472,7 +474,7 @@ public class SandboxTradingService implements
         for (int i = 0; i < limit; i++) {
             TradeRecord r = userTrades.get(i);
             String dt = ZonedDateTime.ofInstant(r.getTimestamp(), ZONE).format(DT_FMT);
-            String side = "BUY".equals(r.getSide()) ? "🟢 Покупка" : "🔴 Продажа";
+            String side = r.getSide() == TradeSide.BUY ? "🟢 Покупка" : "🔴 Продажа";
             sb.append(dt).append(" | ").append(side).append(" ").append(r.getQty())
                     .append(" ").append(r.getTicker())
                     .append(" @ ").append(formatter.format(BigDecimal.valueOf(r.getPrice()))).append(" ₽")
@@ -482,14 +484,14 @@ public class SandboxTradingService implements
     }
 
     public String setStopLoss(String userId, String ticker, BigDecimal triggerPrice) {
-        return setStopOrder(userId, ticker, "SL", triggerPrice);
+        return setStopOrder(userId, ticker, StopOrderType.SL, triggerPrice);
     }
 
     public String setTakeProfit(String userId, String ticker, BigDecimal triggerPrice) {
-        return setStopOrder(userId, ticker, "TP", triggerPrice);
+        return setStopOrder(userId, ticker, StopOrderType.TP, triggerPrice);
     }
 
-    private String setStopOrder(String userId, String ticker, String type, BigDecimal triggerPrice) {
+    private String setStopOrder(String userId, String ticker, StopOrderType type, BigDecimal triggerPrice) {
         SandboxUser user = users.findById(userId);
         if (user == null) return "Сначала выполните +регистрация";
         ticker = ticker.toUpperCase(Locale.ROOT);
@@ -498,25 +500,25 @@ public class SandboxTradingService implements
         if (pos == null || pos.getQuantity() <= 0) return "У вас нет открытой позиции по " + ticker;
         if (triggerPrice.compareTo(ZERO) <= 0) return "Цена триггера должна быть > 0";
         for (StopOrder so : stopOrders.findAll()) {
-            if (userId.equals(so.getUserId()) && ticker.equals(so.getTicker()) && type.equals(so.getType())) {
+            if (userId.equals(so.getUserId()) && ticker.equals(so.getTicker()) && type == so.getType()) {
                 stopOrders.delete(so.getId());
             }
         }
         String id = UUID.randomUUID().toString();
         stopOrders.save(id, new StopOrder(id, userId, ticker, type, triggerPrice.doubleValue(), Instant.now()));
-        String typeName = "SL".equals(type) ? "Стоп-лосс" : "Тейк-профит";
+        String typeName = type == StopOrderType.SL ? "Стоп-лосс" : "Тейк-профит";
         return "✅ " + typeName + " на " + ticker + " установлен: " + formatter.format(triggerPrice) + " ₽";
     }
 
     public String placeLimitBuy(String userId, String userName, String ticker, int qty, BigDecimal limitPrice) {
-        return placeLimitOrder(userId, userName, ticker, qty, limitPrice, "BUY");
+        return placeLimitOrder(userId, userName, ticker, qty, limitPrice, TradeSide.BUY);
     }
 
     public String placeLimitSell(String userId, String userName, String ticker, int qty, BigDecimal limitPrice) {
-        return placeLimitOrder(userId, userName, ticker, qty, limitPrice, "SELL");
+        return placeLimitOrder(userId, userName, ticker, qty, limitPrice, TradeSide.SELL);
     }
 
-    private String placeLimitOrder(String userId, String userName, String ticker, int qty, BigDecimal limitPrice, String side) {
+    private String placeLimitOrder(String userId, String userName, String ticker, int qty, BigDecimal limitPrice, TradeSide side) {
         SandboxUser user = users.findById(userId);
         if (user == null) return "Сначала выполните +регистрация";
         ticker = ticker.toUpperCase(Locale.ROOT);
@@ -525,7 +527,7 @@ public class SandboxTradingService implements
         if (limitPrice.compareTo(ZERO) <= 0) return "Цена должна быть > 0";
         String id = UUID.randomUUID().toString();
         limitOrders.save(id, new LimitOrder(id, userId, userName, ticker, side, qty, limitPrice.doubleValue(), Instant.now()));
-        String sideLabel = "BUY".equals(side) ? "покупку" : "продажу";
+        String sideLabel = side == TradeSide.BUY ? "покупку" : "продажу";
         return "✅ Лимитная заявка на " + sideLabel + " " + qty + " " + ticker
                 + " @ " + formatter.format(limitPrice) + " ₽ принята (ID: " + id.substring(0, 8) + "...)";
     }
@@ -540,7 +542,7 @@ public class SandboxTradingService implements
         orders.sort(Comparator.comparing(LimitOrder::getCreatedAt));
         StringBuilder sb = new StringBuilder("📋 Активные заявки:\n");
         for (LimitOrder o : orders) {
-            String sideLabel = "BUY".equals(o.getSide()) ? "Покупка" : "Продажа";
+            String sideLabel = o.getSide() == TradeSide.BUY ? "Покупка" : "Продажа";
             String dt = ZonedDateTime.ofInstant(o.getCreatedAt(), ZONE).format(DT_FMT);
             sb.append("[").append(o.getId().substring(0, 8)).append("] ")
                     .append(dt).append(" | ").append(sideLabel).append(" ")

@@ -13,8 +13,7 @@ public class StopOrder implements Serializable {
 
     private int schemaVersion = 0;
 
-    /** "SL" = stop-loss, "TP" = take-profit */
-    private String type;
+    private StopOrderType type;
     private String id;
     private String userId;
     private String ticker;
@@ -25,7 +24,7 @@ public class StopOrder implements Serializable {
     }
 
     public StopOrder(String id, String userId, String ticker,
-                     String type, double triggerPrice, Instant createdAt) {
+                     StopOrderType type, double triggerPrice, Instant createdAt) {
         this.id = id;
         this.userId = userId;
         this.ticker = ticker;
@@ -37,7 +36,7 @@ public class StopOrder implements Serializable {
     public String getId() { return id; }
     public String getUserId() { return userId; }
     public String getTicker() { return ticker; }
-    public String getType() { return type; }
+    public StopOrderType getType() { return type; }
     public double getTriggerPrice() { return triggerPrice; }
     public Instant getCreatedAt() { return createdAt; }
 

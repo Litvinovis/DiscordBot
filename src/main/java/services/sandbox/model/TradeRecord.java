@@ -20,7 +20,7 @@ public class TradeRecord implements Serializable {
     private String id;
     private String userId;
     private String ticker;
-    private String side;
+    private TradeSide side;
     private int qty;
     private double price;
     private double fee;
@@ -29,7 +29,7 @@ public class TradeRecord implements Serializable {
     public TradeRecord() {
     }
 
-    public TradeRecord(String id, String userId, String ticker, String side, int qty,
+    public TradeRecord(String id, String userId, String ticker, TradeSide side, int qty,
                        double price, double fee, Instant timestamp) {
         this.id = id;
         this.userId = userId;
@@ -53,7 +53,7 @@ public class TradeRecord implements Serializable {
         return this.ticker;
     }
 
-    public String getSide() {
+    public TradeSide getSide() {
         return this.side;
     }
 
