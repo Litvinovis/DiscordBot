@@ -12,34 +12,34 @@ import org.springframework.stereotype.Component;
 @Component
 public class SandboxReportScheduler {
 
-    private static final Logger log = LoggerFactory.getLogger(SandboxReportScheduler.class);
+	private static final Logger log = LoggerFactory.getLogger(SandboxReportScheduler.class);
 
-    private final SandboxTradingService service;
-    private final JDA jda;
-    private final String channelId;
+	private final SandboxTradingService service;
+	private final JDA jda;
+	private final String channelId;
 
-    public SandboxReportScheduler(SandboxTradingService service,
-                                   JDA jda,
-                                   DiscordProperties discordProperties) {
-        this.service = service;
-        this.jda = jda;
-        var ids = discordProperties.allowedChannelIds();
-        this.channelId = ids.isEmpty() ? "" : ids.getFirst();
-    }
+	public SandboxReportScheduler(SandboxTradingService service,
+								   JDA jda,
+								   DiscordProperties discordProperties) {
+		this.service = service;
+		this.jda = jda;
+		var ids = discordProperties.allowedChannelIds();
+		this.channelId = ids.isEmpty() ? "" : ids.getFirst();
+	}
 
-    @Scheduled(cron = "${reports.sandbox-report-cron}", zone = "Asia/Yekaterinburg")
-    public void sendDailyReport() {
-        if (channelId.isBlank()) {
-            log.warn("SandboxReportScheduler: channelId не задан, пропуск отчёта");
-            return;
-        }
-        try {
-            MessageChannel channel = jda.getChannelById(MessageChannel.class, channelId);
-            if (channel != null) {
-                channel.sendMessage(service.top("день")).queue();
-            }
-        } catch (Exception e) {
-            log.error("Ошибка при отправке ежедневного отчёта: {}", e.getMessage(), e);
-        }
-    }
+	@Scheduled(cron = "${reports.sandbox-report-cron}", zone = "Asia/Yekaterinburg")
+	public void sendDailyReport() {
+		if (channelId.isBlank()) {
+			log.warn("SandboxReportScheduler: channelId не задан, пропуск отчёта");
+			return;
+		}
+		try {
+			MessageChannel channel = jda.getChannelById(MessageChannel.class, channelId);
+			if (channel != null) {
+				channel.sendMessage(service.top("день")).queue();
+			}
+		} catch (Exception e) {
+			log.error("Ошибка при отправке ежедневного отчёта: {}", e.getMessage(), e);
+		}
+	}
 }

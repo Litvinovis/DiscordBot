@@ -7,39 +7,39 @@ import java.time.Instant;
  * Represents a Stop Loss or Take Profit order attached to an open position.
  */
 public class StopOrder implements Serializable {
-    private static final long serialVersionUID = 1L;
+	private static final long serialVersionUID = 1L;
 
-    public static final int CURRENT_SCHEMA_VERSION = 1;
+	public static final int CURRENT_SCHEMA_VERSION = 1;
 
-    private int schemaVersion = 0;
+	private int schemaVersion = 0;
 
-    private StopOrderType type;
-    private String id;
-    private String userId;
-    private String ticker;
-    private double triggerPrice;
-    private Instant createdAt;
+	private StopOrderType type;
+	private String id;
+	private String userId;
+	private String ticker;
+	private double triggerPrice;
+	private Instant createdAt;
 
-    public StopOrder() {
-    }
+	public StopOrder() {
+	}
 
-    public StopOrder(String id, String userId, String ticker,
-                     StopOrderType type, double triggerPrice, Instant createdAt) {
-        this.id = id;
-        this.userId = userId;
-        this.ticker = ticker;
-        this.type = type;
-        this.triggerPrice = triggerPrice;
-        this.createdAt = createdAt;
-    }
+	public StopOrder(String id, String userId, String ticker,
+					 StopOrderType type, double triggerPrice, Instant createdAt) {
+		this.id = id;
+		this.userId = userId;
+		this.ticker = ticker;
+		this.type = type;
+		this.triggerPrice = triggerPrice;
+		this.createdAt = createdAt;
+	}
 
-    public String getId() { return id; }
-    public String getUserId() { return userId; }
-    public String getTicker() { return ticker; }
-    public StopOrderType getType() { return type; }
-    public double getTriggerPrice() { return triggerPrice; }
-    public Instant getCreatedAt() { return createdAt; }
+	public String getId() { return id; }
+	public String getUserId() { return userId; }
+	public String getTicker() { return ticker; }
+	public StopOrderType getType() { return type; }
+	public double getTriggerPrice() { return triggerPrice; }
+	public Instant getCreatedAt() { return createdAt; }
 
-    public int getSchemaVersion() { return schemaVersion; }
-    public void setSchemaVersion(int schemaVersion) { this.schemaVersion = schemaVersion; }
+	public int getSchemaVersion() { return schemaVersion; }
+	public void setSchemaVersion(int schemaVersion) { this.schemaVersion = schemaVersion; }
 }
