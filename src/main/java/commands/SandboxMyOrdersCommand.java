@@ -11,24 +11,24 @@ import services.sandbox.SandboxTradingService;
 @Component
 public class SandboxMyOrdersCommand implements BotCommand {
 
-    private final SandboxTradingService sandboxTradingService;
+	private final SandboxTradingService sandboxTradingService;
 
-    /**
-     * Создаёт команду просмотра активных заявок пользователя.
-     *
-     * @param sandboxTradingService сервис торговли в песочнице
-     */
-    public SandboxMyOrdersCommand(SandboxTradingService sandboxTradingService) {
-        this.sandboxTradingService = sandboxTradingService;
-    }
+	/**
+	 * Создаёт команду просмотра активных заявок пользователя.
+	 *
+	 * @param sandboxTradingService сервис торговли в песочнице
+	 */
+	public SandboxMyOrdersCommand(SandboxTradingService sandboxTradingService) {
+		this.sandboxTradingService = sandboxTradingService;
+	}
 
-    @Override
-    public boolean matches(String input, String[] parts) {
-        return input.equals("+мои-заявки");
-    }
+	@Override
+	public boolean matches(String input, String[] parts) {
+		return input.equals("+мои-заявки");
+	}
 
-    @Override
-    public String execute(MessageReceivedEvent event, String msg, String[] parts) {
-        return sandboxTradingService.myOrders(event.getAuthor().getId());
-    }
+	@Override
+	public String execute(MessageReceivedEvent event, String msg, String[] parts) {
+		return sandboxTradingService.myOrders(event.getAuthor().getId());
+	}
 }

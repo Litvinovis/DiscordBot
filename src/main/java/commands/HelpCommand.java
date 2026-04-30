@@ -11,24 +11,24 @@ import services.HelpInfoService;
 @Component
 public class HelpCommand implements BotCommand {
 
-    private final HelpInfoService helpInfoService;
+	private final HelpInfoService helpInfoService;
 
-    /**
-     * Создаёт команду помощи с указанным сервисом.
-     *
-     * @param helpInfoService сервис формирования текста справки
-     */
-    public HelpCommand(HelpInfoService helpInfoService) {
-        this.helpInfoService = helpInfoService;
-    }
+	/**
+	 * Создаёт команду помощи с указанным сервисом.
+	 *
+	 * @param helpInfoService сервис формирования текста справки
+	 */
+	public HelpCommand(HelpInfoService helpInfoService) {
+		this.helpInfoService = helpInfoService;
+	}
 
-    @Override
-    public boolean matches(String input, String[] parts) {
-        return input.equals("+помощь");
-    }
+	@Override
+	public boolean matches(String input, String[] parts) {
+		return input.equals("+помощь");
+	}
 
-    @Override
-    public String execute(MessageReceivedEvent event, String msg, String[] parts) {
-        return helpInfoService.getHelpInfo();
-    }
+	@Override
+	public String execute(MessageReceivedEvent event, String msg, String[] parts) {
+		return helpInfoService.getHelpInfo();
+	}
 }
