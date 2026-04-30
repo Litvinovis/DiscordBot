@@ -2,6 +2,7 @@ package services.sandbox.repository;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
+import services.sandbox.model.TradeSide;
 import services.sandbox.model.TradeRecord;
 
 import java.sql.ResultSet;
@@ -29,7 +30,7 @@ public class TradeRepository extends BaseRepository {
                     key,
                     trade.getUserId(),
                     trade.getTicker(),
-                    trade.getSide(),
+                    trade.getSide().name(),
                     trade.getQty(),
                     trade.getPrice(),
                     trade.getFee(),
@@ -83,7 +84,7 @@ public class TradeRepository extends BaseRepository {
                 rs.getString("id"),
                 rs.getString("user_id"),
                 rs.getString("ticker"),
-                rs.getString("trade_side"),
+                TradeSide.valueOf(rs.getString("trade_side")),
                 rs.getInt("qty"),
                 rs.getDouble("price"),
                 rs.getDouble("fee"),

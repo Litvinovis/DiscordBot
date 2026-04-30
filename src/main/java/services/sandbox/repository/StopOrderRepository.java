@@ -3,6 +3,7 @@ package services.sandbox.repository;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 import services.sandbox.model.StopOrder;
+import services.sandbox.model.StopOrderType;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -27,7 +28,7 @@ public class StopOrderRepository extends BaseRepository {
         try {
             jdbc.update(UPSERT,
                     key,
-                    order.getType(),
+                    order.getType().name(),
                     order.getUserId(),
                     order.getTicker(),
                     order.getTriggerPrice(),
@@ -72,7 +73,7 @@ public class StopOrderRepository extends BaseRepository {
                 rs.getString("id"),
                 rs.getString("user_id"),
                 rs.getString("ticker"),
-                rs.getString("order_type"),
+                StopOrderType.valueOf(rs.getString("order_type")),
                 rs.getDouble("trigger_price"),
                 Instant.ofEpochMilli(rs.getLong("created_at"))
         );
