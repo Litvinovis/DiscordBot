@@ -21,43 +21,43 @@ import java.util.Set;
 @Component
 public class MessageHandler extends ListenerAdapter {
 
-    @Generated
-    private static final Logger log = LoggerFactory.getLogger(MessageHandler.class);
-    private final Logger logger = LoggerFactory.getLogger("default-logger");
+	@Generated
+	private static final Logger log = LoggerFactory.getLogger(MessageHandler.class);
+	private final Logger logger = LoggerFactory.getLogger("default-logger");
 
-    private final Set<String> allowedChannelIds;
-    private final List<BotCommand> commands;
+	private final Set<String> allowedChannelIds;
+	private final List<BotCommand> commands;
 
-    public MessageHandler(DiscordProperties discordProperties, List<BotCommand> commands) {
-        this.allowedChannelIds = Set.copyOf(discordProperties.allowedChannelIds());
-        this.commands = commands;
-    }
+	public MessageHandler(DiscordProperties discordProperties, List<BotCommand> commands) {
+		this.allowedChannelIds = Set.copyOf(discordProperties.allowedChannelIds());
+		this.commands = commands;
+	}
 
-    @Override
-    public void onMessageReceived(@NotNull MessageReceivedEvent event) {
-        try {
-            if (!isBotAsking(event)) return;
-            String msg = event.getMessage().getContentDisplay().trim();
-            String response = handle(msg, event);
-            event.getChannel().sendMessage(response).submit();
-        } catch (Exception e) {
-            logger.error("Ошибка: {}", e.getMessage());
-        }
-    }
+	@Override
+	public void onMessageReceived(@NotNull MessageReceivedEvent event) {
+		try {
+			if (!isBotAsking(event)) return;
+			String msg = event.getMessage().getContentDisplay().trim();
+			String response = handle(msg, event);
+			event.getChannel().sendMessage(response).submit();
+		} catch (Exception e) {
+			logger.error("Ошибка: {}", e.getMessage());
+		}
+	}
 
-    private String handle(String msg, MessageReceivedEvent event) {
-        String lower = msg.toLowerCase(Locale.ROOT);
-        String[] parts = msg.split("\\s+");
-        for (BotCommand command : commands) {
-            if (command.matches(lower, parts)) {
-                return command.execute(event, msg, parts);
-            }
-        }
-        return "неизвестная команда, напишите '+помощь'";
-    }
+	private String handle(String msg, MessageReceivedEvent event) {
+		String lower = msg.toLowerCase(Locale.ROOT);
+		String[] parts = msg.split("\\s+");
+		for (BotCommand command : commands) {
+			if (command.matches(lower, parts)) {
+				return command.execute(event, msg, parts);
+			}
+		}
+		return "неизвестная команда, напишите '+помощь'";
+	}
 
-    private boolean isBotAsking(MessageReceivedEvent event) {
-        return event.getMessage().getContentDisplay().startsWith("+")
-                && allowedChannelIds.contains(event.getChannel().getId());
-    }
+	private boolean isBotAsking(MessageReceivedEvent event) {
+		return event.getMessage().getContentDisplay().startsWith("+")
+				&& allowedChannelIds.contains(event.getChannel().getId());
+	}
 }

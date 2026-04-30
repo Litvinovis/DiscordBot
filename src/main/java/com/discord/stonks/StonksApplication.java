@@ -5,15 +5,15 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication(scanBasePackages = {
-        "com.discord.stonks",
-        "commands",
-        "events",
-        "services"
+		"com.discord.stonks",
+		"commands",
+		"events",
+		"services"
 })
 @EnableScheduling
 public class StonksApplication {
 
-    public static void main(String[] args) {
-        SpringApplication.run(StonksApplication.class, args);
-    }
+	public static void main(String[] args) {
+		SpringApplication.run(StonksApplication.class, args);
+	}
 }

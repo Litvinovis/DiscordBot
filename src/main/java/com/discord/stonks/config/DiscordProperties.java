@@ -6,12 +6,12 @@ import java.util.List;
 
 @ConfigurationProperties("discord")
 public record DiscordProperties(
-        String token,
-        List<String> allowedChannelIds,
-        String reportGuildId,
-        String reportChannelName
+		String token,
+		List<String> allowedChannelIds,
+		String reportGuildId,
+		String reportChannelName
 ) {
-    public DiscordProperties {
-        if (allowedChannelIds == null) allowedChannelIds = List.of();
-    }
+	public DiscordProperties {
+		if (allowedChannelIds == null) allowedChannelIds = List.of();
+	}
 }

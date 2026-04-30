@@ -11,29 +11,29 @@ import services.sandbox.SandboxTradingService;
 @Component
 public class SandboxSellCommand extends AbstractCommand {
 
-    private final SandboxTradingService sandboxTradingService;
+	private final SandboxTradingService sandboxTradingService;
 
-    /**
-     * Создаёт команду рыночной продажи акций.
-     *
-     * @param sandboxTradingService сервис торговли в песочнице
-     */
-    public SandboxSellCommand(SandboxTradingService sandboxTradingService) {
-        this.sandboxTradingService = sandboxTradingService;
-    }
+	/**
+	 * Создаёт команду рыночной продажи акций.
+	 *
+	 * @param sandboxTradingService сервис торговли в песочнице
+	 */
+	public SandboxSellCommand(SandboxTradingService sandboxTradingService) {
+		this.sandboxTradingService = sandboxTradingService;
+	}
 
-    @Override
-    public boolean matches(String input, String[] parts) {
-        return parts.length == 3 && input.startsWith("+продать ");
-    }
+	@Override
+	public boolean matches(String input, String[] parts) {
+		return parts.length == 3 && input.startsWith("+продать ");
+	}
 
-    @Override
-    public String execute(MessageReceivedEvent event, String msg, String[] parts) {
-        return sandboxTradingService.sell(
-                event.getAuthor().getId(),
-                event.getAuthor().getName(),
-                parts[1],
-                parseInt(parts[2])
-        );
-    }
+	@Override
+	public String execute(MessageReceivedEvent event, String msg, String[] parts) {
+		return sandboxTradingService.sell(
+				event.getAuthor().getId(),
+				event.getAuthor().getName(),
+				parts[1],
+				parseInt(parts[2])
+		);
+	}
 }

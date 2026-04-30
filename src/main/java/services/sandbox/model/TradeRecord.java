@@ -11,73 +11,73 @@ import java.time.Instant;
  * Хранится в PostgreSQL-таблице {@code sandbox_trades}.
  */
 public class TradeRecord implements Serializable {
-    private static final long serialVersionUID = 1L;
+	private static final long serialVersionUID = 1L;
 
-    public static final int CURRENT_SCHEMA_VERSION = 1;
+	public static final int CURRENT_SCHEMA_VERSION = 1;
 
-    private int schemaVersion = 0;
+	private int schemaVersion = 0;
 
-    private String id;
-    private String userId;
-    private String ticker;
-    private TradeSide side;
-    private int qty;
-    private double price;
-    private double fee;
-    private Instant timestamp;
+	private String id;
+	private String userId;
+	private String ticker;
+	private TradeSide side;
+	private int qty;
+	private double price;
+	private double fee;
+	private Instant timestamp;
 
-    public TradeRecord() {
-    }
+	public TradeRecord() {
+	}
 
-    public TradeRecord(String id, String userId, String ticker, TradeSide side, int qty,
-                       double price, double fee, Instant timestamp) {
-        this.id = id;
-        this.userId = userId;
-        this.ticker = ticker;
-        this.side = side;
-        this.qty = qty;
-        this.price = price;
-        this.fee = fee;
-        this.timestamp = timestamp;
-    }
+	public TradeRecord(String id, String userId, String ticker, TradeSide side, int qty,
+					   double price, double fee, Instant timestamp) {
+		this.id = id;
+		this.userId = userId;
+		this.ticker = ticker;
+		this.side = side;
+		this.qty = qty;
+		this.price = price;
+		this.fee = fee;
+		this.timestamp = timestamp;
+	}
 
-    public String getId() {
-        return this.id;
-    }
+	public String getId() {
+		return this.id;
+	}
 
-    public String getUserId() {
-        return this.userId;
-    }
+	public String getUserId() {
+		return this.userId;
+	}
 
-    public String getTicker() {
-        return this.ticker;
-    }
+	public String getTicker() {
+		return this.ticker;
+	}
 
-    public TradeSide getSide() {
-        return this.side;
-    }
+	public TradeSide getSide() {
+		return this.side;
+	}
 
-    public int getQty() {
-        return this.qty;
-    }
+	public int getQty() {
+		return this.qty;
+	}
 
-    public double getPrice() {
-        return this.price;
-    }
+	public double getPrice() {
+		return this.price;
+	}
 
-    public double getFee() {
-        return this.fee;
-    }
+	public double getFee() {
+		return this.fee;
+	}
 
-    public Instant getTimestamp() {
-        return this.timestamp;
-    }
+	public Instant getTimestamp() {
+		return this.timestamp;
+	}
 
-    public int getSchemaVersion() {
-        return this.schemaVersion;
-    }
+	public int getSchemaVersion() {
+		return this.schemaVersion;
+	}
 
-    public void setSchemaVersion(int schemaVersion) {
-        this.schemaVersion = schemaVersion;
-    }
+	public void setSchemaVersion(int schemaVersion) {
+		this.schemaVersion = schemaVersion;
+	}
 }

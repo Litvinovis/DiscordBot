@@ -11,24 +11,24 @@ import services.sandbox.SandboxTradingService;
 @Component
 public class SandboxMyRankCommand implements BotCommand {
 
-    private final SandboxTradingService sandboxTradingService;
+	private final SandboxTradingService sandboxTradingService;
 
-    /**
-     * Создаёт команду просмотра персонального рейтинга пользователя.
-     *
-     * @param sandboxTradingService сервис торговли в песочнице
-     */
-    public SandboxMyRankCommand(SandboxTradingService sandboxTradingService) {
-        this.sandboxTradingService = sandboxTradingService;
-    }
+	/**
+	 * Создаёт команду просмотра персонального рейтинга пользователя.
+	 *
+	 * @param sandboxTradingService сервис торговли в песочнице
+	 */
+	public SandboxMyRankCommand(SandboxTradingService sandboxTradingService) {
+		this.sandboxTradingService = sandboxTradingService;
+	}
 
-    @Override
-    public boolean matches(String input, String[] parts) {
-        return input.equals("+мой-рейтинг");
-    }
+	@Override
+	public boolean matches(String input, String[] parts) {
+		return input.equals("+мой-рейтинг");
+	}
 
-    @Override
-    public String execute(MessageReceivedEvent event, String msg, String[] parts) {
-        return sandboxTradingService.myRank(event.getAuthor().getId());
-    }
+	@Override
+	public String execute(MessageReceivedEvent event, String msg, String[] parts) {
+		return sandboxTradingService.myRank(event.getAuthor().getId());
+	}
 }
