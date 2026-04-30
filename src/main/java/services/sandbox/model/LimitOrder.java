@@ -17,8 +17,7 @@ public class LimitOrder implements Serializable {
     private String userId;
     private String userName;
     private String ticker;
-    /** "BUY" or "SELL" */
-    private String side;
+    private TradeSide side;
     private int qty;
     /** Target price at which the order should be executed */
     private double limitPrice;
@@ -28,7 +27,7 @@ public class LimitOrder implements Serializable {
     }
 
     public LimitOrder(String id, String userId, String userName,
-                      String ticker, String side, int qty,
+                      String ticker, TradeSide side, int qty,
                       double limitPrice, Instant createdAt) {
         this.id = id;
         this.userId = userId;
@@ -44,7 +43,7 @@ public class LimitOrder implements Serializable {
     public String getUserId() { return userId; }
     public String getUserName() { return userName; }
     public String getTicker() { return ticker; }
-    public String getSide() { return side; }
+    public TradeSide getSide() { return side; }
     public int getQty() { return qty; }
     public double getLimitPrice() { return limitPrice; }
     public Instant getCreatedAt() { return createdAt; }

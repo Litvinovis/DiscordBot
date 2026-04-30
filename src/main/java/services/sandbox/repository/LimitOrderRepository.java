@@ -3,6 +3,7 @@ package services.sandbox.repository;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 import services.sandbox.model.LimitOrder;
+import services.sandbox.model.TradeSide;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -30,7 +31,7 @@ public class LimitOrderRepository extends BaseRepository {
                     order.getUserId(),
                     order.getUserName(),
                     order.getTicker(),
-                    order.getSide(),
+                    order.getSide().name(),
                     order.getQty(),
                     order.getLimitPrice(),
                     order.getCreatedAt() != null ? order.getCreatedAt().toEpochMilli() : 0L,
@@ -75,7 +76,7 @@ public class LimitOrderRepository extends BaseRepository {
                 rs.getString("user_id"),
                 rs.getString("user_name"),
                 rs.getString("ticker"),
-                rs.getString("trade_side"),
+                TradeSide.valueOf(rs.getString("trade_side")),
                 rs.getInt("qty"),
                 rs.getDouble("limit_price"),
                 Instant.ofEpochMilli(rs.getLong("created_at"))
