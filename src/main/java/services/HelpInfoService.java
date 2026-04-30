@@ -14,40 +14,40 @@ import services.tbank.TInvestApi;
  */
 @Service
 public class HelpInfoService {
-    private final TInvestApi api;
+	private final TInvestApi api;
 
-    /**
-     * Создаёт сервис справки.
-     *
-     * @param api клиент T-Invest API (зарезервирован для будущего расширения)
-     */
-    public HelpInfoService(TInvestApi api) {
-        this.api = api;
-    }
+	/**
+	 * Создаёт сервис справки.
+	 *
+	 * @param api клиент T-Invest API (зарезервирован для будущего расширения)
+	 */
+	public HelpInfoService(TInvestApi api) {
+		this.api = api;
+	}
 
-    /**
-     * Возвращает текст справки со списком всех доступных команд бота.
-     *
-     * @return строка со справочной информацией
-     */
-    public String getHelpInfo() {
-        return """
-                Вас приветствует Stonks Bot!
-                Базовые команды:
-                +акция <тикер/название>
-                +валюта <тикер>
-                +помощь
+	/**
+	 * Возвращает текст справки со списком всех доступных команд бота.
+	 *
+	 * @return строка со справочной информацией
+	 */
+	public String getHelpInfo() {
+		return """
+				Вас приветствует Stonks Bot!
+				Базовые команды:
+				+акция <тикер/название>
+				+валюта <тикер>
+				+помощь
 
-                Песочница:
-                +регистрация
-                +активы
-                +цена <TICKER>
-                +купить <TICKER> <QTY>
-                +продать <TICKER> <QTY>
-                +портфель
-                +баланс
-                +маржа
-                +топ день|неделя|месяц|все""";
-    }
+				Песочница:
+				+регистрация
+				+активы
+				+цена <TICKER>
+				+купить <TICKER> <QTY>
+				+продать <TICKER> <QTY>
+				+портфель
+				+баланс
+				+маржа
+				+топ день|неделя|месяц|все""";
+	}
 }
 

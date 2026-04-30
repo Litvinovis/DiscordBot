@@ -36,278 +36,278 @@ import java.util.Map;
 @Component
 public class SandboxMigrationService implements ApplicationRunner {
 
-    private static final Logger log = LoggerFactory.getLogger(SandboxMigrationService.class);
+	private static final Logger log = LoggerFactory.getLogger(SandboxMigrationService.class);
 
-    private final SandboxUserRepository usersRepo;
-    private final PositionRepository positionsRepo;
-    private final TradeRepository tradesRepo;
-    private final LimitOrderRepository limitOrdersRepo;
-    private final StopOrderRepository stopOrdersRepo;
-    private final PriceAlertRepository priceAlertsRepo;
+	private final SandboxUserRepository usersRepo;
+	private final PositionRepository positionsRepo;
+	private final TradeRepository tradesRepo;
+	private final LimitOrderRepository limitOrdersRepo;
+	private final StopOrderRepository stopOrdersRepo;
+	private final PriceAlertRepository priceAlertsRepo;
 
-    public SandboxMigrationService(SandboxUserRepository usersRepo,
-                                    PositionRepository positionsRepo,
-                                    TradeRepository tradesRepo,
-                                    LimitOrderRepository limitOrdersRepo,
-                                    StopOrderRepository stopOrdersRepo,
-                                    PriceAlertRepository priceAlertsRepo) {
-        this.usersRepo = usersRepo;
-        this.positionsRepo = positionsRepo;
-        this.tradesRepo = tradesRepo;
-        this.limitOrdersRepo = limitOrdersRepo;
-        this.stopOrdersRepo = stopOrdersRepo;
-        this.priceAlertsRepo = priceAlertsRepo;
-    }
+	public SandboxMigrationService(SandboxUserRepository usersRepo,
+									PositionRepository positionsRepo,
+									TradeRepository tradesRepo,
+									LimitOrderRepository limitOrdersRepo,
+									StopOrderRepository stopOrdersRepo,
+									PriceAlertRepository priceAlertsRepo) {
+		this.usersRepo = usersRepo;
+		this.positionsRepo = positionsRepo;
+		this.tradesRepo = tradesRepo;
+		this.limitOrdersRepo = limitOrdersRepo;
+		this.stopOrdersRepo = stopOrdersRepo;
+		this.priceAlertsRepo = priceAlertsRepo;
+	}
 
-    @Override
-    public void run(ApplicationArguments args) {
-        runMigrations();
-    }
+	@Override
+	public void run(ApplicationArguments args) {
+		runMigrations();
+	}
 
-    public Map<String, CacheMigrationResult> runMigrations() {
-        Map<String, CacheMigrationResult> summary = new LinkedHashMap<>();
+	public Map<String, CacheMigrationResult> runMigrations() {
+		Map<String, CacheMigrationResult> summary = new LinkedHashMap<>();
 
-        summary.put("sandbox_users",        migrateUsers(usersRepo));
-        summary.put("sandbox_positions",    migratePositions(positionsRepo));
-        summary.put("sandbox_trades",       migrateTrades(tradesRepo));
-        summary.put("sandbox_limit_orders", migrateLimitOrders(limitOrdersRepo));
-        summary.put("sandbox_stop_orders",  migrateStopOrders(stopOrdersRepo));
-        summary.put("sandbox_price_alerts", migratePriceAlerts(priceAlertsRepo));
+		summary.put("sandbox_users",        migrateUsers(usersRepo));
+		summary.put("sandbox_positions",    migratePositions(positionsRepo));
+		summary.put("sandbox_trades",       migrateTrades(tradesRepo));
+		summary.put("sandbox_limit_orders", migrateLimitOrders(limitOrdersRepo));
+		summary.put("sandbox_stop_orders",  migrateStopOrders(stopOrdersRepo));
+		summary.put("sandbox_price_alerts", migratePriceAlerts(priceAlertsRepo));
 
-        int totalMigrated = summary.values().stream().mapToInt(CacheMigrationResult::migrated).sum();
-        int totalRemoved  = summary.values().stream().mapToInt(CacheMigrationResult::removed).sum();
-        log.info("[Migration] Complete. Migrated={} Removed={} Details={}",
-                totalMigrated, totalRemoved, summary);
+		int totalMigrated = summary.values().stream().mapToInt(CacheMigrationResult::migrated).sum();
+		int totalRemoved  = summary.values().stream().mapToInt(CacheMigrationResult::removed).sum();
+		log.info("[Migration] Complete. Migrated={} Removed={} Details={}",
+				totalMigrated, totalRemoved, summary);
 
-        return summary;
-    }
+		return summary;
+	}
 
-    // ------------------------------------------------------------------
-    // Per-table migration helpers
-    // ------------------------------------------------------------------
+	// ------------------------------------------------------------------
+	// Per-table migration helpers
+	// ------------------------------------------------------------------
 
-    private CacheMigrationResult migrateUsers(SandboxUserRepository repo) {
-        String tableName = "sandbox_users";
-        int migrated = 0;
-        List<String> badKeys = new ArrayList<>();
+	private CacheMigrationResult migrateUsers(SandboxUserRepository repo) {
+		String tableName = "sandbox_users";
+		int migrated = 0;
+		List<String> badKeys = new ArrayList<>();
 
-        List<SandboxUser> all;
-        try {
-            all = repo.findAll();
-        } catch (Exception e) {
-            log.warn("[Migration] Failed to read table '{}': {}", tableName, e.getMessage());
-            return new CacheMigrationResult(0, 0);
-        }
+		List<SandboxUser> all;
+		try {
+			all = repo.findAll();
+		} catch (Exception e) {
+			log.warn("[Migration] Failed to read table '{}': {}", tableName, e.getMessage());
+			return new CacheMigrationResult(0, 0);
+		}
 
-        for (SandboxUser value : all) {
-            String key = value.getUserId();
-            try {
-                if (value.getSchemaVersion() < SandboxUser.CURRENT_SCHEMA_VERSION) {
-                    // v1 -> v2: initialise currencyHoldings if null
-                    if (value.getSchemaVersion() < 2) {
-                        if (value.getCurrencyHoldings() == null) {
-                            value.setCurrencyHoldings(new HashMap<>());
-                        }
-                    }
-                    value.setSchemaVersion(SandboxUser.CURRENT_SCHEMA_VERSION);
-                    repo.save(key, value);
-                    migrated++;
-                }
-            } catch (Exception e) {
-                log.warn("[Migration] Failed to migrate user key='{}': {}", key, e.getMessage());
-                badKeys.add(key);
-            }
-        }
+		for (SandboxUser value : all) {
+			String key = value.getUserId();
+			try {
+				if (value.getSchemaVersion() < SandboxUser.CURRENT_SCHEMA_VERSION) {
+					// v1 -> v2: initialise currencyHoldings if null
+					if (value.getSchemaVersion() < 2) {
+						if (value.getCurrencyHoldings() == null) {
+							value.setCurrencyHoldings(new HashMap<>());
+						}
+					}
+					value.setSchemaVersion(SandboxUser.CURRENT_SCHEMA_VERSION);
+					repo.save(key, value);
+					migrated++;
+				}
+			} catch (Exception e) {
+				log.warn("[Migration] Failed to migrate user key='{}': {}", key, e.getMessage());
+				badKeys.add(key);
+			}
+		}
 
-        for (String key : badKeys) {
-            try { repo.delete(key); } catch (Exception _) {}
-        }
-        log.info("[Migration] table='{}' migrated={} removed={}", tableName, migrated, badKeys.size());
-        return new CacheMigrationResult(migrated, badKeys.size());
-    }
+		for (String key : badKeys) {
+			try { repo.delete(key); } catch (Exception _) {}
+		}
+		log.info("[Migration] table='{}' migrated={} removed={}", tableName, migrated, badKeys.size());
+		return new CacheMigrationResult(migrated, badKeys.size());
+	}
 
-    private CacheMigrationResult migratePositions(PositionRepository repo) {
-        String tableName = "sandbox_positions";
-        int migrated = 0;
-        List<String> badKeys = new ArrayList<>();
+	private CacheMigrationResult migratePositions(PositionRepository repo) {
+		String tableName = "sandbox_positions";
+		int migrated = 0;
+		List<String> badKeys = new ArrayList<>();
 
-        List<Position> all;
-        try {
-            all = repo.findAll();
-        } catch (Exception e) {
-            log.warn("[Migration] Failed to read table '{}': {}", tableName, e.getMessage());
-            return new CacheMigrationResult(0, 0);
-        }
+		List<Position> all;
+		try {
+			all = repo.findAll();
+		} catch (Exception e) {
+			log.warn("[Migration] Failed to read table '{}': {}", tableName, e.getMessage());
+			return new CacheMigrationResult(0, 0);
+		}
 
-        for (Position value : all) {
-            String key = value.getUserId() + "::" + value.getTicker();
-            try {
-                if (value.getSchemaVersion() < Position.CURRENT_SCHEMA_VERSION) {
-                    value.setSchemaVersion(Position.CURRENT_SCHEMA_VERSION);
-                    repo.save(key, value);
-                    migrated++;
-                }
-            } catch (Exception e) {
-                log.warn("[Migration] Failed to migrate position key='{}': {}", key, e.getMessage());
-                badKeys.add(key);
-            }
-        }
+		for (Position value : all) {
+			String key = value.getUserId() + "::" + value.getTicker();
+			try {
+				if (value.getSchemaVersion() < Position.CURRENT_SCHEMA_VERSION) {
+					value.setSchemaVersion(Position.CURRENT_SCHEMA_VERSION);
+					repo.save(key, value);
+					migrated++;
+				}
+			} catch (Exception e) {
+				log.warn("[Migration] Failed to migrate position key='{}': {}", key, e.getMessage());
+				badKeys.add(key);
+			}
+		}
 
-        for (String key : badKeys) {
-            try { repo.delete(key); } catch (Exception _) {}
-        }
-        log.info("[Migration] table='{}' migrated={} removed={}", tableName, migrated, badKeys.size());
-        return new CacheMigrationResult(migrated, badKeys.size());
-    }
+		for (String key : badKeys) {
+			try { repo.delete(key); } catch (Exception _) {}
+		}
+		log.info("[Migration] table='{}' migrated={} removed={}", tableName, migrated, badKeys.size());
+		return new CacheMigrationResult(migrated, badKeys.size());
+	}
 
-    private CacheMigrationResult migrateTrades(TradeRepository repo) {
-        String tableName = "sandbox_trades";
-        int migrated = 0;
-        List<String> badKeys = new ArrayList<>();
+	private CacheMigrationResult migrateTrades(TradeRepository repo) {
+		String tableName = "sandbox_trades";
+		int migrated = 0;
+		List<String> badKeys = new ArrayList<>();
 
-        List<TradeRecord> all;
-        try {
-            all = repo.findAll();
-        } catch (Exception e) {
-            log.warn("[Migration] Failed to read table '{}': {}", tableName, e.getMessage());
-            return new CacheMigrationResult(0, 0);
-        }
+		List<TradeRecord> all;
+		try {
+			all = repo.findAll();
+		} catch (Exception e) {
+			log.warn("[Migration] Failed to read table '{}': {}", tableName, e.getMessage());
+			return new CacheMigrationResult(0, 0);
+		}
 
-        for (TradeRecord value : all) {
-            String key = value.getId();
-            try {
-                if (value.getSchemaVersion() < TradeRecord.CURRENT_SCHEMA_VERSION) {
-                    value.setSchemaVersion(TradeRecord.CURRENT_SCHEMA_VERSION);
-                    repo.save(key, value);
-                    migrated++;
-                }
-            } catch (Exception e) {
-                log.warn("[Migration] Failed to migrate trade key='{}': {}", key, e.getMessage());
-                badKeys.add(key);
-            }
-        }
+		for (TradeRecord value : all) {
+			String key = value.getId();
+			try {
+				if (value.getSchemaVersion() < TradeRecord.CURRENT_SCHEMA_VERSION) {
+					value.setSchemaVersion(TradeRecord.CURRENT_SCHEMA_VERSION);
+					repo.save(key, value);
+					migrated++;
+				}
+			} catch (Exception e) {
+				log.warn("[Migration] Failed to migrate trade key='{}': {}", key, e.getMessage());
+				badKeys.add(key);
+			}
+		}
 
-        for (String key : badKeys) {
-            try { repo.delete(key); } catch (Exception _) {}
-        }
-        log.info("[Migration] table='{}' migrated={} removed={}", tableName, migrated, badKeys.size());
-        return new CacheMigrationResult(migrated, badKeys.size());
-    }
+		for (String key : badKeys) {
+			try { repo.delete(key); } catch (Exception _) {}
+		}
+		log.info("[Migration] table='{}' migrated={} removed={}", tableName, migrated, badKeys.size());
+		return new CacheMigrationResult(migrated, badKeys.size());
+	}
 
-    private CacheMigrationResult migrateLimitOrders(LimitOrderRepository repo) {
-        String tableName = "sandbox_limit_orders";
-        int migrated = 0;
-        List<String> badKeys = new ArrayList<>();
+	private CacheMigrationResult migrateLimitOrders(LimitOrderRepository repo) {
+		String tableName = "sandbox_limit_orders";
+		int migrated = 0;
+		List<String> badKeys = new ArrayList<>();
 
-        List<LimitOrder> all;
-        try {
-            all = repo.findAll();
-        } catch (Exception e) {
-            log.warn("[Migration] Failed to read table '{}': {}", tableName, e.getMessage());
-            return new CacheMigrationResult(0, 0);
-        }
+		List<LimitOrder> all;
+		try {
+			all = repo.findAll();
+		} catch (Exception e) {
+			log.warn("[Migration] Failed to read table '{}': {}", tableName, e.getMessage());
+			return new CacheMigrationResult(0, 0);
+		}
 
-        for (LimitOrder value : all) {
-            String key = value.getId();
-            try {
-                if (value.getSchemaVersion() < LimitOrder.CURRENT_SCHEMA_VERSION) {
-                    value.setSchemaVersion(LimitOrder.CURRENT_SCHEMA_VERSION);
-                    repo.save(key, value);
-                    migrated++;
-                }
-            } catch (Exception e) {
-                log.warn("[Migration] Failed to migrate limit order key='{}': {}", key, e.getMessage());
-                badKeys.add(key);
-            }
-        }
+		for (LimitOrder value : all) {
+			String key = value.getId();
+			try {
+				if (value.getSchemaVersion() < LimitOrder.CURRENT_SCHEMA_VERSION) {
+					value.setSchemaVersion(LimitOrder.CURRENT_SCHEMA_VERSION);
+					repo.save(key, value);
+					migrated++;
+				}
+			} catch (Exception e) {
+				log.warn("[Migration] Failed to migrate limit order key='{}': {}", key, e.getMessage());
+				badKeys.add(key);
+			}
+		}
 
-        for (String key : badKeys) {
-            try { repo.delete(key); } catch (Exception _) {}
-        }
-        log.info("[Migration] table='{}' migrated={} removed={}", tableName, migrated, badKeys.size());
-        return new CacheMigrationResult(migrated, badKeys.size());
-    }
+		for (String key : badKeys) {
+			try { repo.delete(key); } catch (Exception _) {}
+		}
+		log.info("[Migration] table='{}' migrated={} removed={}", tableName, migrated, badKeys.size());
+		return new CacheMigrationResult(migrated, badKeys.size());
+	}
 
-    private CacheMigrationResult migrateStopOrders(StopOrderRepository repo) {
-        String tableName = "sandbox_stop_orders";
-        int migrated = 0;
-        List<String> badKeys = new ArrayList<>();
+	private CacheMigrationResult migrateStopOrders(StopOrderRepository repo) {
+		String tableName = "sandbox_stop_orders";
+		int migrated = 0;
+		List<String> badKeys = new ArrayList<>();
 
-        List<StopOrder> all;
-        try {
-            all = repo.findAll();
-        } catch (Exception e) {
-            log.warn("[Migration] Failed to read table '{}': {}", tableName, e.getMessage());
-            return new CacheMigrationResult(0, 0);
-        }
+		List<StopOrder> all;
+		try {
+			all = repo.findAll();
+		} catch (Exception e) {
+			log.warn("[Migration] Failed to read table '{}': {}", tableName, e.getMessage());
+			return new CacheMigrationResult(0, 0);
+		}
 
-        for (StopOrder value : all) {
-            String key = value.getId();
-            try {
-                if (value.getSchemaVersion() < StopOrder.CURRENT_SCHEMA_VERSION) {
-                    value.setSchemaVersion(StopOrder.CURRENT_SCHEMA_VERSION);
-                    repo.save(key, value);
-                    migrated++;
-                }
-            } catch (Exception e) {
-                log.warn("[Migration] Failed to migrate stop order key='{}': {}", key, e.getMessage());
-                badKeys.add(key);
-            }
-        }
+		for (StopOrder value : all) {
+			String key = value.getId();
+			try {
+				if (value.getSchemaVersion() < StopOrder.CURRENT_SCHEMA_VERSION) {
+					value.setSchemaVersion(StopOrder.CURRENT_SCHEMA_VERSION);
+					repo.save(key, value);
+					migrated++;
+				}
+			} catch (Exception e) {
+				log.warn("[Migration] Failed to migrate stop order key='{}': {}", key, e.getMessage());
+				badKeys.add(key);
+			}
+		}
 
-        for (String key : badKeys) {
-            try { repo.delete(key); } catch (Exception _) {}
-        }
-        log.info("[Migration] table='{}' migrated={} removed={}", tableName, migrated, badKeys.size());
-        return new CacheMigrationResult(migrated, badKeys.size());
-    }
+		for (String key : badKeys) {
+			try { repo.delete(key); } catch (Exception _) {}
+		}
+		log.info("[Migration] table='{}' migrated={} removed={}", tableName, migrated, badKeys.size());
+		return new CacheMigrationResult(migrated, badKeys.size());
+	}
 
-    private CacheMigrationResult migratePriceAlerts(PriceAlertRepository repo) {
-        String tableName = "sandbox_price_alerts";
-        int migrated = 0;
-        List<String> badKeys = new ArrayList<>();
+	private CacheMigrationResult migratePriceAlerts(PriceAlertRepository repo) {
+		String tableName = "sandbox_price_alerts";
+		int migrated = 0;
+		List<String> badKeys = new ArrayList<>();
 
-        List<PriceAlert> all;
-        try {
-            all = repo.findAll();
-        } catch (Exception e) {
-            log.warn("[Migration] Failed to read table '{}': {}", tableName, e.getMessage());
-            return new CacheMigrationResult(0, 0);
-        }
+		List<PriceAlert> all;
+		try {
+			all = repo.findAll();
+		} catch (Exception e) {
+			log.warn("[Migration] Failed to read table '{}': {}", tableName, e.getMessage());
+			return new CacheMigrationResult(0, 0);
+		}
 
-        for (PriceAlert value : all) {
-            String key = value.getId();
-            try {
-                if (value.getSchemaVersion() < PriceAlert.CURRENT_SCHEMA_VERSION) {
-                    value.setSchemaVersion(PriceAlert.CURRENT_SCHEMA_VERSION);
-                    repo.save(key, value);
-                    migrated++;
-                }
-            } catch (Exception e) {
-                log.warn("[Migration] Failed to migrate price alert key='{}': {}", key, e.getMessage());
-                badKeys.add(key);
-            }
-        }
+		for (PriceAlert value : all) {
+			String key = value.getId();
+			try {
+				if (value.getSchemaVersion() < PriceAlert.CURRENT_SCHEMA_VERSION) {
+					value.setSchemaVersion(PriceAlert.CURRENT_SCHEMA_VERSION);
+					repo.save(key, value);
+					migrated++;
+				}
+			} catch (Exception e) {
+				log.warn("[Migration] Failed to migrate price alert key='{}': {}", key, e.getMessage());
+				badKeys.add(key);
+			}
+		}
 
-        for (String key : badKeys) {
-            try { repo.delete(key); } catch (Exception _) {}
-        }
-        log.info("[Migration] table='{}' migrated={} removed={}", tableName, migrated, badKeys.size());
-        return new CacheMigrationResult(migrated, badKeys.size());
-    }
+		for (String key : badKeys) {
+			try { repo.delete(key); } catch (Exception _) {}
+		}
+		log.info("[Migration] table='{}' migrated={} removed={}", tableName, migrated, badKeys.size());
+		return new CacheMigrationResult(migrated, badKeys.size());
+	}
 
-    // ------------------------------------------------------------------
-    // Result holder
-    // ------------------------------------------------------------------
+	// ------------------------------------------------------------------
+	// Result holder
+	// ------------------------------------------------------------------
 
-    /**
-     * Итог миграции одной таблицы: количество обновлённых и удалённых записей.
-     */
-    public record CacheMigrationResult(int migrated, int removed) {
+	/**
+	 * Итог миграции одной таблицы: количество обновлённых и удалённых записей.
+	 */
+	public record CacheMigrationResult(int migrated, int removed) {
 
-        @Override
-        public String toString() {
-            return "{migrated=" + migrated + ", removed=" + removed + "}";
-        }
-    }
+		@Override
+		public String toString() {
+			return "{migrated=" + migrated + ", removed=" + removed + "}";
+		}
+	}
 }

@@ -11,24 +11,24 @@ import services.sandbox.SandboxTradingService;
 @Component
 public class SandboxPriceCommand implements BotCommand {
 
-    private final SandboxTradingService sandboxTradingService;
+	private final SandboxTradingService sandboxTradingService;
 
-    /**
-     * Создаёт команду запроса текущей цены тикера.
-     *
-     * @param sandboxTradingService сервис торговли в песочнице
-     */
-    public SandboxPriceCommand(SandboxTradingService sandboxTradingService) {
-        this.sandboxTradingService = sandboxTradingService;
-    }
+	/**
+	 * Создаёт команду запроса текущей цены тикера.
+	 *
+	 * @param sandboxTradingService сервис торговли в песочнице
+	 */
+	public SandboxPriceCommand(SandboxTradingService sandboxTradingService) {
+		this.sandboxTradingService = sandboxTradingService;
+	}
 
-    @Override
-    public boolean matches(String input, String[] parts) {
-        return parts.length == 2 && input.startsWith("+цена ");
-    }
+	@Override
+	public boolean matches(String input, String[] parts) {
+		return parts.length == 2 && input.startsWith("+цена ");
+	}
 
-    @Override
-    public String execute(MessageReceivedEvent event, String msg, String[] parts) {
-        return sandboxTradingService.price(parts[1]);
-    }
+	@Override
+	public String execute(MessageReceivedEvent event, String msg, String[] parts) {
+		return sandboxTradingService.price(parts[1]);
+	}
 }

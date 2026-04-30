@@ -6,10 +6,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 public abstract class BaseRepository {
 
-    protected final Logger log = LoggerFactory.getLogger(getClass());
-    protected final JdbcTemplate jdbc;
+	protected final Logger log = LoggerFactory.getLogger(getClass());
+	protected final JdbcTemplate jdbc;
 
-    protected BaseRepository(JdbcTemplate jdbc) {
-        this.jdbc = jdbc;
-    }
+	protected BaseRepository(JdbcTemplate jdbc) {
+		this.jdbc = jdbc;
+	}
 }

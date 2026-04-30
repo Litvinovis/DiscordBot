@@ -11,24 +11,24 @@ import services.sandbox.SandboxTradingService;
 @Component
 public class SandboxAssetsCommand implements BotCommand {
 
-    private final SandboxTradingService sandboxTradingService;
+	private final SandboxTradingService sandboxTradingService;
 
-    /**
-     * Создаёт команду просмотра списка доступных активов.
-     *
-     * @param sandboxTradingService сервис торговли в песочнице
-     */
-    public SandboxAssetsCommand(SandboxTradingService sandboxTradingService) {
-        this.sandboxTradingService = sandboxTradingService;
-    }
+	/**
+	 * Создаёт команду просмотра списка доступных активов.
+	 *
+	 * @param sandboxTradingService сервис торговли в песочнице
+	 */
+	public SandboxAssetsCommand(SandboxTradingService sandboxTradingService) {
+		this.sandboxTradingService = sandboxTradingService;
+	}
 
-    @Override
-    public boolean matches(String input, String[] parts) {
-        return input.equals("+активы");
-    }
+	@Override
+	public boolean matches(String input, String[] parts) {
+		return input.equals("+активы");
+	}
 
-    @Override
-    public String execute(MessageReceivedEvent event, String msg, String[] parts) {
-        return sandboxTradingService.assets();
-    }
+	@Override
+	public String execute(MessageReceivedEvent event, String msg, String[] parts) {
+		return sandboxTradingService.assets();
+	}
 }

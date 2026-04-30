@@ -11,24 +11,24 @@ import services.sandbox.SandboxTradingService;
 @Component
 public class SandboxStatsCommand implements BotCommand {
 
-    private final SandboxTradingService sandboxTradingService;
+	private final SandboxTradingService sandboxTradingService;
 
-    /**
-     * Создаёт команду просмотра торговой статистики пользователя.
-     *
-     * @param sandboxTradingService сервис торговли в песочнице
-     */
-    public SandboxStatsCommand(SandboxTradingService sandboxTradingService) {
-        this.sandboxTradingService = sandboxTradingService;
-    }
+	/**
+	 * Создаёт команду просмотра торговой статистики пользователя.
+	 *
+	 * @param sandboxTradingService сервис торговли в песочнице
+	 */
+	public SandboxStatsCommand(SandboxTradingService sandboxTradingService) {
+		this.sandboxTradingService = sandboxTradingService;
+	}
 
-    @Override
-    public boolean matches(String input, String[] parts) {
-        return input.equals("+стата") || input.equals("+статистика");
-    }
+	@Override
+	public boolean matches(String input, String[] parts) {
+		return input.equals("+стата") || input.equals("+статистика");
+	}
 
-    @Override
-    public String execute(MessageReceivedEvent event, String msg, String[] parts) {
-        return sandboxTradingService.stats(event.getAuthor().getId());
-    }
+	@Override
+	public String execute(MessageReceivedEvent event, String msg, String[] parts) {
+		return sandboxTradingService.stats(event.getAuthor().getId());
+	}
 }

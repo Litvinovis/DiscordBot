@@ -11,25 +11,25 @@ import services.SharesInfoService;
 @Component
 public class SharesInfoCommand implements BotCommand {
 
-    private final SharesInfoService sharesInfoService;
+	private final SharesInfoService sharesInfoService;
 
-    /**
-     * Создаёт команду запроса информации об акции.
-     *
-     * @param sharesInfoService сервис для получения данных об акциях
-     */
-    public SharesInfoCommand(SharesInfoService sharesInfoService) {
-        this.sharesInfoService = sharesInfoService;
-    }
+	/**
+	 * Создаёт команду запроса информации об акции.
+	 *
+	 * @param sharesInfoService сервис для получения данных об акциях
+	 */
+	public SharesInfoCommand(SharesInfoService sharesInfoService) {
+		this.sharesInfoService = sharesInfoService;
+	}
 
-    @Override
-    public boolean matches(String input, String[] parts) {
-        return input.startsWith("+акция ");
-    }
+	@Override
+	public boolean matches(String input, String[] parts) {
+		return input.startsWith("+акция ");
+	}
 
-    @Override
-    public String execute(MessageReceivedEvent event, String msg, String[] parts) {
-        // "+акция " is 7 chars
-        return sharesInfoService.getSharesInfo(msg.substring(7));
-    }
+	@Override
+	public String execute(MessageReceivedEvent event, String msg, String[] parts) {
+		// "+акция " is 7 chars
+		return sharesInfoService.getSharesInfo(msg.substring(7));
+	}
 }

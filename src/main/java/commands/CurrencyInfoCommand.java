@@ -11,25 +11,25 @@ import services.CurrencyInfoService;
 @Component
 public class CurrencyInfoCommand implements BotCommand {
 
-    private final CurrencyInfoService currencyInfoService;
+	private final CurrencyInfoService currencyInfoService;
 
-    /**
-     * Создаёт команду с указанным сервисом получения информации о валютах.
-     *
-     * @param currencyInfoService сервис для получения данных о валютах
-     */
-    public CurrencyInfoCommand(CurrencyInfoService currencyInfoService) {
-        this.currencyInfoService = currencyInfoService;
-    }
+	/**
+	 * Создаёт команду с указанным сервисом получения информации о валютах.
+	 *
+	 * @param currencyInfoService сервис для получения данных о валютах
+	 */
+	public CurrencyInfoCommand(CurrencyInfoService currencyInfoService) {
+		this.currencyInfoService = currencyInfoService;
+	}
 
-    @Override
-    public boolean matches(String input, String[] parts) {
-        return input.startsWith("+валюта ");
-    }
+	@Override
+	public boolean matches(String input, String[] parts) {
+		return input.startsWith("+валюта ");
+	}
 
-    @Override
-    public String execute(MessageReceivedEvent event, String msg, String[] parts) {
-        // "+валюта " is 8 chars
-        return currencyInfoService.getCurrencyInfo(msg.substring(8));
-    }
+	@Override
+	public String execute(MessageReceivedEvent event, String msg, String[] parts) {
+		// "+валюта " is 8 chars
+		return currencyInfoService.getCurrencyInfo(msg.substring(8));
+	}
 }

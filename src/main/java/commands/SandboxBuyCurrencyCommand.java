@@ -15,32 +15,32 @@ import java.math.BigDecimal;
 @Component
 public class SandboxBuyCurrencyCommand extends AbstractCommand {
 
-    private final SandboxCurrencyService sandboxCurrencyService;
+	private final SandboxCurrencyService sandboxCurrencyService;
 
-    /**
-     * Создаёт команду покупки иностранной валюты.
-     *
-     * @param sandboxCurrencyService сервис валютных операций песочницы
-     */
-    public SandboxBuyCurrencyCommand(SandboxCurrencyService sandboxCurrencyService) {
-        this.sandboxCurrencyService = sandboxCurrencyService;
-    }
+	/**
+	 * Создаёт команду покупки иностранной валюты.
+	 *
+	 * @param sandboxCurrencyService сервис валютных операций песочницы
+	 */
+	public SandboxBuyCurrencyCommand(SandboxCurrencyService sandboxCurrencyService) {
+		this.sandboxCurrencyService = sandboxCurrencyService;
+	}
 
-    @Override
-    public boolean matches(String input, String[] parts) {
-        return parts.length == 3 && input.startsWith("+купить-валюту ");
-    }
+	@Override
+	public boolean matches(String input, String[] parts) {
+		return parts.length == 3 && input.startsWith("+купить-валюту ");
+	}
 
-    @Override
-    public String execute(MessageReceivedEvent event, String msg, String[] parts) {
-        BigDecimal amount = parseBigDecimal(parts[2]);
-        if (amount == null) {
-            return "Неверная сумма. Пример: +купить-валюту USD 1000";
-        }
-        return sandboxCurrencyService.buyCurrency(
-                event.getAuthor().getId(),
-                parts[1],
-                amount
-        );
-    }
+	@Override
+	public String execute(MessageReceivedEvent event, String msg, String[] parts) {
+		BigDecimal amount = parseBigDecimal(parts[2]);
+		if (amount == null) {
+			return "Неверная сумма. Пример: +купить-валюту USD 1000";
+		}
+		return sandboxCurrencyService.buyCurrency(
+				event.getAuthor().getId(),
+				parts[1],
+				amount
+		);
+	}
 }

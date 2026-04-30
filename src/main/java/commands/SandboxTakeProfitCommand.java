@@ -12,28 +12,28 @@ import services.sandbox.SandboxTradingService;
 @Component
 public class SandboxTakeProfitCommand extends AbstractCommand {
 
-    private final SandboxTradingService sandboxTradingService;
+	private final SandboxTradingService sandboxTradingService;
 
-    /**
-     * Создаёт команду установки тейк-профит ордера.
-     *
-     * @param sandboxTradingService сервис торговли в песочнице
-     */
-    public SandboxTakeProfitCommand(SandboxTradingService sandboxTradingService) {
-        this.sandboxTradingService = sandboxTradingService;
-    }
+	/**
+	 * Создаёт команду установки тейк-профит ордера.
+	 *
+	 * @param sandboxTradingService сервис торговли в песочнице
+	 */
+	public SandboxTakeProfitCommand(SandboxTradingService sandboxTradingService) {
+		this.sandboxTradingService = sandboxTradingService;
+	}
 
-    @Override
-    public boolean matches(String input, String[] parts) {
-        return parts.length == 3 && input.startsWith("+тейк-профит ");
-    }
+	@Override
+	public boolean matches(String input, String[] parts) {
+		return parts.length == 3 && input.startsWith("+тейк-профит ");
+	}
 
-    @Override
-    public String execute(MessageReceivedEvent event, String msg, String[] parts) {
-        BigDecimal price = parseBigDecimal(parts[2]);
-        if (price == null || price.signum() <= 0) {
-            return "Укажите корректную цену: +тейк-профит ТИКЕР ЦЕНА";
-        }
-        return sandboxTradingService.setTakeProfit(event.getAuthor().getId(), parts[1], price);
-    }
+	@Override
+	public String execute(MessageReceivedEvent event, String msg, String[] parts) {
+		BigDecimal price = parseBigDecimal(parts[2]);
+		if (price == null || price.signum() <= 0) {
+			return "Укажите корректную цену: +тейк-профит ТИКЕР ЦЕНА";
+		}
+		return sandboxTradingService.setTakeProfit(event.getAuthor().getId(), parts[1], price);
+	}
 }
