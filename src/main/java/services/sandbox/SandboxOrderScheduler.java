@@ -33,26 +33,26 @@ public class SandboxOrderScheduler {
     }
 
     private void processStopOrders() {
-        List<String[]> notifications = orderProcessor.checkStopOrders();
-        for (String[] n : notifications) {
-            log.info("SL/TP triggered for user {}: {}", n[0], n[1]);
-            tradingService.sendDm(n[0], n[1]);
+        List<Notification> notifications = orderProcessor.checkStopOrders();
+        for (Notification n : notifications) {
+            log.info("SL/TP triggered for user {}: {}", n.userId(), n.message());
+            tradingService.sendDm(n.userId(), n.message());
         }
     }
 
     private void processLimitOrders() {
-        List<String[]> notifications = orderProcessor.checkLimitOrders();
-        for (String[] n : notifications) {
-            log.info("Limit order executed for user {}: {}", n[0], n[1]);
-            tradingService.sendDm(n[0], n[1]);
+        List<Notification> notifications = orderProcessor.checkLimitOrders();
+        for (Notification n : notifications) {
+            log.info("Limit order executed for user {}: {}", n.userId(), n.message());
+            tradingService.sendDm(n.userId(), n.message());
         }
     }
 
     private void processPriceAlerts() {
-        List<String[]> notifications = orderProcessor.checkPriceAlerts();
-        for (String[] n : notifications) {
-            log.info("Price alert triggered for user {}: {}", n[0], n[1]);
-            tradingService.sendDm(n[0], n[1]);
+        List<Notification> notifications = orderProcessor.checkPriceAlerts();
+        for (Notification n : notifications) {
+            log.info("Price alert triggered for user {}: {}", n.userId(), n.message());
+            tradingService.sendDm(n.userId(), n.message());
         }
     }
 }

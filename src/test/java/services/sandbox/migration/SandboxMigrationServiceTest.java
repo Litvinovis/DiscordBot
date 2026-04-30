@@ -7,6 +7,8 @@ import services.sandbox.model.Position;
 import services.sandbox.model.PriceAlert;
 import services.sandbox.model.SandboxUser;
 import services.sandbox.model.StopOrder;
+import services.sandbox.model.StopOrderType;
+import services.sandbox.model.TradeSide;
 import services.sandbox.model.TradeRecord;
 import services.sandbox.repository.LimitOrderRepository;
 import services.sandbox.repository.PositionRepository;
@@ -89,13 +91,13 @@ class SandboxMigrationServiceTest {
         Position pos = new Position("u1", "SBER", "inst1", 10, 300.0);
         pos.setSchemaVersion(Position.CURRENT_SCHEMA_VERSION);
 
-        TradeRecord trade = new TradeRecord("t1", "u1", "SBER", "BUY", 10, 300.0, 0.3, Instant.now());
+        TradeRecord trade = new TradeRecord("t1", "u1", "SBER", TradeSide.BUY, 10, 300.0, 0.3, Instant.now());
         trade.setSchemaVersion(TradeRecord.CURRENT_SCHEMA_VERSION);
 
-        LimitOrder lo = new LimitOrder("lo1", "u1", "Bob", "SBER", "BUY", 5, 295.0, Instant.now());
+        LimitOrder lo = new LimitOrder("lo1", "u1", "Bob", "SBER", TradeSide.BUY, 5, 295.0, Instant.now());
         lo.setSchemaVersion(LimitOrder.CURRENT_SCHEMA_VERSION);
 
-        StopOrder so = new StopOrder("so1", "u1", "SBER", "SL", 270.0, Instant.now());
+        StopOrder so = new StopOrder("so1", "u1", "SBER", StopOrderType.SL, 270.0, Instant.now());
         so.setSchemaVersion(StopOrder.CURRENT_SCHEMA_VERSION);
 
         PriceAlert pa = new PriceAlert("pa1", "u1", "SBER", 320.0, true, Instant.now());

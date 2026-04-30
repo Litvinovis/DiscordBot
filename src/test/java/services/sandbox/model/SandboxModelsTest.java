@@ -5,6 +5,9 @@ import org.junit.jupiter.api.Test;
 import java.time.Instant;
 import java.time.LocalDate;
 
+import static services.sandbox.model.StopOrderType.*;
+import static services.sandbox.model.TradeSide.*;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -148,11 +151,11 @@ class SandboxModelsTest {
     @Test
     void tradeRecord_constructorSetsAllFields() {
         Instant now = Instant.now();
-        TradeRecord tr = new TradeRecord("id1", "u1", "LKOH", "BUY", 3, 7500.0, 7.5, now);
+        TradeRecord tr = new TradeRecord("id1", "u1", "LKOH", BUY, 3, 7500.0, 7.5, now);
         assertEquals("id1", tr.getId());
         assertEquals("u1", tr.getUserId());
         assertEquals("LKOH", tr.getTicker());
-        assertEquals("BUY", tr.getSide());
+        assertEquals(BUY, tr.getSide());
         assertEquals(3, tr.getQty());
         assertEquals(7500.0, tr.getPrice(), 1e-9);
         assertEquals(7.5, tr.getFee(), 1e-9);
@@ -162,7 +165,7 @@ class SandboxModelsTest {
     @Test
     void tradeRecord_feeMinimumEnforcement_conceptual() {
         // The service enforces fee >= 1.0; a fee < 1 in the model itself should still be storable
-        TradeRecord tr = new TradeRecord("id2", "u2", "SBER", "SELL", 1, 300.0, 0.3, Instant.now());
+        TradeRecord tr = new TradeRecord("id2", "u2", "SBER", SELL, 1, 300.0, 0.3, Instant.now());
         assertEquals(0.3, tr.getFee(), 1e-9,
                 "Model stores whatever fee the service puts in — minimum enforcement is the service's job");
     }
@@ -174,12 +177,12 @@ class SandboxModelsTest {
     @Test
     void limitOrder_constructorSetsAllFields() {
         Instant now = Instant.now();
-        LimitOrder lo = new LimitOrder("lo1", "u1", "Alice", "SBER", "BUY", 5, 295.0, now);
+        LimitOrder lo = new LimitOrder("lo1", "u1", "Alice", "SBER", BUY, 5, 295.0, now);
         assertEquals("lo1", lo.getId());
         assertEquals("u1", lo.getUserId());
         assertEquals("Alice", lo.getUserName());
         assertEquals("SBER", lo.getTicker());
-        assertEquals("BUY", lo.getSide());
+        assertEquals(BUY, lo.getSide());
         assertEquals(5, lo.getQty());
         assertEquals(295.0, lo.getLimitPrice(), 1e-9);
         assertEquals(now, lo.getCreatedAt());
@@ -187,8 +190,8 @@ class SandboxModelsTest {
 
     @Test
     void limitOrder_sellSideStoredCorrectly() {
-        LimitOrder lo = new LimitOrder("lo2", "u2", "Bob", "GAZP", "SELL", 10, 185.0, Instant.now());
-        assertEquals("SELL", lo.getSide());
+        LimitOrder lo = new LimitOrder("lo2", "u2", "Bob", "GAZP", SELL, 10, 185.0, Instant.now());
+        assertEquals(SELL, lo.getSide());
         assertEquals(185.0, lo.getLimitPrice(), 1e-9);
     }
 
@@ -199,19 +202,19 @@ class SandboxModelsTest {
     @Test
     void stopOrder_constructorSetsAllFields_SL() {
         Instant now = Instant.now();
-        StopOrder so = new StopOrder("so1", "u1", "SBER", "SL", 270.0, now);
+        StopOrder so = new StopOrder("so1", "u1", "SBER", SL, 270.0, now);
         assertEquals("so1", so.getId());
         assertEquals("u1", so.getUserId());
         assertEquals("SBER", so.getTicker());
-        assertEquals("SL", so.getType());
+        assertEquals(SL, so.getType());
         assertEquals(270.0, so.getTriggerPrice(), 1e-9);
         assertEquals(now, so.getCreatedAt());
     }
 
     @Test
     void stopOrder_constructorSetsAllFields_TP() {
-        StopOrder so = new StopOrder("so2", "u1", "NVDA", "TP", 850.0, Instant.now());
-        assertEquals("TP", so.getType());
+        StopOrder so = new StopOrder("so2", "u1", "NVDA", TP, 850.0, Instant.now());
+        assertEquals(TP, so.getType());
         assertEquals(850.0, so.getTriggerPrice(), 1e-9);
     }
 
@@ -252,15 +255,15 @@ class SandboxModelsTest {
         pos.setSchemaVersion(Position.CURRENT_SCHEMA_VERSION);
         assertEquals(Position.CURRENT_SCHEMA_VERSION, pos.getSchemaVersion());
 
-        TradeRecord tr = new TradeRecord("t1", "u1", "X", "BUY", 1, 100.0, 1.0, Instant.now());
+        TradeRecord tr = new TradeRecord("t1", "u1", "X", BUY, 1, 100.0, 1.0, Instant.now());
         tr.setSchemaVersion(TradeRecord.CURRENT_SCHEMA_VERSION);
         assertEquals(TradeRecord.CURRENT_SCHEMA_VERSION, tr.getSchemaVersion());
 
-        LimitOrder lo = new LimitOrder("lo1", "u1", "A", "X", "BUY", 1, 100.0, Instant.now());
+        LimitOrder lo = new LimitOrder("lo1", "u1", "A", "X", BUY, 1, 100.0, Instant.now());
         lo.setSchemaVersion(LimitOrder.CURRENT_SCHEMA_VERSION);
         assertEquals(LimitOrder.CURRENT_SCHEMA_VERSION, lo.getSchemaVersion());
 
-        StopOrder so = new StopOrder("so1", "u1", "X", "SL", 90.0, Instant.now());
+        StopOrder so = new StopOrder("so1", "u1", "X", SL, 90.0, Instant.now());
         so.setSchemaVersion(StopOrder.CURRENT_SCHEMA_VERSION);
         assertEquals(StopOrder.CURRENT_SCHEMA_VERSION, so.getSchemaVersion());
 

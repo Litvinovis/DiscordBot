@@ -9,6 +9,8 @@ import services.sandbox.model.Position;
 import services.sandbox.model.PriceAlert;
 import services.sandbox.model.SandboxUser;
 import services.sandbox.model.StopOrder;
+import services.sandbox.model.StopOrderType;
+import services.sandbox.model.TradeSide;
 import services.sandbox.repository.LimitOrderRepository;
 import services.sandbox.repository.PositionRepository;
 import services.sandbox.repository.PriceAlertRepository;
@@ -58,10 +60,10 @@ public class SandboxOrderProcessor {
         this.users = users;
     }
 
-    /** Returns [userId, message] pairs for each triggered stop/take-profit order. */
-    public List<String[]> checkStopOrders() {
+    /** Returns notifications for each triggered stop/take-profit order. */
+    public List<Notification> checkStopOrders() {
         Map<String, Share> shareByTicker = tradingService.getShareByTicker();
-        List<String[]> notifications = new ArrayList<>();
+        List<Notification> notifications = new ArrayList<>();
         List<String> toRemove = new ArrayList<>();
 
         for (StopOrder so : stopOrders.findAll()) {
@@ -71,7 +73,7 @@ public class SandboxOrderProcessor {
             if (price.compareTo(BigDecimal.ZERO) <= 0) continue;
 
             BigDecimal triggerPrice = BigDecimal.valueOf(so.getTriggerPrice());
-            boolean triggered = "SL".equals(so.getType())
+            boolean triggered = so.getType() == StopOrderType.SL
                     ? price.compareTo(triggerPrice) <= 0
                     : price.compareTo(triggerPrice) >= 0;
 
@@ -85,9 +87,9 @@ public class SandboxOrderProcessor {
                 lock.lock();
                 try {
                     String result = tradingService.trade(so.getUserId(), user.getUserName(), so.getTicker(), pos.getQuantity(), false);
-                    String typeName = "SL".equals(so.getType()) ? "Стоп-лосс" : "Тейк-профит";
-                    notifications.add(new String[]{so.getUserId(),
-                            "⚡ " + typeName + " сработал! " + so.getTicker() + " @ " + formatter.format(price) + " ₽ → " + result});
+                    String typeName = so.getType() == StopOrderType.SL ? "Стоп-лосс" : "Тейк-профит";
+                    notifications.add(new Notification(so.getUserId(),
+                            "⚡ " + typeName + " сработал! " + so.getTicker() + " @ " + formatter.format(price) + " ₽ → " + result));
                     toRemove.add(so.getId());
                 } finally {
                     lock.unlock();
@@ -98,10 +100,10 @@ public class SandboxOrderProcessor {
         return notifications;
     }
 
-    /** Returns [userId, message] pairs for each triggered limit order. */
-    public List<String[]> checkLimitOrders() {
+    /** Returns notifications for each triggered limit order. */
+    public List<Notification> checkLimitOrders() {
         Map<String, Share> shareByTicker = tradingService.getShareByTicker();
-        List<String[]> notifications = new ArrayList<>();
+        List<Notification> notifications = new ArrayList<>();
         List<String> toRemove = new ArrayList<>();
 
         List<LimitOrder> allOrders = new ArrayList<>(limitOrders.findAll());
@@ -114,7 +116,8 @@ public class SandboxOrderProcessor {
             if (price.compareTo(BigDecimal.ZERO) <= 0) continue;
 
             BigDecimal loLimitPrice = BigDecimal.valueOf(lo.getLimitPrice());
-            boolean triggered = "BUY".equals(lo.getSide())
+            boolean isBuy = lo.getSide() == TradeSide.BUY;
+            boolean triggered = isBuy
                     ? price.compareTo(loLimitPrice) <= 0
                     : price.compareTo(loLimitPrice) >= 0;
 
@@ -122,11 +125,11 @@ public class SandboxOrderProcessor {
                 ReentrantLock lock = tradingService.userLocks.computeIfAbsent(lo.getUserId(), k -> new ReentrantLock(true));
                 lock.lock();
                 try {
-                    String result = tradingService.trade(lo.getUserId(), lo.getUserName(), lo.getTicker(), lo.getQty(), "BUY".equals(lo.getSide()));
-                    String sideLabel = "BUY".equals(lo.getSide()) ? "покупка" : "продажа";
-                    notifications.add(new String[]{lo.getUserId(),
+                    String result = tradingService.trade(lo.getUserId(), lo.getUserName(), lo.getTicker(), lo.getQty(), isBuy);
+                    String sideLabel = isBuy ? "покупка" : "продажа";
+                    notifications.add(new Notification(lo.getUserId(),
                             "✅ Лимитная заявка исполнена: " + sideLabel + " " + lo.getQty() + " " + lo.getTicker()
-                                    + " @ " + formatter.format(price) + " ₽\n" + result});
+                                    + " @ " + formatter.format(price) + " ₽\n" + result));
                     toRemove.add(lo.getId());
                 } finally {
                     lock.unlock();
@@ -137,10 +140,10 @@ public class SandboxOrderProcessor {
         return notifications;
     }
 
-    /** Returns [userId, message] pairs for each triggered price alert. */
-    public List<String[]> checkPriceAlerts() {
+    /** Returns notifications for each triggered price alert. */
+    public List<Notification> checkPriceAlerts() {
         Map<String, Share> shareByTicker = tradingService.getShareByTicker();
-        List<String[]> notifications = new ArrayList<>();
+        List<Notification> notifications = new ArrayList<>();
         List<String> toRemove = new ArrayList<>();
 
         for (PriceAlert alert : priceAlerts.findAll()) {
@@ -155,8 +158,8 @@ public class SandboxOrderProcessor {
                     : price.compareTo(alertTarget) <= 0;
 
             if (triggered) {
-                notifications.add(new String[]{alert.getUserId(),
-                        "🔔 Алерт! " + alert.getTicker() + " = " + formatter.format(price) + " ₽ (целевая: " + formatter.format(alertTarget) + " ₽)"});
+                notifications.add(new Notification(alert.getUserId(),
+                        "🔔 Алерт! " + alert.getTicker() + " = " + formatter.format(price) + " ₽ (целевая: " + formatter.format(alertTarget) + " ₽)"));
                 toRemove.add(alert.getId());
             }
         }
