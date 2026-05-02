@@ -10,9 +10,7 @@ target/
 .env.local
 .env.*.local
 
-# Runtime config (contains secrets / local overrides)
-application.yml
-application.yaml
+# Runtime config (external deployment override, not the bundled resource)
 config/application.yml
 config/application.yaml
 
