@@ -1,0 +1,40 @@
+spring:
+  datasource:
+    url: "${DB_URL:jdbc:postgresql://127.0.0.1:5432/stonks}"
+    username: "${DB_USER:stonks}"
+    password: "${DB_PASSWORD:stonks_pg_2026}"
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 5
+      keepalive-time: 30000
+      initialization-fail-timeout: -1
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+  threads:
+    virtual:
+      enabled: true
+
+discord:
+  token: "${DISCORD_BOT_TOKEN:}"
+  allowed-channel-ids:
+    - "${DISCORD_ALLOWED_CHANNEL_IDS:1157258712138907700}"
+  report-guild-id: "${DISCORD_REPORT_GUILD_ID:}"
+  report-channel-name: "${DISCORD_REPORT_CHANNEL_NAME:}"
+
+tinkoff:
+  token: "${TINKOFF_TOKEN:}"
+  api-mode: "${TINKOFF_API_MODE:prod}"
+  target: "${INVEST_API_TARGET:dns:///invest-public-api.tinkoff.ru:443}"
+
+sandbox:
+  start-balance: "${SANDBOX_START_BALANCE:1000000.00}"
+  commission-rate: "${SANDBOX_COMMISSION_RATE:0.001}"
+  max-leverage: "${SANDBOX_MAX_LEVERAGE:3.0}"
+  maintenance-margin: "${SANDBOX_MAINTENANCE_MARGIN:0.25}"
+
+reports:
+  currency-cron: "${CURRENCY_REPORT_CRON:0 0 10 * * *}"
+  shares-cron: "${SHARES_REPORT_CRON:0 5 10 * * *}"
+  sandbox-report-cron: "0 0 10 * * *"
