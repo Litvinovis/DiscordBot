@@ -463,15 +463,21 @@ public class SandboxTradingService implements
 
 	// ── Order commands ───────────────────────────────────────────────────────
 
-	public String history(String userId) {
+	public String history(String userId, int page) {
 		SandboxUser user = users.findById(userId);
 		if (user == null) return "Сначала выполните +регистрация";
 		List<TradeRecord> userTrades = trades.findByUserId(userId);
 		if (userTrades.isEmpty()) return "История сделок пуста.";
 		userTrades.sort(Comparator.comparing(TradeRecord::getTimestamp).reversed());
-		int limit = Math.min(20, userTrades.size());
-		StringBuilder sb = new StringBuilder("📋 История сделок (последние " + limit + "):\n");
-		for (int i = 0; i < limit; i++) {
+		int pageSize = 10;
+		int totalPages = (userTrades.size() + pageSize - 1) / pageSize;
+		if (page < 1) page = 1;
+		if (page > totalPages) page = totalPages;
+		int from = (page - 1) * pageSize;
+		int to = Math.min(from + pageSize, userTrades.size());
+		StringBuilder sb = new StringBuilder(
+				"📋 История сделок (стр. " + page + "/" + totalPages + "):\n");
+		for (int i = from; i < to; i++) {
 			TradeRecord r = userTrades.get(i);
 			String dt = ZonedDateTime.ofInstant(r.getTimestamp(), ZONE).format(DT_FMT);
 			String side = r.getSide() == TradeSide.BUY ? "🟢 Покупка" : "🔴 Продажа";
@@ -479,6 +485,9 @@ public class SandboxTradingService implements
 					.append(" ").append(r.getTicker())
 					.append(" @ ").append(formatter.format(BigDecimal.valueOf(r.getPrice()))).append(" ₽")
 					.append(" (комиссия ").append(formatter.format(BigDecimal.valueOf(r.getFee()))).append(" ₽)\n");
+		}
+		if (page < totalPages) {
+			sb.append("➡️ +история ").append(page + 1).append(" — следующая страница");
 		}
 		return sb.toString().trim();
 	}
