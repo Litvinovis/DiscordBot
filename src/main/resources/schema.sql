@@ -67,3 +67,15 @@ CREATE TABLE IF NOT EXISTS sandbox_price_alerts (
     created_at     BIGINT,
     schema_version INTEGER
 );
+
+CREATE TABLE IF NOT EXISTS dca_orders (
+    id             BIGSERIAL PRIMARY KEY,
+    user_id        TEXT NOT NULL,
+    ticker         TEXT NOT NULL,
+    amount_rub     DOUBLE PRECISION NOT NULL,
+    frequency      TEXT NOT NULL,
+    next_execution BIGINT NOT NULL,
+    created_at     BIGINT NOT NULL,
+    active         BOOLEAN NOT NULL DEFAULT TRUE,
+    UNIQUE (user_id, ticker)
+);
