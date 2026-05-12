@@ -54,10 +54,11 @@ public interface ISandboxPortfolioService {
 	String price(String ticker);
 
 	/**
-	 * Возвращает историю последних сделок пользователя (до 20 записей).
+	 * Возвращает историю сделок пользователя постранично (10 записей на страницу).
 	 *
 	 * @param userId идентификатор пользователя Discord
-	 * @return отформатированная история сделок
+	 * @param page   номер страницы (начиная с 1)
+	 * @return отформатированная история сделок указанной страницы
 	 */
-	String history(String userId);
+	String history(String userId, int page);
 }
