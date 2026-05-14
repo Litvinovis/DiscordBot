@@ -144,7 +144,6 @@ public class SandboxOrderProcessor {
 	public List<Notification> checkPriceAlerts() {
 		Map<String, Share> shareByTicker = tradingService.getShareByTicker();
 		List<Notification> notifications = new ArrayList<>();
-		List<String> toRemove = new ArrayList<>();
 
 		for (PriceAlert alert : priceAlerts.findAll()) {
 			Share share = shareByTicker.get(alert.getTicker());
@@ -158,12 +157,12 @@ public class SandboxOrderProcessor {
 					: price.compareTo(alertTarget) <= 0;
 
 			if (triggered) {
+				// Delete immediately before continuing to prevent duplicate firing
+				priceAlerts.delete(alert.getId());
 				notifications.add(new Notification(alert.getUserId(),
 						"🔔 Алерт! " + alert.getTicker() + " = " + formatter.format(price) + " ₽ (целевая: " + formatter.format(alertTarget) + " ₽)"));
-				toRemove.add(alert.getId());
 			}
 		}
-		toRemove.forEach(priceAlerts::delete);
 		return notifications;
 	}
 
