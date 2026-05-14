@@ -34,7 +34,8 @@ public class SandboxHistoryCommand extends AbstractCommand {
 		int page = 1;
 		if (parts.length == 2) {
 			int parsed = parseInt(parts[1]);
-			if (parsed > 0) page = parsed;
+			if (parsed <= 0) return "❌ Количество записей должно быть больше нуля.";
+			page = parsed;
 		}
 		return sandboxTradingService.history(event.getAuthor().getId(), page);
 	}

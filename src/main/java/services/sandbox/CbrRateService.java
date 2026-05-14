@@ -38,10 +38,21 @@ public class CbrRateService {
 
 	private static final int SCALE = 6;
 
+	/** Last successfully fetched rates; used as fallback when CBR is unavailable. */
+	private volatile Map<String, BigDecimal> cachedRates = new HashMap<>();
+
+	/** Returns true when the last fetchRates() call failed and the cache is being served. */
+	private volatile boolean stale = false;
+
+	public boolean isStale() {
+		return stale;
+	}
+
 	/**
 	 * Fetches current CBR rates and returns a map of ISO-code -> RUB rate per 1 unit.
+	 * On error, returns the last cached rates (if any), or an empty map.
 	 *
-	 * @return map from ISO code to RUB price for 1 unit, may be empty on error
+	 * @return map from ISO code to RUB price for 1 unit
 	 */
 	public Map<String, BigDecimal> fetchRates() {
 		Map<String, BigDecimal> result = new HashMap<>();
@@ -69,8 +80,15 @@ public class CbrRateService {
 					result.put(charCode, ratePerUnit);
 				}
 			}
+			cachedRates = result;
+			stale = false;
 		} catch (Exception e) {
-			log.error("Failed to fetch CBR exchange rates: {}", e.getMessage(), e);
+			log.warn("Failed to fetch CBR exchange rates: {}. Returning cached rates (stale={})",
+					e.getMessage(), !cachedRates.isEmpty());
+			stale = true;
+			if (!cachedRates.isEmpty()) {
+				return new HashMap<>(cachedRates);
+			}
 		}
 		return result;
 	}

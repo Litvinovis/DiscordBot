@@ -68,6 +68,14 @@ public class StopOrderRepository extends BaseRepository {
 		}
 	}
 
+	public void deleteByUserAndTicker(String userId, String ticker) {
+		try {
+			jdbc.update("DELETE FROM sandbox_stop_orders WHERE user_id = ? AND ticker = ?", userId, ticker);
+		} catch (Exception e) {
+			log.error("StopOrderRepository.deleteByUserAndTicker({},{}) failed: {}", userId, ticker, e.getMessage(), e);
+		}
+	}
+
 	private StopOrder mapRow(ResultSet rs, int rowNum) throws SQLException {
 		return new StopOrder(
 				rs.getString("id"),

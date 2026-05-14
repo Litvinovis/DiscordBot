@@ -238,7 +238,11 @@ public class SandboxTradingService implements
 
 		BigDecimal qtyBD = BigDecimal.valueOf(qty);
 		BigDecimal turnover = price.multiply(qtyBD);
-		BigDecimal fee = turnover.multiply(commissionRate).setScale(SCALE, RoundingMode.HALF_UP);
+		// Bug #2: use scale=2 (monetary precision) for fee to avoid floating-point drift
+		BigDecimal fee = BigDecimal.valueOf(price.doubleValue())
+				.multiply(BigDecimal.valueOf(qty))
+				.multiply(commissionRate)
+				.setScale(2, RoundingMode.HALF_UP);
 		if (fee.compareTo(ONE) < 0) fee = ONE;
 
 		BigDecimal origCash = BigDecimal.valueOf(user.getCash());
@@ -260,8 +264,12 @@ public class SandboxTradingService implements
 		} else {
 			user.setCash(origCash.add(turnover).subtract(fee).doubleValue());
 			pos.setQuantity(pos.getQuantity() - qty);
-			if (pos.getQuantity() == 0) positions.delete(pKey);
-			else positions.save(pKey, pos);
+			if (pos.getQuantity() == 0) {
+				positions.delete(pKey);
+				stopOrders.deleteByUserAndTicker(userId, ticker);
+			} else {
+				positions.save(pKey, pos);
+			}
 		}
 		user.setTotalFees(origTotalFees.add(fee).doubleValue());
 		rebalanceDebt(user, userId);
@@ -568,7 +576,9 @@ public class SandboxTradingService implements
 		ticker = ticker.toUpperCase(Locale.ROOT);
 		if (!shareByTicker.containsKey(ticker)) return "Тикер не доступен в песочнице.";
 		if (qty <= 0) return "Количество должно быть > 0";
-		if (limitPrice.compareTo(ZERO) <= 0) return "Цена должна быть > 0";
+		if (limitPrice.compareTo(ZERO) <= 0) return "❌ Цена ордера должна быть больше нуля.";
+		long existingCount = limitOrders.countByUserAndTicker(userId, ticker);
+		if (existingCount >= 10) return "❌ Максимум 10 лимитных ордеров на один тикер.";
 		String id = UUID.randomUUID().toString();
 		limitOrders.save(id, new LimitOrder(id, userId, userName, ticker, side, qty, limitPrice.doubleValue(), Instant.now()));
 		String sideLabel = side == TradeSide.BUY ? "покупку" : "продажу";
@@ -648,8 +658,12 @@ public class SandboxTradingService implements
 		BigDecimal cash = BigDecimal.valueOf(user.getCash());
 		BigDecimal borrowed = BigDecimal.valueOf(user.getBorrowed());
 		if (cash.compareTo(ZERO) < 0) {
-			user.setBorrowed(borrowed.add(cash.abs()).doubleValue());
+			BigDecimal loanAmount = cash.abs();
+			user.setBorrowed(borrowed.add(loanAmount).doubleValue());
 			user.setCash(0.0);
+			log.warn("Пользователь {} взял заём: {} ₽ (итого долг: {} ₽)",
+					userId, loanAmount.setScale(2, RoundingMode.HALF_UP),
+					BigDecimal.valueOf(user.getBorrowed()).setScale(2, RoundingMode.HALF_UP));
 		} else if (borrowed.compareTo(ZERO) > 0 && cash.compareTo(ZERO) > 0) {
 			BigDecimal repay = cash.min(borrowed);
 			user.setCash(cash.subtract(repay).doubleValue());
