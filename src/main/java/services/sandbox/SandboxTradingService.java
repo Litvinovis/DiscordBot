@@ -7,6 +7,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.time.temporal.WeekFields;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -140,6 +141,40 @@ public class SandboxTradingService implements
 		} finally {
 			lock.unlock();
 		}
+	}
+
+	public String replenish(String userId, String userName, double amount) {
+		if (amount <= 0 || amount > 200_000) {
+			return "❌ Сумма пополнения должна быть от 1 до 200 000 ₽.";
+		}
+		ReentrantLock lock = lockFor(userId);
+		lock.lock();
+		try {
+			SandboxUser user = users.findById(userId);
+			if (user == null) return "Сначала выполните +регистрация";
+			LocalDate today = LocalDate.now(ZONE);
+			if (user.getLastReplenishDate() != null &&
+				user.getLastReplenishDate().plusDays(30).isAfter(today)) {
+				long daysLeft = ChronoUnit.DAYS.between(today, user.getLastReplenishDate().plusDays(30));
+				return "⏳ Пополнение доступно раз в 30 дней. Следующее — через **" + daysLeft + " дн.**";
+			}
+			user.setCash(user.getCash() + amount);
+			user.setLastReplenishDate(today);
+			users.save(userId, user);
+			return String.format("💰 Счёт пополнен на **%.0f ₽**. Новый баланс: **%.0f ₽**. Следующее пополнение через 30 дней.", amount, user.getCash());
+		} finally {
+			lock.unlock();
+		}
+	}
+
+	public String toggleMorningDigest(String userId, String userName, boolean enable) {
+		SandboxUser user = users.findById(userId);
+		if (user == null) return "Сначала выполните +регистрация";
+		user.setMorningDigestEnabled(enable);
+		users.save(userId, user);
+		return enable
+			? "☀️ Утренний дайджест **включён**. Каждый день в 9:00 МСК ты будешь получать DM с позициями."
+			: "🌙 Утренний дайджест **выключен**.";
 	}
 
 	public String assets() {
