@@ -31,6 +31,8 @@ public class SandboxUser implements Serializable {
 	private LocalDate monthlyBaselineDate;
 	private double monthlyBaselineEquity;
 
+	private LocalDate lastReplenishDate;
+
 	/** Currency holdings: ISO code (e.g. "USD") -> amount held */
 	private Map<String, Double> currencyHoldings = new HashMap<>();
 
@@ -132,6 +134,14 @@ public class SandboxUser implements Serializable {
 
 	public void setMonthlyBaselineEquity(double monthlyBaselineEquity) {
 		this.monthlyBaselineEquity = monthlyBaselineEquity;
+	}
+
+	public LocalDate getLastReplenishDate() {
+		return this.lastReplenishDate;
+	}
+
+	public void setLastReplenishDate(LocalDate lastReplenishDate) {
+		this.lastReplenishDate = lastReplenishDate;
 	}
 
 	public Map<String, Double> getCurrencyHoldings() {
