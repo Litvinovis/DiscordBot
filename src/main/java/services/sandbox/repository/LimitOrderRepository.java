@@ -62,6 +62,18 @@ public class LimitOrderRepository extends BaseRepository {
 		}
 	}
 
+	public long countByUserAndTicker(String userId, String ticker) {
+		try {
+			Long count = jdbc.queryForObject(
+					"SELECT COUNT(*) FROM sandbox_limit_orders WHERE user_id = ? AND ticker = ?",
+					Long.class, userId, ticker);
+			return count != null ? count : 0L;
+		} catch (Exception e) {
+			log.error("LimitOrderRepository.countByUserAndTicker({},{}) failed: {}", userId, ticker, e.getMessage(), e);
+			return 0L;
+		}
+	}
+
 	public void delete(String key) {
 		try {
 			jdbc.update("DELETE FROM sandbox_limit_orders WHERE id = ?", key);

@@ -35,6 +35,8 @@ public class SandboxUserRepository extends BaseRepository {
 		super(jdbc);
 	}
 
+	// Thread-safety: no in-memory cache; all persistence is via PostgreSQL ON CONFLICT DO UPDATE
+	// which provides atomic upsert at the DB level. No additional synchronization needed here.
 	public void save(String key, SandboxUser user) {
 		try {
 			jdbc.update(UPSERT,
