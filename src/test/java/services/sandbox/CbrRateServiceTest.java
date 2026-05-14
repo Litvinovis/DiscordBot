@@ -39,17 +39,24 @@ class CbrRateServiceTest {
 	}
 
 	@Test
-	void fetchRates_returnsEmptyMapOnNetworkError() {
-		// Create a subclass that overrides fetchRates to simulate network failure
+	void fetchRates_returnsNonNullMapOnNetworkError() {
+		// Create a subclass that forces the network error path by overriding fetchRates
+		// The real service now returns cached rates (or empty map if no cache) on error.
 		CbrRateService service = new CbrRateService() {
 			@Override
 			public Map<String, BigDecimal> fetchRates() {
-				// Simulate network error by returning empty map (as the real method does on error)
+				// Simulate the contract: never return null, always return a non-null map
 				return new java.util.HashMap<>();
 			}
 		};
 		Map<String, BigDecimal> rates = service.fetchRates();
-		assertNotNull(rates, "fetchRates should never return null");
-		assertTrue(rates.isEmpty(), "Should return empty map on error");
+		assertNotNull(rates, "fetchRates must never return null");
+	}
+
+	@Test
+	void fetchRates_isStale_falseByDefault() {
+		CbrRateService service = new CbrRateService();
+		// Before any call, stale should be false
+		assertFalse(service.isStale(), "isStale() should be false initially");
 	}
 }
