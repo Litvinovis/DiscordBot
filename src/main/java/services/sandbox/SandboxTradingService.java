@@ -167,6 +167,16 @@ public class SandboxTradingService implements
 		}
 	}
 
+	public String toggleMorningDigest(String userId, String userName, boolean enable) {
+		SandboxUser user = users.findById(userId);
+		if (user == null) return "Сначала выполните +регистрация";
+		user.setMorningDigestEnabled(enable);
+		users.save(userId, user);
+		return enable
+			? "☀️ Утренний дайджест **включён**. Каждый день в 9:00 МСК ты будешь получать DM с позициями."
+			: "🌙 Утренний дайджест **выключен**.";
+	}
+
 	public String assets() {
 		if (shareByTicker.isEmpty()) return "Список активов пуст.";
 		return "Доступные тикеры: " + String.join(", ", new TreeSet<>(shareByTicker.keySet()));

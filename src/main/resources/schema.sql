@@ -12,7 +12,8 @@ CREATE TABLE IF NOT EXISTS sandbox_users (
     monthly_baseline_equity DOUBLE PRECISION,
     currency_holdings      TEXT,
     schema_version         INTEGER,
-    last_replenish_date    TEXT
+    last_replenish_date    TEXT,
+    morning_digest_enabled BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 CREATE TABLE IF NOT EXISTS sandbox_positions (
