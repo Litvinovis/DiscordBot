@@ -44,6 +44,7 @@ public class MorningDigestScheduler {
             List<SandboxUser> allUsers = sandboxUserRepository.findAll();
             for (SandboxUser user : allUsers) {
                 try {
+                    if (!user.isMorningDigestEnabled()) continue;
                     List<Position> positions = positionRepository.findByUserId(user.getUserId());
                     if (positions == null || positions.stream().noneMatch(p -> p.getQuantity() > 0)) continue;
 
