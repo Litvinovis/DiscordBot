@@ -26,7 +26,7 @@
         <!-- Dependency versions -->
         <postgresql.version>42.7.11</postgresql.version>
         <jda.version>6.4.1</jda.version>
-        <tinkoff.sdk.version>1.48.1</tinkoff.sdk.version>
+        <tinkoff.sdk.version>1.49</tinkoff.sdk.version>
         <protobuf.version>4.34.1</protobuf.version>
         <lombok.version>1.18.46</lombok.version>
         <junit.version>5.11.4</junit.version>
