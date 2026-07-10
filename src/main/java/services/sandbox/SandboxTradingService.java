@@ -144,7 +144,9 @@ public class SandboxTradingService implements
 	}
 
 	public String replenish(String userId, String userName, double amount) {
-		if (amount <= 0 || amount > 200_000) {
+		// NaN проходит любые сравнения как false: "+пополнить NaN" делал баланс NaN
+		// и ронял рейтинг для всех (BigDecimal.valueOf(NaN) бросает исключение)
+		if (!Double.isFinite(amount) || amount <= 0 || amount > 200_000) {
 			return "❌ Сумма пополнения должна быть от 1 до 200 000 ₽.";
 		}
 		ReentrantLock lock = lockFor(userId);
@@ -279,12 +281,10 @@ public class SandboxTradingService implements
 		BigDecimal borrowed = BigDecimal.valueOf(user.getBorrowed());
 		RiskCheckResult risk = riskManager.evaluate(eq, gross, borrowed);
 
-		if (risk == RiskCheckResult.EQUITY_ZERO) {
-			liquidate(userId, user);
-			rollbackTrade(pos, posInCache, pKey, origQty, origAvgPrice, user, userId, origCash, origBorrowed, origTotalFees);
-			return "❌ Сделка отклонена: превышен риск/плечо.";
-		}
-		if (risk == RiskCheckResult.LEVERAGE_EXCEEDED) {
+		// EQUITY_ZERO и LEVERAGE_EXCEEDED — просто откат сделки. Ликвидация здесь
+		// недопустима: liquidate() удалял ВСЕ позиции, а rollbackTrade() затем
+		// возвращал только торгуемую и исходный кэш — остальной портфель исчезал безвозвратно
+		if (risk == RiskCheckResult.EQUITY_ZERO || risk == RiskCheckResult.LEVERAGE_EXCEEDED) {
 			rollbackTrade(pos, posInCache, pKey, origQty, origAvgPrice, user, userId, origCash, origBorrowed, origTotalFees);
 			return "❌ Сделка отклонена: превышен риск/плечо.";
 		}
