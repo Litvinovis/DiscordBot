@@ -170,13 +170,19 @@ public class SandboxTradingService implements
 	}
 
 	public String toggleMorningDigest(String userId, String userName, boolean enable) {
-		SandboxUser user = users.findById(userId);
-		if (user == null) return "Сначала выполните +регистрация";
-		user.setMorningDigestEnabled(enable);
-		users.save(userId, user);
-		return enable
-			? "☀️ Утренний дайджест **включён**. Каждый день в 9:00 МСК ты будешь получать DM с позициями."
-			: "🌙 Утренний дайджест **выключен**.";
+		ReentrantLock lock = lockFor(userId);
+		lock.lock();
+		try {
+			SandboxUser user = users.findById(userId);
+			if (user == null) return "Сначала выполните +регистрация";
+			user.setMorningDigestEnabled(enable);
+			users.save(userId, user);
+			return enable
+				? "☀️ Утренний дайджест **включён**. Каждый день в 9:00 (Екатеринбург, UTC+5) ты будешь получать DM с позициями."
+				: "🌙 Утренний дайджест **выключен**.";
+		} finally {
+			lock.unlock();
+		}
 	}
 
 	public String assets() {
@@ -290,7 +296,7 @@ public class SandboxTradingService implements
 		}
 		if (risk == RiskCheckResult.MARGIN_CALL) {
 			liquidate(userId, user);
-			sendDm(userId, "🚨 Margin call / Ликвидация! Ваши позиции по " + userId + " принудительно закрыты.");
+			sendDm(userId, "🚨 Margin call / Ликвидация! Ваши позиции принудительно закрыты.");
 		}
 
 		users.save(userId, user);
@@ -544,22 +550,28 @@ public class SandboxTradingService implements
 	}
 
 	private String setStopOrder(String userId, String ticker, StopOrderType type, BigDecimal triggerPrice) {
-		SandboxUser user = users.findById(userId);
-		if (user == null) return "Сначала выполните +регистрация";
-		ticker = ticker.toUpperCase(Locale.ROOT);
-		if (!shareByTicker.containsKey(ticker)) return "Тикер не доступен в песочнице.";
-		Position pos = positions.findById(posKey(userId, ticker));
-		if (pos == null || pos.getQuantity() <= 0) return "У вас нет открытой позиции по " + ticker;
-		if (triggerPrice.compareTo(ZERO) <= 0) return "Цена триггера должна быть > 0";
-		for (StopOrder so : stopOrders.findAll()) {
-			if (userId.equals(so.getUserId()) && ticker.equals(so.getTicker()) && type == so.getType()) {
-				stopOrders.delete(so.getId());
+		ReentrantLock lock = lockFor(userId);
+		lock.lock();
+		try {
+			SandboxUser user = users.findById(userId);
+			if (user == null) return "Сначала выполните +регистрация";
+			ticker = ticker.toUpperCase(Locale.ROOT);
+			if (!shareByTicker.containsKey(ticker)) return "Тикер не доступен в песочнице.";
+			Position pos = positions.findById(posKey(userId, ticker));
+			if (pos == null || pos.getQuantity() <= 0) return "У вас нет открытой позиции по " + ticker;
+			if (triggerPrice.compareTo(ZERO) <= 0) return "Цена триггера должна быть > 0";
+			for (StopOrder so : stopOrders.findAll()) {
+				if (userId.equals(so.getUserId()) && ticker.equals(so.getTicker()) && type == so.getType()) {
+					stopOrders.delete(so.getId());
+				}
 			}
+			String id = UUID.randomUUID().toString();
+			stopOrders.save(id, new StopOrder(id, userId, ticker, type, triggerPrice.doubleValue(), Instant.now()));
+			String typeName = type == StopOrderType.SL ? "Стоп-лосс" : "Тейк-профит";
+			return "✅ " + typeName + " на " + ticker + " установлен: " + formatter.format(triggerPrice) + " ₽";
+		} finally {
+			lock.unlock();
 		}
-		String id = UUID.randomUUID().toString();
-		stopOrders.save(id, new StopOrder(id, userId, ticker, type, triggerPrice.doubleValue(), Instant.now()));
-		String typeName = type == StopOrderType.SL ? "Стоп-лосс" : "Тейк-профит";
-		return "✅ " + typeName + " на " + ticker + " установлен: " + formatter.format(triggerPrice) + " ₽";
 	}
 
 	public String placeLimitBuy(String userId, String userName, String ticker, int qty, BigDecimal limitPrice) {
@@ -571,6 +583,9 @@ public class SandboxTradingService implements
 	}
 
 	private String placeLimitOrder(String userId, String userName, String ticker, int qty, BigDecimal limitPrice, TradeSide side) {
+		ReentrantLock lock = lockFor(userId);
+		lock.lock();
+		try {
 		SandboxUser user = users.findById(userId);
 		if (user == null) return "Сначала выполните +регистрация";
 		ticker = ticker.toUpperCase(Locale.ROOT);
@@ -584,6 +599,9 @@ public class SandboxTradingService implements
 		String sideLabel = side == TradeSide.BUY ? "покупку" : "продажу";
 		return "✅ Лимитная заявка на " + sideLabel + " " + qty + " " + ticker
 				+ " @ " + formatter.format(limitPrice) + " ₽ принята (ID: " + id.substring(0, 8) + "...)";
+		} finally {
+			lock.unlock();
+		}
 	}
 
 	public String myOrders(String userId) {
@@ -697,23 +715,28 @@ public class SandboxTradingService implements
 
 	private void recordBaseline(SandboxUser u) {
 		LocalDate now = LocalDate.now(ZONE);
-		int week = now.get(WeekFields.ISO.weekOfWeekBasedYear());
 		BigDecimal eq = equity(u.getUserId(), u);
 		if (u.getDailyBaselineDate() == null || !now.equals(u.getDailyBaselineDate())) {
 			u.setDailyBaselineDate(now);
 			u.setDailyBaselineEquity(eq.doubleValue());
 		}
-		if (u.getWeeklyBaselineDate() == null ||
-				u.getWeeklyBaselineDate().get(WeekFields.ISO.weekOfWeekBasedYear()) != week) {
+		// Сравниваем неделю и месяц вместе с годом, иначе та же неделя/месяц
+		// следующего года не сбрасывают baseline
+		if (u.getWeeklyBaselineDate() == null || !sameIsoWeek(u.getWeeklyBaselineDate(), now)) {
 			u.setWeeklyBaselineDate(now);
 			u.setWeeklyBaselineEquity(eq.doubleValue());
 		}
 		if (u.getMonthlyBaselineDate() == null ||
-				u.getMonthlyBaselineDate().getMonthValue() != now.getMonthValue()) {
+				!java.time.YearMonth.from(u.getMonthlyBaselineDate()).equals(java.time.YearMonth.from(now))) {
 			u.setMonthlyBaselineDate(now);
 			u.setMonthlyBaselineEquity(eq.doubleValue());
 		}
 		users.save(u.getUserId(), u);
+	}
+
+	private static boolean sameIsoWeek(LocalDate a, LocalDate b) {
+		return a.get(WeekFields.ISO.weekOfWeekBasedYear()) == b.get(WeekFields.ISO.weekOfWeekBasedYear())
+				&& a.get(WeekFields.ISO.weekBasedYear()) == b.get(WeekFields.ISO.weekBasedYear());
 	}
 
 	private BigDecimal metric(SandboxUser u, String period) {

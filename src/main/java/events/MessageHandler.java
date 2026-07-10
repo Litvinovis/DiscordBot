@@ -13,6 +13,8 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Обработчик входящих сообщений Discord.
@@ -24,9 +26,12 @@ public class MessageHandler extends ListenerAdapter {
 	@Generated
 	private static final Logger log = LoggerFactory.getLogger(MessageHandler.class);
 	private final Logger logger = LoggerFactory.getLogger("default-logger");
+	private static final String OPENCLAW_ROVER_BOT_ID = "1481319611533365483";
 
 	private final Set<String> allowedChannelIds;
 	private final List<BotCommand> commands;
+	// Команды ходят в Tinkoff API/ЦБ — выносим с event-потока JDA, чтобы не блокировать gateway
+	private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 
 	public MessageHandler(DiscordProperties discordProperties, List<BotCommand> commands) {
 		this.allowedChannelIds = Set.copyOf(discordProperties.allowedChannelIds());
@@ -35,8 +40,12 @@ public class MessageHandler extends ListenerAdapter {
 
 	@Override
 	public void onMessageReceived(@NotNull MessageReceivedEvent event) {
+		if (!isBotAsking(event)) return;
+		executor.submit(() -> process(event));
+	}
+
+	private void process(MessageReceivedEvent event) {
 		try {
-			if (!isBotAsking(event)) return;
 			String msg = event.getMessage().getContentDisplay().trim();
 			String response = handle(msg, event);
 			event.getChannel().sendMessage(response).submit();
@@ -57,6 +66,10 @@ public class MessageHandler extends ListenerAdapter {
 	}
 
 	private boolean isBotAsking(MessageReceivedEvent event) {
+		// Сообщения ботов игнорируем, кроме доверенного OpenClaw Rover
+		if (event.getAuthor().isBot() && !OPENCLAW_ROVER_BOT_ID.equals(event.getAuthor().getId())) {
+			return false;
+		}
 		return event.getMessage().getContentDisplay().startsWith("+")
 				&& allowedChannelIds.contains(event.getChannel().getId());
 	}
