@@ -30,7 +30,7 @@ public class ReplenishTest {
      * Mirrors the replenish() method in SandboxTradingService for isolated testing.
      */
     private String replenish(SandboxUserRepository repo, String userId, String userName, double amount) {
-        if (amount <= 0 || amount > MAX_AMOUNT) {
+        if (!Double.isFinite(amount) || amount <= 0 || amount > MAX_AMOUNT) {
             return "❌ Сумма пополнения должна быть от 1 до 200 000 ₽.";
         }
         SandboxUser user = repo.findById(userId);
@@ -107,6 +107,26 @@ public class ReplenishTest {
         String result = replenish(repo, "u1", "Alice", 0.0);
 
         assertTrue(result.startsWith("❌"), "Should reject zero amount");
+        verifyNoInteractions(repo);
+    }
+
+    @Test
+    void replenish_rejectsNaN() {
+        SandboxUserRepository repo = mock(SandboxUserRepository.class);
+
+        String result = replenish(repo, "u1", "Alice", Double.NaN);
+
+        assertTrue(result.startsWith("❌"), "NaN must be rejected: it passes all comparisons and corrupts the balance");
+        verifyNoInteractions(repo);
+    }
+
+    @Test
+    void replenish_rejectsInfinity() {
+        SandboxUserRepository repo = mock(SandboxUserRepository.class);
+
+        String result = replenish(repo, "u1", "Alice", Double.POSITIVE_INFINITY);
+
+        assertTrue(result.startsWith("❌"), "Infinity must be rejected");
         verifyNoInteractions(repo);
     }
 }

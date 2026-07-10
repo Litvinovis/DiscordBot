@@ -78,15 +78,21 @@ public class SandboxOrderProcessor {
 					: price.compareTo(triggerPrice) >= 0;
 
 			if (triggered) {
-				Position pos = positions.findById(posKey(so.getUserId(), so.getTicker()));
-				if (pos == null || pos.getQuantity() <= 0) { toRemove.add(so.getId()); continue; }
-				SandboxUser user = users.findById(so.getUserId());
-				if (user == null) { toRemove.add(so.getId()); continue; }
-
 				ReentrantLock lock = tradingService.userLocks.computeIfAbsent(so.getUserId(), k -> new ReentrantLock(true));
 				lock.lock();
 				try {
+					// Позицию и пользователя читаем под локом, чтобы не продать устаревшее количество
+					Position pos = positions.findById(posKey(so.getUserId(), so.getTicker()));
+					if (pos == null || pos.getQuantity() <= 0) { toRemove.add(so.getId()); continue; }
+					SandboxUser user = users.findById(so.getUserId());
+					if (user == null) { toRemove.add(so.getId()); continue; }
+
 					String result = tradingService.trade(so.getUserId(), user.getUserName(), so.getTicker(), pos.getQuantity(), false);
+					if (isTransientFailure(result)) {
+						// Цена временно недоступна — оставляем ордер до следующего прохода
+						log.warn("Стоп-ордер {} не исполнен (повторим): {}", so.getId(), result);
+						continue;
+					}
 					String typeName = so.getType() == StopOrderType.SL ? "Стоп-лосс" : "Тейк-профит";
 					notifications.add(new Notification(so.getUserId(),
 							"⚡ " + typeName + " сработал! " + so.getTicker() + " @ " + formatter.format(price) + " ₽ → " + result));
@@ -126,6 +132,11 @@ public class SandboxOrderProcessor {
 				lock.lock();
 				try {
 					String result = tradingService.trade(lo.getUserId(), lo.getUserName(), lo.getTicker(), lo.getQty(), isBuy);
+					if (isTransientFailure(result)) {
+						// Цена временно недоступна — оставляем заявку до следующего прохода
+						log.warn("Лимитная заявка {} не исполнена (повторим): {}", lo.getId(), result);
+						continue;
+					}
 					String sideLabel = isBuy ? "покупка" : "продажа";
 					notifications.add(new Notification(lo.getUserId(),
 							"✅ Лимитная заявка исполнена: " + sideLabel + " " + lo.getQty() + " " + lo.getTicker()
@@ -164,6 +175,11 @@ public class SandboxOrderProcessor {
 			}
 		}
 		return notifications;
+	}
+
+	/** Временная ошибка (например, недоступна котировка) — ордер стоит повторить, а не удалять. */
+	private static boolean isTransientFailure(String tradeResult) {
+		return tradeResult != null && tradeResult.startsWith("⚠️");
 	}
 
 	private String posKey(String userId, String ticker) {

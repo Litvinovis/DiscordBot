@@ -14,7 +14,7 @@ import services.sandbox.repository.SandboxUserRepository;
 import java.util.List;
 
 /**
- * Sends a morning digest DM to each active user at 9:00 МСК (Asia/Yekaterinburg = UTC+5).
+ * Sends a morning digest DM to each active user at 9:00 Asia/Yekaterinburg (UTC+5, 7:00 МСК).
  * Only users with at least one open position receive a message.
  */
 @Component
