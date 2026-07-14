@@ -26,7 +26,10 @@ discord:
 tinkoff:
   token: "${TINKOFF_TOKEN:}"
   api-mode: "${TINKOFF_API_MODE:prod}"
-  target: "${INVEST_API_TARGET:dns:///invest-public-api.tinkoff.ru:443}"
+  # SDK >= 1.49.2 проверяет сертификаты вшитым truststore (корень Минцифры),
+  # который знает только цепочку tbank.ru — старый endpoint tinkoff.ru (HARICA)
+  # не проходит PKIX-проверку и бот падает на старте
+  target: "${INVEST_API_TARGET:dns:///invest-public-api.tbank.ru:443}"
 
 sandbox:
   start-balance: "${SANDBOX_START_BALANCE:1000000.00}"
