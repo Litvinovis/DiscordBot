@@ -11,8 +11,8 @@ Discord-бот для симуляции торговли акциями. Под
 | Компонент | Версия |
 |---|---|
 | Java | 25 |
-| JDA (Discord API) | 6.4.1 |
-| T-Bank Invest Java SDK | 1.48 |
+| JDA (Discord API) | 6.5 |
+| T-Bank Invest Java SDK | 1.49.2 |
 | PostgreSQL | 16 |
 | HikariCP | 6.3.0 |
 | Logback | 1.5.32 |
@@ -80,7 +80,8 @@ Discord-бот для симуляции торговли акциями. Под
 | Переменная | По умолчанию | Описание |
 |---|---|---|
 | `DISCORD_ALLOWED_CHANNEL_IDS` | `1157258712138907700` | ID каналов через запятую |
-| `TINKOFF_API_MODE` | `readonly` | `prod`, `sandbox` или `readonly` |
+| `TINKOFF_API_MODE` | `prod` | `prod` или `sandbox` |
+| `INVEST_API_TARGET` | `dns:///invest-public-api.tbank.ru:443` | gRPC-endpoint Invest API. SDK ≥1.49.2 проверяет сертификаты вшитым truststore (корень Минцифры), поэтому старый endpoint `tinkoff.ru` не работает |
 | `SANDBOX_START_BALANCE` | `1000000.00` | Стартовый баланс песочницы (₽) |
 | `SANDBOX_COMMISSION_RATE` | `0.001` | Комиссия (0.1%) |
 | `SANDBOX_MAX_LEVERAGE` | `3.0` | Максимальное плечо |
@@ -187,7 +188,6 @@ src/main/java/
 │   │   ├── SandboxTradingService.java    # Логика торговли
 │   │   ├── SandboxOrderScheduler.java    # Исполнение лимитных заявок
 │   │   ├── SandboxReportScheduler.java   # Ежедневные отчёты
-│   │   ├── db/SandboxIgniteManager.java  # Подключение к PostgreSQL (HikariCP)
 │   │   ├── db/SchemaInitializer.java     # Инициализация схемы из schema.sql
 │   │   ├── migration/SandboxMigrationService.java  # Миграция данных при старте
 │   │   ├── model/                    # Модели данных
