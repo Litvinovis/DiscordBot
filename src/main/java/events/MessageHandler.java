@@ -45,12 +45,20 @@ public class MessageHandler extends ListenerAdapter {
 	}
 
 	private void process(MessageReceivedEvent event) {
+		String msg = event.getMessage().getContentDisplay().trim();
 		try {
-			String msg = event.getMessage().getContentDisplay().trim();
 			String response = handle(msg, event);
+			if (response == null || response.isBlank()) {
+				// Команда вернула пустой ответ — пользователь остался без реакции
+				logger.warn("Команда '{}' вернула пустой ответ (пользователь {})",
+						msg, event.getAuthor().getId());
+				return;
+			}
 			event.getChannel().sendMessage(response).submit();
 		} catch (Exception e) {
-			logger.error("Ошибка: {}", e.getMessage());
+			// Раньше терялся стектрейс главного обработчика команд
+			logger.error("Ошибка обработки команды '{}' (пользователь {})",
+					msg, event.getAuthor().getId(), e);
 		}
 	}
 
