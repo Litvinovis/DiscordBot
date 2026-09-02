@@ -34,7 +34,7 @@ public class DcaListCommand implements BotCommand {
         for (DcaOrder o : orders) {
             String freqLabel = "WEEKLY".equals(o.getFrequency()) ? "нед" : "мес";
             sb.append("• ").append(o.getTicker())
-              .append(" — ").append((long) o.getAmountRub()).append(" ₽/").append(freqLabel).append("\n");
+              .append(" — ").append(o.getAmountRub().setScale(0, java.math.RoundingMode.DOWN).toPlainString()).append(" ₽/").append(freqLabel).append("\n");
         }
         return sb.toString().trim();
     }

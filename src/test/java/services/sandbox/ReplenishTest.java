@@ -1,5 +1,6 @@
 package services.sandbox;
 
+import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 import services.sandbox.model.SandboxUser;
 import services.sandbox.repository.SandboxUserRepository;
@@ -41,23 +42,23 @@ public class ReplenishTest {
             long daysLeft = ChronoUnit.DAYS.between(today, user.getLastReplenishDate().plusDays(COOLDOWN_DAYS));
             return "⏳ Пополнение доступно раз в 30 дней. Следующее — через **" + daysLeft + " дн.**";
         }
-        user.setCash(user.getCash() + amount);
+        user.setCash(user.getCash().add(BigDecimal.valueOf(amount)));
         user.setLastReplenishDate(today);
         repo.save(userId, user);
         return String.format("💰 Счёт пополнен на **%.0f ₽**. Новый баланс: **%.0f ₽**. Следующее пополнение через 30 дней.",
-                amount, user.getCash());
+                amount, user.getCash().doubleValue());
     }
 
     @Test
     void replenish_addsMoneyToBalance() {
         SandboxUserRepository repo = mock(SandboxUserRepository.class);
-        SandboxUser user = new SandboxUser("u1", "Alice", 100_000.0);
+        SandboxUser user = new SandboxUser("u1", "Alice", BigDecimal.valueOf(100_000.0));
         when(repo.findById("u1")).thenReturn(user);
 
         String result = replenish(repo, "u1", "Alice", 50_000.0);
 
         assertTrue(result.contains("50000"), "Result should mention the replenished amount");
-        assertEquals(150_000.0, user.getCash(), 0.001, "Cash should be 150 000 after replenish");
+        assertEquals(0, BigDecimal.valueOf(150_000.0).compareTo(user.getCash()), "Cash should be 150 000 after replenish");
         assertEquals(LocalDate.now(), user.getLastReplenishDate());
         verify(repo).save(eq("u1"), eq(user));
     }
@@ -65,7 +66,7 @@ public class ReplenishTest {
     @Test
     void replenish_blockedWithin30Days() {
         SandboxUserRepository repo = mock(SandboxUserRepository.class);
-        SandboxUser user = new SandboxUser("u1", "Alice", 100_000.0);
+        SandboxUser user = new SandboxUser("u1", "Alice", BigDecimal.valueOf(100_000.0));
         user.setLastReplenishDate(LocalDate.now().minusDays(5));
         when(repo.findById("u1")).thenReturn(user);
 
@@ -79,14 +80,14 @@ public class ReplenishTest {
     @Test
     void replenish_allowedAfter30Days() {
         SandboxUserRepository repo = mock(SandboxUserRepository.class);
-        SandboxUser user = new SandboxUser("u1", "Alice", 100_000.0);
+        SandboxUser user = new SandboxUser("u1", "Alice", BigDecimal.valueOf(100_000.0));
         user.setLastReplenishDate(LocalDate.now().minusDays(31));
         when(repo.findById("u1")).thenReturn(user);
 
         String result = replenish(repo, "u1", "Alice", 30_000.0);
 
         assertFalse(result.startsWith("⏳"), "Should not be blocked after 31 days");
-        assertEquals(130_000.0, user.getCash(), 0.001);
+        assertEquals(0, BigDecimal.valueOf(130_000.0).compareTo(user.getCash()));
         verify(repo).save(eq("u1"), eq(user));
     }
 

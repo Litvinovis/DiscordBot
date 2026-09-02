@@ -25,55 +25,33 @@ public class StopOrderRepository extends BaseRepository {
 	}
 
 	public void save(String key, StopOrder order) {
-		try {
-			jdbc.update(UPSERT,
-					key,
-					order.getType().name(),
-					order.getUserId(),
-					order.getTicker(),
-					order.getTriggerPrice(),
-					order.getCreatedAt() != null ? order.getCreatedAt().toEpochMilli() : 0L,
-					order.getSchemaVersion()
-			);
-		} catch (Exception e) {
-			log.error("StopOrderRepository.save({}) failed: {}", key, e.getMessage(), e);
-		}
+		jdbc.update(UPSERT,
+				key,
+				order.getType().name(),
+				order.getUserId(),
+				order.getTicker(),
+				order.getTriggerPrice(),
+				order.getCreatedAt() != null ? order.getCreatedAt().toEpochMilli() : 0L,
+				order.getSchemaVersion()
+		);
 	}
 
 	public StopOrder findById(String key) {
-		try {
-			List<StopOrder> results = jdbc.query(
-					"SELECT * FROM sandbox_stop_orders WHERE id = ?", this::mapRow, key);
-			return results.isEmpty() ? null : results.getFirst();
-		} catch (Exception e) {
-			log.error("StopOrderRepository.findById({}) failed: {}", key, e.getMessage(), e);
-			return null;
-		}
+		List<StopOrder> results = jdbc.query(
+				"SELECT * FROM sandbox_stop_orders WHERE id = ?", this::mapRow, key);
+		return results.isEmpty() ? null : results.getFirst();
 	}
 
 	public List<StopOrder> findAll() {
-		try {
-			return jdbc.query("SELECT * FROM sandbox_stop_orders", this::mapRow);
-		} catch (Exception e) {
-			log.error("StopOrderRepository.findAll() failed: {}", e.getMessage(), e);
-			return List.of();
-		}
+		return jdbc.query("SELECT * FROM sandbox_stop_orders", this::mapRow);
 	}
 
 	public void delete(String key) {
-		try {
-			jdbc.update("DELETE FROM sandbox_stop_orders WHERE id = ?", key);
-		} catch (Exception e) {
-			log.error("StopOrderRepository.delete({}) failed: {}", key, e.getMessage(), e);
-		}
+		jdbc.update("DELETE FROM sandbox_stop_orders WHERE id = ?", key);
 	}
 
 	public void deleteByUserAndTicker(String userId, String ticker) {
-		try {
-			jdbc.update("DELETE FROM sandbox_stop_orders WHERE user_id = ? AND ticker = ?", userId, ticker);
-		} catch (Exception e) {
-			log.error("StopOrderRepository.deleteByUserAndTicker({},{}) failed: {}", userId, ticker, e.getMessage(), e);
-		}
+		jdbc.update("DELETE FROM sandbox_stop_orders WHERE user_id = ? AND ticker = ?", userId, ticker);
 	}
 
 	private StopOrder mapRow(ResultSet rs, int rowNum) throws SQLException {
@@ -82,7 +60,7 @@ public class StopOrderRepository extends BaseRepository {
 				rs.getString("user_id"),
 				rs.getString("ticker"),
 				StopOrderType.valueOf(rs.getString("order_type")),
-				rs.getDouble("trigger_price"),
+				nz(rs.getBigDecimal("trigger_price")),
 				Instant.ofEpochMilli(rs.getLong("created_at"))
 		);
 	}

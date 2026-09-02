@@ -1,5 +1,6 @@
 package services.sandbox.model;
 
+import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -80,27 +81,25 @@ class SandboxModelsTest {
 
 	@Test
 	void sandboxUser_constructorSetsFieldsCorrectly() {
-		SandboxUser user = new SandboxUser("u42", "Alice", 100_000.0);
+		SandboxUser user = new SandboxUser("u42", "Alice", BigDecimal.valueOf(100_000.0));
 		assertEquals("u42", user.getUserId());
 		assertEquals("Alice", user.getUserName());
-		assertEquals(100_000.0, user.getCash(), 1e-9);
-		assertEquals(0.0, user.getBorrowed(), 1e-9,
-				"Borrowed must start at 0 when using the 3-arg constructor");
-		assertEquals(0.0, user.getTotalFees(), 1e-9,
-				"Total fees must start at 0 when using the 3-arg constructor");
+		assertEquals(0, BigDecimal.valueOf(100_000.0).compareTo(user.getCash()));
+		assertEquals(0, BigDecimal.valueOf(0.0).compareTo(user.getBorrowed()), "Borrowed must start at 0 when using the 3-arg constructor");
+		assertEquals(0, BigDecimal.valueOf(0.0).compareTo(user.getTotalFees()), "Total fees must start at 0 when using the 3-arg constructor");
 	}
 
 	@Test
 	void sandboxUser_cashCanBeNegativeAfterSetter() {
 		// The service uses setCash() to reflect borrowed-state; the model must accept negative
-		SandboxUser user = new SandboxUser("u1", "Bob", 500.0);
-		user.setCash(-100.0);
-		assertEquals(-100.0, user.getCash(), 1e-9);
+		SandboxUser user = new SandboxUser("u1", "Bob", BigDecimal.valueOf(500.0));
+		user.setCash(BigDecimal.valueOf(-100.0));
+		assertEquals(0, BigDecimal.valueOf(-100.0).compareTo(user.getCash()));
 	}
 
 	@Test
 	void sandboxUser_baselineDatesNullByDefault() {
-		SandboxUser user = new SandboxUser("u1", "Carol", 1_000.0);
+		SandboxUser user = new SandboxUser("u1", "Carol", BigDecimal.valueOf(1_000.0));
 		assertNull(user.getDailyBaselineDate(),   "No daily baseline until first trade");
 		assertNull(user.getWeeklyBaselineDate(),  "No weekly baseline until first trade");
 		assertNull(user.getMonthlyBaselineDate(), "No monthly baseline until first trade");
@@ -108,19 +107,19 @@ class SandboxModelsTest {
 
 	@Test
 	void sandboxUser_baselineSettersWorkCorrectly() {
-		SandboxUser user = new SandboxUser("u1", "Dave", 50_000.0);
+		SandboxUser user = new SandboxUser("u1", "Dave", BigDecimal.valueOf(50_000.0));
 		LocalDate today = LocalDate.of(2026, 3, 20);
 		user.setDailyBaselineDate(today);
-		user.setDailyBaselineEquity(50_000.0);
+		user.setDailyBaselineEquity(BigDecimal.valueOf(50_000.0));
 		user.setWeeklyBaselineDate(today);
-		user.setWeeklyBaselineEquity(48_000.0);
+		user.setWeeklyBaselineEquity(BigDecimal.valueOf(48_000.0));
 		user.setMonthlyBaselineDate(today);
-		user.setMonthlyBaselineEquity(45_000.0);
+		user.setMonthlyBaselineEquity(BigDecimal.valueOf(45_000.0));
 
 		assertEquals(today, user.getDailyBaselineDate());
-		assertEquals(50_000.0, user.getDailyBaselineEquity(), 1e-9);
-		assertEquals(48_000.0, user.getWeeklyBaselineEquity(), 1e-9);
-		assertEquals(45_000.0, user.getMonthlyBaselineEquity(), 1e-9);
+		assertEquals(0, BigDecimal.valueOf(50_000.0).compareTo(user.getDailyBaselineEquity()));
+		assertEquals(0, BigDecimal.valueOf(48_000.0).compareTo(user.getWeeklyBaselineEquity()));
+		assertEquals(0, BigDecimal.valueOf(45_000.0).compareTo(user.getMonthlyBaselineEquity()));
 	}
 
 	// =======================================================================
@@ -129,17 +128,17 @@ class SandboxModelsTest {
 
 	@Test
 	void position_constructorSetsFieldsCorrectly() {
-		Position pos = new Position("u1", "SBER", "uid-sber", 10, 305.50);
+		Position pos = new Position("u1", "SBER", "uid-sber", 10, BigDecimal.valueOf(305.50));
 		assertEquals("u1", pos.getUserId());
 		assertEquals("SBER", pos.getTicker());
 		assertEquals("uid-sber", pos.getInstrumentId());
 		assertEquals(10, pos.getQuantity());
-		assertEquals(305.50, pos.getAvgPrice(), 1e-9);
+		assertEquals(0, BigDecimal.valueOf(305.50).compareTo(pos.getAvgPrice()));
 	}
 
 	@Test
 	void position_quantityCanBeZeroAfterSell() {
-		Position pos = new Position("u1", "GAZP", "uid-gazp", 5, 200.0);
+		Position pos = new Position("u1", "GAZP", "uid-gazp", 5, BigDecimal.valueOf(200.0));
 		pos.setQuantity(0);
 		assertEquals(0, pos.getQuantity());
 	}
@@ -151,23 +150,22 @@ class SandboxModelsTest {
 	@Test
 	void tradeRecord_constructorSetsAllFields() {
 		Instant now = Instant.now();
-		TradeRecord tr = new TradeRecord("id1", "u1", "LKOH", BUY, 3, 7500.0, 7.5, now);
+		TradeRecord tr = new TradeRecord("id1", "u1", "LKOH", BUY, 3, BigDecimal.valueOf(7500.0), BigDecimal.valueOf(7.5), now);
 		assertEquals("id1", tr.getId());
 		assertEquals("u1", tr.getUserId());
 		assertEquals("LKOH", tr.getTicker());
 		assertEquals(BUY, tr.getSide());
 		assertEquals(3, tr.getQty());
-		assertEquals(7500.0, tr.getPrice(), 1e-9);
-		assertEquals(7.5, tr.getFee(), 1e-9);
+		assertEquals(0, BigDecimal.valueOf(7500.0).compareTo(tr.getPrice()));
+		assertEquals(0, BigDecimal.valueOf(7.5).compareTo(tr.getFee()));
 		assertEquals(now, tr.getTimestamp());
 	}
 
 	@Test
 	void tradeRecord_feeMinimumEnforcement_conceptual() {
 		// The service enforces fee >= 1.0; a fee < 1 in the model itself should still be storable
-		TradeRecord tr = new TradeRecord("id2", "u2", "SBER", SELL, 1, 300.0, 0.3, Instant.now());
-		assertEquals(0.3, tr.getFee(), 1e-9,
-				"Model stores whatever fee the service puts in — minimum enforcement is the service's job");
+		TradeRecord tr = new TradeRecord("id2", "u2", "SBER", SELL, 1, BigDecimal.valueOf(300.0), BigDecimal.valueOf(0.3), Instant.now());
+		assertEquals(0, BigDecimal.valueOf(0.3).compareTo(tr.getFee()), "Model stores whatever fee the service puts in — minimum enforcement is the service's job");
 	}
 
 	// =======================================================================
@@ -177,22 +175,22 @@ class SandboxModelsTest {
 	@Test
 	void limitOrder_constructorSetsAllFields() {
 		Instant now = Instant.now();
-		LimitOrder lo = new LimitOrder("lo1", "u1", "Alice", "SBER", BUY, 5, 295.0, now);
+		LimitOrder lo = new LimitOrder("lo1", "u1", "Alice", "SBER", BUY, 5, BigDecimal.valueOf(295.0), now);
 		assertEquals("lo1", lo.getId());
 		assertEquals("u1", lo.getUserId());
 		assertEquals("Alice", lo.getUserName());
 		assertEquals("SBER", lo.getTicker());
 		assertEquals(BUY, lo.getSide());
 		assertEquals(5, lo.getQty());
-		assertEquals(295.0, lo.getLimitPrice(), 1e-9);
+		assertEquals(0, BigDecimal.valueOf(295.0).compareTo(lo.getLimitPrice()));
 		assertEquals(now, lo.getCreatedAt());
 	}
 
 	@Test
 	void limitOrder_sellSideStoredCorrectly() {
-		LimitOrder lo = new LimitOrder("lo2", "u2", "Bob", "GAZP", SELL, 10, 185.0, Instant.now());
+		LimitOrder lo = new LimitOrder("lo2", "u2", "Bob", "GAZP", SELL, 10, BigDecimal.valueOf(185.0), Instant.now());
 		assertEquals(SELL, lo.getSide());
-		assertEquals(185.0, lo.getLimitPrice(), 1e-9);
+		assertEquals(0, BigDecimal.valueOf(185.0).compareTo(lo.getLimitPrice()));
 	}
 
 	// =======================================================================
@@ -202,20 +200,20 @@ class SandboxModelsTest {
 	@Test
 	void stopOrder_constructorSetsAllFields_SL() {
 		Instant now = Instant.now();
-		StopOrder so = new StopOrder("so1", "u1", "SBER", SL, 270.0, now);
+		StopOrder so = new StopOrder("so1", "u1", "SBER", SL, BigDecimal.valueOf(270.0), now);
 		assertEquals("so1", so.getId());
 		assertEquals("u1", so.getUserId());
 		assertEquals("SBER", so.getTicker());
 		assertEquals(SL, so.getType());
-		assertEquals(270.0, so.getTriggerPrice(), 1e-9);
+		assertEquals(0, BigDecimal.valueOf(270.0).compareTo(so.getTriggerPrice()));
 		assertEquals(now, so.getCreatedAt());
 	}
 
 	@Test
 	void stopOrder_constructorSetsAllFields_TP() {
-		StopOrder so = new StopOrder("so2", "u1", "NVDA", TP, 850.0, Instant.now());
+		StopOrder so = new StopOrder("so2", "u1", "NVDA", TP, BigDecimal.valueOf(850.0), Instant.now());
 		assertEquals(TP, so.getType());
-		assertEquals(850.0, so.getTriggerPrice(), 1e-9);
+		assertEquals(0, BigDecimal.valueOf(850.0).compareTo(so.getTriggerPrice()));
 	}
 
 	// =======================================================================
@@ -225,18 +223,18 @@ class SandboxModelsTest {
 	@Test
 	void priceAlert_constructorSetsAllFields_above() {
 		Instant now = Instant.now();
-		PriceAlert pa = new PriceAlert("pa1", "u1", "AAPL", 200.0, true, now);
+		PriceAlert pa = new PriceAlert("pa1", "u1", "AAPL", BigDecimal.valueOf(200.0), true, now);
 		assertEquals("pa1", pa.getId());
 		assertEquals("u1", pa.getUserId());
 		assertEquals("AAPL", pa.getTicker());
-		assertEquals(200.0, pa.getTargetPrice(), 1e-9);
+		assertEquals(0, BigDecimal.valueOf(200.0).compareTo(pa.getTargetPrice()));
 		assertTrue(pa.isAbove(), "above=true means notify when price >= target");
 		assertEquals(now, pa.getCreatedAt());
 	}
 
 	@Test
 	void priceAlert_belowVariant() {
-		PriceAlert pa = new PriceAlert("pa2", "u2", "TSLA", 150.0, false, Instant.now());
+		PriceAlert pa = new PriceAlert("pa2", "u2", "TSLA", BigDecimal.valueOf(150.0), false, Instant.now());
 		assertFalse(pa.isAbove(), "above=false means notify when price <= target");
 	}
 
@@ -246,28 +244,28 @@ class SandboxModelsTest {
 
 	@Test
 	void schemaVersionSetters_upgradeCorrectly() {
-		SandboxUser user = new SandboxUser("u1", "E", 1000.0);
+		SandboxUser user = new SandboxUser("u1", "E", BigDecimal.valueOf(1000.0));
 		assertEquals(0, user.getSchemaVersion());
 		user.setSchemaVersion(SandboxUser.CURRENT_SCHEMA_VERSION);
 		assertEquals(SandboxUser.CURRENT_SCHEMA_VERSION, user.getSchemaVersion());
 
-		Position pos = new Position("u1", "X", "uid", 1, 100.0);
+		Position pos = new Position("u1", "X", "uid", 1, BigDecimal.valueOf(100.0));
 		pos.setSchemaVersion(Position.CURRENT_SCHEMA_VERSION);
 		assertEquals(Position.CURRENT_SCHEMA_VERSION, pos.getSchemaVersion());
 
-		TradeRecord tr = new TradeRecord("t1", "u1", "X", BUY, 1, 100.0, 1.0, Instant.now());
+		TradeRecord tr = new TradeRecord("t1", "u1", "X", BUY, 1, BigDecimal.valueOf(100.0), BigDecimal.valueOf(1.0), Instant.now());
 		tr.setSchemaVersion(TradeRecord.CURRENT_SCHEMA_VERSION);
 		assertEquals(TradeRecord.CURRENT_SCHEMA_VERSION, tr.getSchemaVersion());
 
-		LimitOrder lo = new LimitOrder("lo1", "u1", "A", "X", BUY, 1, 100.0, Instant.now());
+		LimitOrder lo = new LimitOrder("lo1", "u1", "A", "X", BUY, 1, BigDecimal.valueOf(100.0), Instant.now());
 		lo.setSchemaVersion(LimitOrder.CURRENT_SCHEMA_VERSION);
 		assertEquals(LimitOrder.CURRENT_SCHEMA_VERSION, lo.getSchemaVersion());
 
-		StopOrder so = new StopOrder("so1", "u1", "X", SL, 90.0, Instant.now());
+		StopOrder so = new StopOrder("so1", "u1", "X", SL, BigDecimal.valueOf(90.0), Instant.now());
 		so.setSchemaVersion(StopOrder.CURRENT_SCHEMA_VERSION);
 		assertEquals(StopOrder.CURRENT_SCHEMA_VERSION, so.getSchemaVersion());
 
-		PriceAlert pa = new PriceAlert("pa1", "u1", "X", 100.0, true, Instant.now());
+		PriceAlert pa = new PriceAlert("pa1", "u1", "X", BigDecimal.valueOf(100.0), true, Instant.now());
 		pa.setSchemaVersion(PriceAlert.CURRENT_SCHEMA_VERSION);
 		assertEquals(PriceAlert.CURRENT_SCHEMA_VERSION, pa.getSchemaVersion());
 	}

@@ -109,15 +109,15 @@ class BugFixValidationTest {
     @Test
     void bug4_partialSell_doesNotChangeAvgPrice() {
         // Simulate a position: 10 shares at avg 300
-        Position pos = new Position("user1", "SBER", "uid-sber", 10, 300.0);
-        double originalAvgPrice = pos.getAvgPrice();
+        Position pos = new Position("user1", "SBER", "uid-sber", 10, BigDecimal.valueOf(300.0));
+        BigDecimal originalAvgPrice = pos.getAvgPrice();
 
         // Partial sell: 5 shares. avgPrice must NOT change.
         int sellQty = 5;
         pos.setQuantity(pos.getQuantity() - sellQty);
         // avgPrice intentionally NOT updated on sell (this is the fix)
 
-        assertEquals(originalAvgPrice, pos.getAvgPrice(), 0.0001,
+        assertEquals(0, originalAvgPrice.compareTo(pos.getAvgPrice()),
                 "avgPrice must not change on a partial sell");
         assertEquals(5, pos.getQuantity(), "quantity should decrease by sell amount");
     }
@@ -125,16 +125,18 @@ class BugFixValidationTest {
     @Test
     void bug4_buy_updatesAvgPrice() {
         // Buying 10 shares at 300, then 10 more at 320 → avg = 310
-        Position pos = new Position("user1", "SBER", "uid-sber", 10, 300.0);
+        Position pos = new Position("user1", "SBER", "uid-sber", 10, BigDecimal.valueOf(300.0));
 
         int buyQty = 10;
-        double buyPrice = 320.0;
+        BigDecimal buyPrice = BigDecimal.valueOf(320.0);
         int newQty = pos.getQuantity() + buyQty;
-        double newAvg = (pos.getAvgPrice() * pos.getQuantity() + buyPrice * buyQty) / newQty;
+        BigDecimal newAvg = pos.getAvgPrice().multiply(BigDecimal.valueOf(pos.getQuantity()))
+                .add(buyPrice.multiply(BigDecimal.valueOf(buyQty)))
+                .divide(BigDecimal.valueOf(newQty), 8, java.math.RoundingMode.HALF_UP);
         pos.setQuantity(newQty);
         pos.setAvgPrice(newAvg);
 
-        assertEquals(310.0, pos.getAvgPrice(), 0.0001, "avgPrice must be weighted average after buy");
+        assertEquals(0, BigDecimal.valueOf(310.0).compareTo(pos.getAvgPrice()), "avgPrice must be weighted average after buy");
         assertEquals(20, pos.getQuantity());
     }
 }

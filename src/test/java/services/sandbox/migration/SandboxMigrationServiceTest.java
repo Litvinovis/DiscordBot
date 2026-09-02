@@ -1,5 +1,6 @@
 package services.sandbox.migration;
 
+import java.math.BigDecimal;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import services.sandbox.model.LimitOrder;
@@ -63,7 +64,7 @@ class SandboxMigrationServiceTest {
 
 	@Test
 	void normalMigration_oldEntries_getUpgradedToCurrentVersion() {
-		SandboxUser user = new SandboxUser("u1", "Alice", 100_000.0);
+		SandboxUser user = new SandboxUser("u1", "Alice", BigDecimal.valueOf(100_000.0));
 		assertEquals(0, user.getSchemaVersion(), "Default schemaVersion must be 0");
 
 		when(usersRepo.findAll()).thenReturn(List.of(user));
@@ -85,22 +86,22 @@ class SandboxMigrationServiceTest {
 
 	@Test
 	void cleanRepo_allAtCurrentVersion_noWritesHappen() {
-		SandboxUser user = new SandboxUser("u1", "Bob", 50_000.0);
+		SandboxUser user = new SandboxUser("u1", "Bob", BigDecimal.valueOf(50_000.0));
 		user.setSchemaVersion(SandboxUser.CURRENT_SCHEMA_VERSION);
 
-		Position pos = new Position("u1", "SBER", "inst1", 10, 300.0);
+		Position pos = new Position("u1", "SBER", "inst1", 10, BigDecimal.valueOf(300.0));
 		pos.setSchemaVersion(Position.CURRENT_SCHEMA_VERSION);
 
-		TradeRecord trade = new TradeRecord("t1", "u1", "SBER", TradeSide.BUY, 10, 300.0, 0.3, Instant.now());
+		TradeRecord trade = new TradeRecord("t1", "u1", "SBER", TradeSide.BUY, 10, BigDecimal.valueOf(300.0), BigDecimal.valueOf(0.3), Instant.now());
 		trade.setSchemaVersion(TradeRecord.CURRENT_SCHEMA_VERSION);
 
-		LimitOrder lo = new LimitOrder("lo1", "u1", "Bob", "SBER", TradeSide.BUY, 5, 295.0, Instant.now());
+		LimitOrder lo = new LimitOrder("lo1", "u1", "Bob", "SBER", TradeSide.BUY, 5, BigDecimal.valueOf(295.0), Instant.now());
 		lo.setSchemaVersion(LimitOrder.CURRENT_SCHEMA_VERSION);
 
-		StopOrder so = new StopOrder("so1", "u1", "SBER", StopOrderType.SL, 270.0, Instant.now());
+		StopOrder so = new StopOrder("so1", "u1", "SBER", StopOrderType.SL, BigDecimal.valueOf(270.0), Instant.now());
 		so.setSchemaVersion(StopOrder.CURRENT_SCHEMA_VERSION);
 
-		PriceAlert pa = new PriceAlert("pa1", "u1", "SBER", 320.0, true, Instant.now());
+		PriceAlert pa = new PriceAlert("pa1", "u1", "SBER", BigDecimal.valueOf(320.0), true, Instant.now());
 		pa.setSchemaVersion(PriceAlert.CURRENT_SCHEMA_VERSION);
 
 		when(usersRepo.findAll()).thenReturn(List.of(user));
@@ -134,9 +135,9 @@ class SandboxMigrationServiceTest {
 
 	@Test
 	void mixedRepo_correctlyCountsMigrated() {
-		Position old1 = new Position("u1", "SBER", "i1", 10, 300.0);
-		Position old2 = new Position("u2", "GAZP", "i2", 20, 180.0);
-		Position current = new Position("u3", "LKOH", "i3", 5, 7500.0);
+		Position old1 = new Position("u1", "SBER", "i1", 10, BigDecimal.valueOf(300.0));
+		Position old2 = new Position("u2", "GAZP", "i2", 20, BigDecimal.valueOf(180.0));
+		Position current = new Position("u3", "LKOH", "i3", 5, BigDecimal.valueOf(7500.0));
 		current.setSchemaVersion(Position.CURRENT_SCHEMA_VERSION);
 
 		when(usersRepo.findAll()).thenReturn(Collections.emptyList());

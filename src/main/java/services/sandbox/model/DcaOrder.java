@@ -1,5 +1,6 @@
 package services.sandbox.model;
 
+import java.math.BigDecimal;
 import java.io.Serializable;
 import java.time.Instant;
 
@@ -13,7 +14,7 @@ public class DcaOrder implements Serializable {
     private long id;
     private String userId;
     private String ticker;
-    private double amountRub;
+    private BigDecimal amountRub;
     /** "WEEKLY" or "MONTHLY" */
     private String frequency;
     private Instant nextExecution;
@@ -23,7 +24,7 @@ public class DcaOrder implements Serializable {
     public DcaOrder() {
     }
 
-    public DcaOrder(String userId, String ticker, double amountRub,
+    public DcaOrder(String userId, String ticker, BigDecimal amountRub,
                     String frequency, Instant nextExecution, Instant createdAt, boolean active) {
         this.userId = userId;
         this.ticker = ticker;
@@ -43,8 +44,8 @@ public class DcaOrder implements Serializable {
     public String getTicker() { return ticker; }
     public void setTicker(String ticker) { this.ticker = ticker; }
 
-    public double getAmountRub() { return amountRub; }
-    public void setAmountRub(double amountRub) { this.amountRub = amountRub; }
+    public BigDecimal getAmountRub() { return amountRub; }
+    public void setAmountRub(BigDecimal amountRub) { this.amountRub = amountRub; }
 
     public String getFrequency() { return frequency; }
     public void setFrequency(String frequency) { this.frequency = frequency; }

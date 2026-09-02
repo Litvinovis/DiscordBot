@@ -1,5 +1,6 @@
 package services.sandbox.model;
 
+import java.math.BigDecimal;
 import java.io.Serializable;
 import java.time.Instant;
 
@@ -17,14 +18,14 @@ public class StopOrder implements Serializable {
 	private String id;
 	private String userId;
 	private String ticker;
-	private double triggerPrice;
+	private BigDecimal triggerPrice;
 	private Instant createdAt;
 
 	public StopOrder() {
 	}
 
 	public StopOrder(String id, String userId, String ticker,
-					 StopOrderType type, double triggerPrice, Instant createdAt) {
+					 StopOrderType type, BigDecimal triggerPrice, Instant createdAt) {
 		this.id = id;
 		this.userId = userId;
 		this.ticker = ticker;
@@ -37,7 +38,7 @@ public class StopOrder implements Serializable {
 	public String getUserId() { return userId; }
 	public String getTicker() { return ticker; }
 	public StopOrderType getType() { return type; }
-	public double getTriggerPrice() { return triggerPrice; }
+	public BigDecimal getTriggerPrice() { return triggerPrice; }
 	public Instant getCreatedAt() { return createdAt; }
 
 	public int getSchemaVersion() { return schemaVersion; }

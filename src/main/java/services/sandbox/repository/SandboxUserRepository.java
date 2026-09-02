@@ -8,6 +8,7 @@ import services.sandbox.model.SandboxUser;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
@@ -38,98 +39,78 @@ public class SandboxUserRepository extends BaseRepository {
 	// Thread-safety: no in-memory cache; all persistence is via PostgreSQL ON CONFLICT DO UPDATE
 	// which provides atomic upsert at the DB level. No additional synchronization needed here.
 	public void save(String key, SandboxUser user) {
-		try {
-			jdbc.update(UPSERT,
-					key,
-					user.getUserName(),
-					user.getCash(),
-					user.getBorrowed(),
-					user.getTotalFees(),
-					user.getDailyBaselineDate() != null ? user.getDailyBaselineDate().toString() : null,
-					user.getDailyBaselineEquity(),
-					user.getWeeklyBaselineDate() != null ? user.getWeeklyBaselineDate().toString() : null,
-					user.getWeeklyBaselineEquity(),
-					user.getMonthlyBaselineDate() != null ? user.getMonthlyBaselineDate().toString() : null,
-					user.getMonthlyBaselineEquity(),
-					serializeHoldings(user.getCurrencyHoldings()),
-					user.getSchemaVersion(),
-					user.getLastReplenishDate() != null ? user.getLastReplenishDate().toString() : null,
-					user.isMorningDigestEnabled()
-			);
-		} catch (Exception e) {
-			log.error("SandboxUserRepository.save({}) failed: {}", key, e.getMessage(), e);
-		}
+		jdbc.update(UPSERT,
+				key,
+				user.getUserName(),
+				user.getCash(),
+				user.getBorrowed(),
+				user.getTotalFees(),
+				user.getDailyBaselineDate(),
+				user.getDailyBaselineEquity(),
+				user.getWeeklyBaselineDate(),
+				user.getWeeklyBaselineEquity(),
+				user.getMonthlyBaselineDate(),
+				user.getMonthlyBaselineEquity(),
+				serializeHoldings(user.getCurrencyHoldings()),
+				user.getSchemaVersion(),
+				user.getLastReplenishDate(),
+				user.isMorningDigestEnabled()
+		);
 	}
 
 	public SandboxUser findById(String key) {
-		try {
-			List<SandboxUser> results = jdbc.query(
-					"SELECT * FROM sandbox_users WHERE user_id = ?", this::mapRow, key);
-			return results.isEmpty() ? null : results.getFirst();
-		} catch (Exception e) {
-			log.error("SandboxUserRepository.findById({}) failed: {}", key, e.getMessage(), e);
-			return null;
-		}
+		List<SandboxUser> results = jdbc.query(
+				"SELECT * FROM sandbox_users WHERE user_id = ?", this::mapRow, key);
+		return results.isEmpty() ? null : results.getFirst();
 	}
 
 	public List<SandboxUser> findAll() {
-		try {
-			return jdbc.query("SELECT * FROM sandbox_users", this::mapRow);
-		} catch (Exception e) {
-			log.error("SandboxUserRepository.findAll() failed: {}", e.getMessage(), e);
-			return List.of();
-		}
+		return jdbc.query("SELECT * FROM sandbox_users", this::mapRow);
 	}
 
 	public void delete(String key) {
-		try {
-			jdbc.update("DELETE FROM sandbox_users WHERE user_id = ?", key);
-		} catch (Exception e) {
-			log.error("SandboxUserRepository.delete({}) failed: {}", key, e.getMessage(), e);
-		}
+		jdbc.update("DELETE FROM sandbox_users WHERE user_id = ?", key);
 	}
 
 	private SandboxUser mapRow(ResultSet rs, int rowNum) throws SQLException {
 		SandboxUser user = new SandboxUser();
 		user.setUserId(rs.getString("user_id"));
 		user.setUserName(rs.getString("user_name"));
-		user.setCash(rs.getDouble("cash"));
-		user.setBorrowed(rs.getDouble("borrowed"));
-		user.setTotalFees(rs.getDouble("total_fees"));
-		String daily = rs.getString("daily_baseline_date");
-		if (daily != null) user.setDailyBaselineDate(LocalDate.parse(daily));
-		user.setDailyBaselineEquity(rs.getDouble("daily_baseline_equity"));
-		String weekly = rs.getString("weekly_baseline_date");
-		if (weekly != null) user.setWeeklyBaselineDate(LocalDate.parse(weekly));
-		user.setWeeklyBaselineEquity(rs.getDouble("weekly_baseline_equity"));
-		String monthly = rs.getString("monthly_baseline_date");
-		if (monthly != null) user.setMonthlyBaselineDate(LocalDate.parse(monthly));
-		user.setMonthlyBaselineEquity(rs.getDouble("monthly_baseline_equity"));
+		user.setCash(nz(rs.getBigDecimal("cash")));
+		user.setBorrowed(nz(rs.getBigDecimal("borrowed")));
+		user.setTotalFees(nz(rs.getBigDecimal("total_fees")));
+		user.setDailyBaselineDate(rs.getObject("daily_baseline_date", LocalDate.class));
+		user.setDailyBaselineEquity(nz(rs.getBigDecimal("daily_baseline_equity")));
+		user.setWeeklyBaselineDate(rs.getObject("weekly_baseline_date", LocalDate.class));
+		user.setWeeklyBaselineEquity(nz(rs.getBigDecimal("weekly_baseline_equity")));
+		user.setMonthlyBaselineDate(rs.getObject("monthly_baseline_date", LocalDate.class));
+		user.setMonthlyBaselineEquity(nz(rs.getBigDecimal("monthly_baseline_equity")));
 		user.setCurrencyHoldings(parseHoldings(rs.getString("currency_holdings")));
 		user.setSchemaVersion(rs.getInt("schema_version"));
-		String lastReplenish = rs.getString("last_replenish_date");
-		if (lastReplenish != null) user.setLastReplenishDate(LocalDate.parse(lastReplenish));
+		user.setLastReplenishDate(rs.getObject("last_replenish_date", LocalDate.class));
 		user.setMorningDigestEnabled(rs.getBoolean("morning_digest_enabled"));
 		return user;
 	}
 
-	private Map<String, Double> parseHoldings(String json) {
+	private Map<String, BigDecimal> parseHoldings(String json) {
 		if (json == null || json.isBlank()) return new HashMap<>();
 		try {
-			return MAPPER.readValue(json, new TypeReference<Map<String, Double>>() {});
+			return MAPPER.readValue(json, new TypeReference<Map<String, BigDecimal>>() {});
 		} catch (Exception e) {
-			log.warn("Failed to parse currency_holdings JSON: {}", e.getMessage());
+			// Повреждённая запись не должна делать пользователя нечитаемым целиком
+			log.warn("Не удалось разобрать currency_holdings ({}), валютные остатки прочитаны как пустые: {}",
+					json, e.getMessage());
 			return new HashMap<>();
 		}
 	}
 
-	private String serializeHoldings(Map<String, Double> holdings) {
+	private String serializeHoldings(Map<String, BigDecimal> holdings) {
 		if (holdings == null || holdings.isEmpty()) return "{}";
 		try {
 			return MAPPER.writeValueAsString(holdings);
 		} catch (Exception e) {
-			log.warn("Failed to serialize currency_holdings: {}", e.getMessage());
-			return "{}";
+			// Раньше сюда подставлялся "{}" — валютные остатки молча обнулялись в БД
+			throw new IllegalStateException("Не удалось сериализовать валютные остатки", e);
 		}
 	}
 }
