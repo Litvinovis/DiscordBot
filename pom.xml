@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.1.0</version>
+        <version>4.1.1</version>
         <relativePath/>
     </parent>
 
@@ -26,7 +26,7 @@
         <!-- Dependency versions -->
         <postgresql.version>42.7.11</postgresql.version>
         <jda.version>6.5.0</jda.version>
-        <tinkoff.sdk.version>1.49.5</tinkoff.sdk.version>
+        <tinkoff.sdk.version>1.49.6</tinkoff.sdk.version>
         <protobuf.version>4.36.0</protobuf.version>
         <lombok.version>1.18.46</lombok.version>
         <junit.version>5.11.4</junit.version>
