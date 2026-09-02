@@ -14,7 +14,8 @@ import services.sandbox.repository.SandboxUserRepository;
 import java.util.List;
 
 /**
- * Sends a morning digest DM to each active user at 9:00 Asia/Yekaterinburg (UTC+5, 7:00 МСК).
+ * Sends a portfolio digest DM to each active user on the schedule from
+ * {@code reports.morning-digest-cron} (by default Mondays at 9:00 Asia/Yekaterinburg).
  * Only users with at least one open position receive a message.
  */
 @Component
@@ -37,7 +38,7 @@ public class MorningDigestScheduler {
         this.sandboxUserRepository = sandboxUserRepository;
     }
 
-    @Scheduled(cron = "0 0 9 * * ?", zone = "Asia/Yekaterinburg")
+    @Scheduled(cron = "${reports.morning-digest-cron}", zone = "Asia/Yekaterinburg")
     public void sendMorningDigest() {
         log.info("Запуск утреннего дайджеста");
         try {
