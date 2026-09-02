@@ -6,6 +6,11 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
+/**
+ * Проверка риска портфеля: превышение плеча и margin call.
+ * Порог margin call берётся из настройки {@code sandbox.maintenance-margin}
+ * (по умолчанию 0.25) — при margin level ниже него позиции ликвидируются.
+ */
 @Service
 public class SandboxRiskManager {
 
