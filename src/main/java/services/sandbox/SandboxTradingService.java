@@ -399,7 +399,6 @@ public class SandboxTradingService implements
 		return """
 				Margin level: %s
 				Порог margin call: %s
-				Порог ликвидации: 0.20
 				Плечо: x%s %s""".formatted(
 				level.setScale(2, RoundingMode.HALF_UP).toPlainString(),
 				riskManager.getMaintenanceMargin().toPlainString(),
