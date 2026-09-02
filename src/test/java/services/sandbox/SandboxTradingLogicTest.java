@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Unit tests for the business logic of SandboxTradingService.
  *
  * These tests validate the core formulas directly (equity, P&L, ROI, baseline
- * recording) without standing up the full Ignite / TInvestApi stack.
+ * recording) without standing up the full persistence / TInvestApi stack.
  */
 public class SandboxTradingLogicTest {
 

@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
  * Unit tests for the Command Pattern routing logic.
  *
  * Tests verify that BotCommand.matches() correctly identifies which command
- * should handle a given user input, without depending on Discord or Ignite.
+ * should handle a given user input, without depending on Discord or the database.
  */
 class BotCommandRouterTest {
 
