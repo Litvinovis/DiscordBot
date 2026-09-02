@@ -40,4 +40,9 @@ sandbox:
 reports:
   currency-cron: "${CURRENCY_REPORT_CRON:0 0 10 * * *}"
   shares-cron: "${SHARES_REPORT_CRON:0 5 10 * * *}"
-  sandbox-report-cron: "0 0 10 * * *"
+  # Рейтинг доходности в канал: по умолчанию раз в неделю (понедельник, 10:00)
+  sandbox-report-cron: "${SANDBOX_REPORT_CRON:0 0 10 ? * MON}"
+  # Период, за который считается доходность в рейтинге: день | неделя | месяц
+  sandbox-report-period: "${SANDBOX_REPORT_PERIOD:неделя}"
+  # Дайджест портфеля в ЛС: по умолчанию раз в неделю (понедельник, 9:00)
+  morning-digest-cron: "${MORNING_DIGEST_CRON:0 0 9 ? * MON}"
