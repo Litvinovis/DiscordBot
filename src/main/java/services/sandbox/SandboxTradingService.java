@@ -184,8 +184,8 @@ public class SandboxTradingService implements
 			user.setMorningDigestEnabled(enable);
 			users.save(userId, user);
 			return enable
-				? "☀️ Утренний дайджест **включён**. Каждый день в 9:00 (Екатеринбург, UTC+5) ты будешь получать DM с позициями."
-				: "🌙 Утренний дайджест **выключен**.";
+				? "☀️ Дайджест портфеля **включён**. По понедельникам в 9:00 (Екатеринбург, UTC+5) ты будешь получать DM с позициями."
+				: "🌙 Дайджест портфеля **выключен**.";
 		} finally {
 			lock.unlock();
 		}
