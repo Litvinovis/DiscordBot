@@ -17,18 +17,21 @@ public class SandboxReportScheduler {
 	private final SandboxTradingService service;
 	private final JDA jda;
 	private final String channelId;
+	private final String period;
 
 	public SandboxReportScheduler(SandboxTradingService service,
 								   JDA jda,
-								   DiscordProperties discordProperties) {
+								   DiscordProperties discordProperties,
+								   @Value("${reports.sandbox-report-period}") String period) {
 		this.service = service;
 		this.jda = jda;
+		this.period = period;
 		var ids = discordProperties.allowedChannelIds();
 		this.channelId = ids.isEmpty() ? "" : ids.getFirst();
 	}
 
 	@Scheduled(cron = "${reports.sandbox-report-cron}", zone = "Asia/Yekaterinburg")
-	public void sendDailyReport() {
+	public void sendReport() {
 		if (channelId.isBlank()) {
 			log.warn("SandboxReportScheduler: channelId не задан, пропуск отчёта");
 			return;
@@ -36,10 +39,10 @@ public class SandboxReportScheduler {
 		try {
 			MessageChannel channel = jda.getChannelById(MessageChannel.class, channelId);
 			if (channel != null) {
-				channel.sendMessage(service.top("день")).queue();
+				channel.sendMessage(service.top(period)).queue();
 			}
 		} catch (Exception e) {
-			log.error("Ошибка при отправке ежедневного отчёта: {}", e.getMessage(), e);
+			log.error("Ошибка при отправке отчёта за период {}: {}", period, e.getMessage(), e);
 		}
 	}
 }
