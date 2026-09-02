@@ -11,9 +11,9 @@ public class SandboxRiskManager {
 
 	private static final int SCALE = 8;
 	private static final BigDecimal ZERO = BigDecimal.ZERO;
-	private static final BigDecimal MARGIN_CALL_THRESHOLD = new BigDecimal("0.2");
 
 	private final BigDecimal maxLeverage;
+	/** Порог margin call: равен настройке sandbox.maintenance-margin (по умолчанию 0.25). */
 	private final BigDecimal maintenanceMargin;
 
 	public SandboxRiskManager(SandboxProperties props) {
@@ -35,7 +35,7 @@ public class SandboxRiskManager {
 
 		if (borrowed.compareTo(ZERO) > 0) {
 			BigDecimal marginLevel = equity.divide(borrowed, SCALE, RoundingMode.HALF_UP);
-			if (marginLevel.compareTo(MARGIN_CALL_THRESHOLD) < 0) return RiskCheckResult.MARGIN_CALL;
+			if (marginLevel.compareTo(maintenanceMargin) < 0) return RiskCheckResult.MARGIN_CALL;
 		}
 
 		return RiskCheckResult.OK;

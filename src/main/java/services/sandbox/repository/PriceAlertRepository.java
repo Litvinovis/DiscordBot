@@ -24,47 +24,29 @@ public class PriceAlertRepository extends BaseRepository {
 	}
 
 	public void save(String key, PriceAlert alert) {
-		try {
-			jdbc.update(UPSERT,
-					key,
-					alert.getUserId(),
-					alert.getTicker(),
-					alert.getTargetPrice(),
-					alert.isAbove(),
-					alert.getCreatedAt() != null ? alert.getCreatedAt().toEpochMilli() : 0L,
-					alert.getSchemaVersion()
-			);
-		} catch (Exception e) {
-			log.error("PriceAlertRepository.save({}) failed: {}", key, e.getMessage(), e);
-		}
+		jdbc.update(UPSERT,
+				key,
+				alert.getUserId(),
+				alert.getTicker(),
+				alert.getTargetPrice(),
+				alert.isAbove(),
+				alert.getCreatedAt() != null ? alert.getCreatedAt().toEpochMilli() : 0L,
+				alert.getSchemaVersion()
+		);
 	}
 
 	public PriceAlert findById(String key) {
-		try {
-			List<PriceAlert> results = jdbc.query(
-					"SELECT * FROM sandbox_price_alerts WHERE id = ?", this::mapRow, key);
-			return results.isEmpty() ? null : results.getFirst();
-		} catch (Exception e) {
-			log.error("PriceAlertRepository.findById({}) failed: {}", key, e.getMessage(), e);
-			return null;
-		}
+		List<PriceAlert> results = jdbc.query(
+				"SELECT * FROM sandbox_price_alerts WHERE id = ?", this::mapRow, key);
+		return results.isEmpty() ? null : results.getFirst();
 	}
 
 	public List<PriceAlert> findAll() {
-		try {
-			return jdbc.query("SELECT * FROM sandbox_price_alerts", this::mapRow);
-		} catch (Exception e) {
-			log.error("PriceAlertRepository.findAll() failed: {}", e.getMessage(), e);
-			return List.of();
-		}
+		return jdbc.query("SELECT * FROM sandbox_price_alerts", this::mapRow);
 	}
 
 	public void delete(String key) {
-		try {
-			jdbc.update("DELETE FROM sandbox_price_alerts WHERE id = ?", key);
-		} catch (Exception e) {
-			log.error("PriceAlertRepository.delete({}) failed: {}", key, e.getMessage(), e);
-		}
+		jdbc.update("DELETE FROM sandbox_price_alerts WHERE id = ?", key);
 	}
 
 	private PriceAlert mapRow(ResultSet rs, int rowNum) throws SQLException {
@@ -72,7 +54,7 @@ public class PriceAlertRepository extends BaseRepository {
 				rs.getString("id"),
 				rs.getString("user_id"),
 				rs.getString("ticker"),
-				rs.getDouble("target_price"),
+				nz(rs.getBigDecimal("target_price")),
 				rs.getBoolean("above"),
 				Instant.ofEpochMilli(rs.getLong("created_at"))
 		);

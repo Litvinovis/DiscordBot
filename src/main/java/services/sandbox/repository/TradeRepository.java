@@ -25,58 +25,35 @@ public class TradeRepository extends BaseRepository {
 	}
 
 	public void save(String key, TradeRecord trade) {
-		try {
-			jdbc.update(UPSERT,
-					key,
-					trade.getUserId(),
-					trade.getTicker(),
-					trade.getSide().name(),
-					trade.getQty(),
-					trade.getPrice(),
-					trade.getFee(),
-					trade.getTimestamp() != null ? trade.getTimestamp().toEpochMilli() : 0L,
-					trade.getSchemaVersion()
-			);
-		} catch (Exception e) {
-			log.error("TradeRepository.save({}) failed: {}", key, e.getMessage(), e);
-		}
+		jdbc.update(UPSERT,
+				key,
+				trade.getUserId(),
+				trade.getTicker(),
+				trade.getSide().name(),
+				trade.getQty(),
+				trade.getPrice(),
+				trade.getFee(),
+				trade.getTimestamp() != null ? trade.getTimestamp().toEpochMilli() : 0L,
+				trade.getSchemaVersion()
+		);
 	}
 
 	public TradeRecord findById(String key) {
-		try {
-			List<TradeRecord> results = jdbc.query(
-					"SELECT * FROM sandbox_trades WHERE id = ?", this::mapRow, key);
-			return results.isEmpty() ? null : results.getFirst();
-		} catch (Exception e) {
-			log.error("TradeRepository.findById({}) failed: {}", key, e.getMessage(), e);
-			return null;
-		}
+		List<TradeRecord> results = jdbc.query(
+				"SELECT * FROM sandbox_trades WHERE id = ?", this::mapRow, key);
+		return results.isEmpty() ? null : results.getFirst();
 	}
 
 	public List<TradeRecord> findAll() {
-		try {
-			return jdbc.query("SELECT * FROM sandbox_trades", this::mapRow);
-		} catch (Exception e) {
-			log.error("TradeRepository.findAll() failed: {}", e.getMessage(), e);
-			return List.of();
-		}
+		return jdbc.query("SELECT * FROM sandbox_trades", this::mapRow);
 	}
 
 	public List<TradeRecord> findByUserId(String userId) {
-		try {
-			return jdbc.query("SELECT * FROM sandbox_trades WHERE user_id = ?", this::mapRow, userId);
-		} catch (Exception e) {
-			log.error("TradeRepository.findByUserId({}) failed: {}", userId, e.getMessage(), e);
-			return List.of();
-		}
+		return jdbc.query("SELECT * FROM sandbox_trades WHERE user_id = ?", this::mapRow, userId);
 	}
 
 	public void delete(String key) {
-		try {
-			jdbc.update("DELETE FROM sandbox_trades WHERE id = ?", key);
-		} catch (Exception e) {
-			log.error("TradeRepository.delete({}) failed: {}", key, e.getMessage(), e);
-		}
+		jdbc.update("DELETE FROM sandbox_trades WHERE id = ?", key);
 	}
 
 	private TradeRecord mapRow(ResultSet rs, int rowNum) throws SQLException {
@@ -86,8 +63,8 @@ public class TradeRepository extends BaseRepository {
 				rs.getString("ticker"),
 				TradeSide.valueOf(rs.getString("trade_side")),
 				rs.getInt("qty"),
-				rs.getDouble("price"),
-				rs.getDouble("fee"),
+				nz(rs.getBigDecimal("price")),
+				nz(rs.getBigDecimal("fee")),
 				Instant.ofEpochMilli(rs.getLong("trade_timestamp"))
 		);
 		trade.setSchemaVersion(rs.getInt("schema_version"));

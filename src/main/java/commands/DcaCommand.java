@@ -64,7 +64,7 @@ public class DcaCommand extends AbstractCommand {
         DcaOrder order = new DcaOrder(
                 event.getAuthor().getId(),
                 ticker,
-                amount.doubleValue(),
+                amount,
                 frequency,
                 nextExecution,
                 now,
