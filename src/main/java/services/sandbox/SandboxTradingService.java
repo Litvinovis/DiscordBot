@@ -246,11 +246,9 @@ public class SandboxTradingService implements
 
 		BigDecimal qtyBD = BigDecimal.valueOf(qty);
 		BigDecimal turnover = price.multiply(qtyBD);
-		// Bug #2: use scale=2 (monetary precision) for fee to avoid floating-point drift
-		BigDecimal fee = BigDecimal.valueOf(price.doubleValue())
-				.multiply(BigDecimal.valueOf(qty))
-				.multiply(commissionRate)
-				.setScale(2, RoundingMode.HALF_UP);
+		// Комиссия считается от точного оборота и округляется до копеек:
+		// прогон через double терял точность ровно там, где её обещал сохранить
+		BigDecimal fee = turnover.multiply(commissionRate).setScale(2, RoundingMode.HALF_UP);
 		if (fee.compareTo(ONE) < 0) fee = ONE;
 
 		BigDecimal origCash = BigDecimal.valueOf(user.getCash());
@@ -334,8 +332,10 @@ public class SandboxTradingService implements
 
 		StringBuilder sb = new StringBuilder("Портфель:\n");
 		BigDecimal totalPnl = ZERO;
+		Map<String, BigDecimal> prices = priceService.loadPrices(
+				ps.stream().map(Position::getInstrumentId).collect(Collectors.toSet()));
 		for (Position p : ps) {
-			BigDecimal price = priceService.loadPriceSafe(p.getInstrumentId());
+			BigDecimal price = prices.getOrDefault(p.getInstrumentId(), ZERO);
 			BigDecimal avgPrice = BigDecimal.valueOf(p.getAvgPrice());
 			BigDecimal pnl = price.subtract(avgPrice)
 					.multiply(BigDecimal.valueOf(p.getQuantity()))
@@ -693,20 +693,19 @@ public class SandboxTradingService implements
 	private void liquidate(String userId, SandboxUser user) {
 		List<Position> ps = userPositions(userId);
 		BigDecimal cash = BigDecimal.valueOf(user.getCash());
+		Map<String, BigDecimal> prices = priceService.loadPrices(
+				ps.stream().map(Position::getInstrumentId).collect(Collectors.toSet()));
 		for (Position p : ps) {
-			BigDecimal price = priceService.loadPriceSafe(p.getInstrumentId());
 			BigDecimal avgPrice = BigDecimal.valueOf(p.getAvgPrice());
+			BigDecimal price = prices.getOrDefault(p.getInstrumentId(), ZERO);
 			if (price.compareTo(ZERO) <= 0) price = avgPrice;
 			BigDecimal turnover = price.multiply(BigDecimal.valueOf(p.getQuantity()));
-			BigDecimal fee = turnover.multiply(commissionRate).setScale(SCALE, RoundingMode.HALF_UP);
+			// Комиссия округляется до копеек, как и при обычной сделке
+			BigDecimal fee = turnover.multiply(commissionRate).setScale(2, RoundingMode.HALF_UP);
 			if (fee.compareTo(ONE) < 0) fee = ONE;
 			cash = cash.add(turnover).subtract(fee);
 			positions.delete(posKey(userId, p.getTicker()));
-			for (StopOrder so : stopOrders.findAll()) {
-				if (userId.equals(so.getUserId()) && p.getTicker().equals(so.getTicker())) {
-					stopOrders.delete(so.getId());
-				}
-			}
+			stopOrders.deleteByUserAndTicker(userId, p.getTicker());
 		}
 		user.setCash(cash.doubleValue());
 		rebalanceDebt(user, userId);
@@ -759,8 +758,13 @@ public class SandboxTradingService implements
 	}
 
 	private BigDecimal grossPositionValue(String userId) {
-		return userPositions(userId).stream()
-				.map(p -> priceService.loadPriceSafe(p.getInstrumentId()).multiply(BigDecimal.valueOf(p.getQuantity())))
+		List<Position> ps = userPositions(userId);
+		if (ps.isEmpty()) return ZERO;
+		// Одна загрузка списком вместо запроса на каждую позицию
+		Map<String, BigDecimal> prices = priceService.loadPrices(
+				ps.stream().map(Position::getInstrumentId).collect(Collectors.toSet()));
+		return ps.stream()
+				.map(p -> prices.getOrDefault(p.getInstrumentId(), ZERO).multiply(BigDecimal.valueOf(p.getQuantity())))
 				.reduce(ZERO, BigDecimal::add);
 	}
 

@@ -22,7 +22,10 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 /**
  * Checks and executes triggered stop orders, limit orders, and price alerts.
@@ -66,10 +69,13 @@ public class SandboxOrderProcessor {
 		List<Notification> notifications = new ArrayList<>();
 		List<String> toRemove = new ArrayList<>();
 
-		for (StopOrder so : stopOrders.findAll()) {
+		List<StopOrder> allOrders = stopOrders.findAll();
+		Map<String, BigDecimal> prices = loadPricesFor(allOrders.stream().map(StopOrder::getTicker).toList(), shareByTicker);
+
+		for (StopOrder so : allOrders) {
 			Share share = shareByTicker.get(so.getTicker());
 			if (share == null) continue;
-			BigDecimal price = priceService.loadPriceSafe(share.getUid());
+			BigDecimal price = prices.getOrDefault(share.getUid(), BigDecimal.ZERO);
 			if (price.compareTo(BigDecimal.ZERO) <= 0) continue;
 
 			BigDecimal triggerPrice = BigDecimal.valueOf(so.getTriggerPrice());
@@ -114,11 +120,12 @@ public class SandboxOrderProcessor {
 
 		List<LimitOrder> allOrders = new ArrayList<>(limitOrders.findAll());
 		allOrders.sort(Comparator.comparing(LimitOrder::getCreatedAt));
+		Map<String, BigDecimal> prices = loadPricesFor(allOrders.stream().map(LimitOrder::getTicker).toList(), shareByTicker);
 
 		for (LimitOrder lo : allOrders) {
 			Share share = shareByTicker.get(lo.getTicker());
 			if (share == null) continue;
-			BigDecimal price = priceService.loadPriceSafe(share.getUid());
+			BigDecimal price = prices.getOrDefault(share.getUid(), BigDecimal.ZERO);
 			if (price.compareTo(BigDecimal.ZERO) <= 0) continue;
 
 			BigDecimal loLimitPrice = BigDecimal.valueOf(lo.getLimitPrice());
@@ -156,10 +163,13 @@ public class SandboxOrderProcessor {
 		Map<String, Share> shareByTicker = tradingService.getShareByTicker();
 		List<Notification> notifications = new ArrayList<>();
 
-		for (PriceAlert alert : priceAlerts.findAll()) {
+		List<PriceAlert> allAlerts = priceAlerts.findAll();
+		Map<String, BigDecimal> prices = loadPricesFor(allAlerts.stream().map(PriceAlert::getTicker).toList(), shareByTicker);
+
+		for (PriceAlert alert : allAlerts) {
 			Share share = shareByTicker.get(alert.getTicker());
 			if (share == null) continue;
-			BigDecimal price = priceService.loadPriceSafe(share.getUid());
+			BigDecimal price = prices.getOrDefault(share.getUid(), BigDecimal.ZERO);
 			if (price.compareTo(BigDecimal.ZERO) <= 0) continue;
 
 			BigDecimal alertTarget = BigDecimal.valueOf(alert.getTargetPrice());
@@ -175,6 +185,16 @@ public class SandboxOrderProcessor {
 			}
 		}
 		return notifications;
+	}
+
+	/** Загружает котировки для всех тикеров одним запросом к API. */
+	private Map<String, BigDecimal> loadPricesFor(List<String> tickers, Map<String, Share> shareByTicker) {
+		Set<String> uids = tickers.stream()
+				.map(shareByTicker::get)
+				.filter(Objects::nonNull)
+				.map(Share::getUid)
+				.collect(Collectors.toSet());
+		return priceService.loadPrices(uids);
 	}
 
 	/** Временная ошибка (например, недоступна котировка) — ордер стоит повторить, а не удалять. */
