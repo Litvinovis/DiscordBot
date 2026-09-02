@@ -22,7 +22,6 @@ COMMANDLINE="java \
             -XX:+ScavengeBeforeFullGC \
             -XX:+DisableExplicitGC \
             --enable-native-access=ALL-UNNAMED \
-            -Dlogback.configurationFile=$HOME_PATH/config/logback.xml \
             -Dlogging.config=$HOME_PATH/config/logback.xml \
             -Dapp.config=$APP_CONFIG_FILE \
             -Dspring.config.additional-location=optional:file:$HOME_PATH/config/ \
