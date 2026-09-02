@@ -50,7 +50,14 @@ import services.tbank.TInvestApi;
 
 /**
  * Основной сервис торговой песочницы Stonks Bot.
- * Все данные хранятся в PostgreSQL через репозитории, управляемые Spring DataSource.
+ * Все данные хранятся в PostgreSQL через репозитории, управляемые Spring DataSource;
+ * денежные величины — {@code NUMERIC}/{@link java.math.BigDecimal}.
+ * <p>
+ * Сделка выполняется одной транзакцией ({@link org.springframework.transaction.support.TransactionTemplate}):
+ * позиция, счёт, запись в историю и возможная ликвидация фиксируются вместе,
+ * а отклонение по риску откатывает всё целиком.
+ * Изменения одного игрока сериализуются {@link java.util.concurrent.locks.ReentrantLock}
+ * из {@link #userLocks} — те же локи берёт {@link SandboxOrderProcessor}.
  */
 @Service
 public class SandboxTradingService implements

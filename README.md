@@ -11,12 +11,13 @@ Discord-бот для симуляции торговли акциями. Под
 | Компонент | Версия |
 |---|---|
 | Java | 25 |
+| Spring Boot | 4.1.1 |
 | JDA (Discord API) | 6.5 |
-| T-Bank Invest Java SDK | 1.49.2 |
+| T-Bank Invest Java SDK | 1.49.6 |
 | PostgreSQL | 16 |
-| HikariCP | 6.3.0 |
-| Logback | 1.5.32 |
-| Lombok | 1.18.44 |
+| HikariCP | 7.0.2 |
+| Logback | из Spring Boot BOM |
+| Lombok | 1.18.48 |
 | Maven | 3.x |
 
 ---
@@ -61,6 +62,22 @@ Discord-бот для симуляции торговли акциями. Под
 | `+стата` / `+статистика` | Личная статистика (win rate, PnL и т.д.) |
 | `+топ день\|неделя\|месяц\|все` | Таблица лидеров по периоду |
 | `+мой-рейтинг` | Своя позиция в рейтинге |
+| `+дайджест вкл\|выкл` | Подписка на дайджест портфеля в личные сообщения |
+
+---
+
+## Автоматические уведомления
+
+| Что | Когда по умолчанию | Настройка |
+|---|---|---|
+| Рейтинг доходности в канал | понедельник, 10:00 | `SANDBOX_REPORT_CRON`, период — `SANDBOX_REPORT_PERIOD` |
+| Дайджест портфеля в ЛС | понедельник, 9:00 | `MORNING_DIGEST_CRON`, включается командой `+дайджест вкл` |
+| Отчёт по валютам | ежедневно, 10:00 | `CURRENCY_REPORT_CRON` |
+| Отчёт по акциям | ежедневно, 10:05 | `SHARES_REPORT_CRON` |
+| Лимитные заявки, стопы, алерты | проверка раз в минуту | — |
+| DCA-ордера | проверка раз в час | — |
+
+Время — `Asia/Yekaterinburg` (UTC+5).
 
 ---
 
@@ -85,6 +102,12 @@ Discord-бот для симуляции торговли акциями. Под
 | `SANDBOX_START_BALANCE` | `1000000.00` | Стартовый баланс песочницы (₽) |
 | `SANDBOX_COMMISSION_RATE` | `0.001` | Комиссия (0.1%) |
 | `SANDBOX_MAX_LEVERAGE` | `3.0` | Максимальное плечо |
+| `SANDBOX_MAINTENANCE_MARGIN` | `0.25` | Порог margin call: при margin level ниже него позиции ликвидируются |
+| `SANDBOX_REPORT_CRON` | `0 0 10 ? * MON` | Когда слать рейтинг доходности в канал |
+| `SANDBOX_REPORT_PERIOD` | `неделя` | Период рейтинга: `день`, `неделя` или `месяц` |
+| `MORNING_DIGEST_CRON` | `0 0 9 ? * MON` | Когда слать дайджест портфеля в ЛС |
+| `CURRENCY_REPORT_CRON` | `0 0 10 * * *` | Отчёт по валютам |
+| `SHARES_REPORT_CRON` | `0 5 10 * * *` | Отчёт по акциям |
 | `DB_URL` | `jdbc:postgresql://127.0.0.1:5432/stonks` | JDBC URL базы данных |
 | `DB_USER` | `stonks` | Пользователь PostgreSQL |
 | `DB_PASSWORD` | — | Пароль пользователя PostgreSQL |
@@ -183,20 +206,19 @@ src/main/java/
 │   ├── CurrencyInfoService.java      # Информация о валютах
 │   ├── SharesInfoService.java        # Информация об акциях
 │   ├── HelpInfoService.java          # Справка
-│   ├── StatisticsSenderService.java  # Расписание отчётов
 │   ├── sandbox/
 │   │   ├── SandboxTradingService.java    # Логика торговли
-│   │   ├── SandboxOrderScheduler.java    # Исполнение лимитных заявок
-│   │   ├── SandboxReportScheduler.java   # Ежедневные отчёты
-│   │   ├── db/SchemaInitializer.java     # Инициализация схемы из schema.sql
+│   │   ├── SandboxOrderScheduler.java    # Исполнение лимитных и стоп-заявок, алертов
+│   │   ├── SandboxReportScheduler.java   # Рейтинг доходности в канал (по умолчанию еженедельно)
+│   │   ├── MorningDigestScheduler.java   # Дайджест портфеля в ЛС (по умолчанию еженедельно)
+│   │   ├── SandboxPriceService.java      # Котировки: загрузка списком и кэш на 5 секунд
+│   │   ├── SandboxRiskManager.java       # Плечо и порог margin call
 │   │   ├── migration/SandboxMigrationService.java  # Миграция данных при старте
 │   │   ├── model/                    # Модели данных
 │   │   └── repository/               # JDBC-репозитории
 │   ├── statTask/                     # Задачи сбора статистики
 │   └── tbank/TInvestApi.java         # Обёртка над T-Bank gRPC API
-└── utils/
-    ├── ConfigLoader.java             # Загрузка конфигурации
-    └── Constants.java
+└── config/                           # Spring-конфигурация и свойства
 ```
 
 ---
