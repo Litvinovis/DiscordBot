@@ -54,7 +54,7 @@ public class PriceAlertRepository extends BaseRepository {
 				rs.getString("id"),
 				rs.getString("user_id"),
 				rs.getString("ticker"),
-				rs.getDouble("target_price"),
+				nz(rs.getBigDecimal("target_price")),
 				rs.getBoolean("above"),
 				Instant.ofEpochMilli(rs.getLong("created_at"))
 		);

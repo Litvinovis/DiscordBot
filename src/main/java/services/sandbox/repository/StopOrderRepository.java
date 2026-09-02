@@ -60,7 +60,7 @@ public class StopOrderRepository extends BaseRepository {
 				rs.getString("user_id"),
 				rs.getString("ticker"),
 				StopOrderType.valueOf(rs.getString("order_type")),
-				rs.getDouble("trigger_price"),
+				nz(rs.getBigDecimal("trigger_price")),
 				Instant.ofEpochMilli(rs.getLong("created_at"))
 		);
 	}

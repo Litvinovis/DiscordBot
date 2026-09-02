@@ -69,7 +69,7 @@ public class DcaScheduler {
                 return;
             }
 
-            BigDecimal amount = BigDecimal.valueOf(order.getAmountRub());
+            BigDecimal amount = order.getAmountRub();
             int qty = amount.divide(price, 0, RoundingMode.DOWN).intValue();
             if (qty <= 0) {
                 log.warn("DCA: недостаточно суммы {} для покупки {} (цена {}), пропускаем id={}",

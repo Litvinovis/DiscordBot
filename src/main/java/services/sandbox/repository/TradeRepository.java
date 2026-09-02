@@ -63,8 +63,8 @@ public class TradeRepository extends BaseRepository {
 				rs.getString("ticker"),
 				TradeSide.valueOf(rs.getString("trade_side")),
 				rs.getInt("qty"),
-				rs.getDouble("price"),
-				rs.getDouble("fee"),
+				nz(rs.getBigDecimal("price")),
+				nz(rs.getBigDecimal("fee")),
 				Instant.ofEpochMilli(rs.getLong("trade_timestamp"))
 		);
 		trade.setSchemaVersion(rs.getInt("schema_version"));

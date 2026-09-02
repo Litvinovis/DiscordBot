@@ -8,6 +8,7 @@ import services.sandbox.model.SandboxUser;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
@@ -44,15 +45,15 @@ public class SandboxUserRepository extends BaseRepository {
 				user.getCash(),
 				user.getBorrowed(),
 				user.getTotalFees(),
-				user.getDailyBaselineDate() != null ? user.getDailyBaselineDate().toString() : null,
+				user.getDailyBaselineDate(),
 				user.getDailyBaselineEquity(),
-				user.getWeeklyBaselineDate() != null ? user.getWeeklyBaselineDate().toString() : null,
+				user.getWeeklyBaselineDate(),
 				user.getWeeklyBaselineEquity(),
-				user.getMonthlyBaselineDate() != null ? user.getMonthlyBaselineDate().toString() : null,
+				user.getMonthlyBaselineDate(),
 				user.getMonthlyBaselineEquity(),
 				serializeHoldings(user.getCurrencyHoldings()),
 				user.getSchemaVersion(),
-				user.getLastReplenishDate() != null ? user.getLastReplenishDate().toString() : null,
+				user.getLastReplenishDate(),
 				user.isMorningDigestEnabled()
 		);
 	}
@@ -75,30 +76,26 @@ public class SandboxUserRepository extends BaseRepository {
 		SandboxUser user = new SandboxUser();
 		user.setUserId(rs.getString("user_id"));
 		user.setUserName(rs.getString("user_name"));
-		user.setCash(rs.getDouble("cash"));
-		user.setBorrowed(rs.getDouble("borrowed"));
-		user.setTotalFees(rs.getDouble("total_fees"));
-		String daily = rs.getString("daily_baseline_date");
-		if (daily != null) user.setDailyBaselineDate(LocalDate.parse(daily));
-		user.setDailyBaselineEquity(rs.getDouble("daily_baseline_equity"));
-		String weekly = rs.getString("weekly_baseline_date");
-		if (weekly != null) user.setWeeklyBaselineDate(LocalDate.parse(weekly));
-		user.setWeeklyBaselineEquity(rs.getDouble("weekly_baseline_equity"));
-		String monthly = rs.getString("monthly_baseline_date");
-		if (monthly != null) user.setMonthlyBaselineDate(LocalDate.parse(monthly));
-		user.setMonthlyBaselineEquity(rs.getDouble("monthly_baseline_equity"));
+		user.setCash(nz(rs.getBigDecimal("cash")));
+		user.setBorrowed(nz(rs.getBigDecimal("borrowed")));
+		user.setTotalFees(nz(rs.getBigDecimal("total_fees")));
+		user.setDailyBaselineDate(rs.getObject("daily_baseline_date", LocalDate.class));
+		user.setDailyBaselineEquity(nz(rs.getBigDecimal("daily_baseline_equity")));
+		user.setWeeklyBaselineDate(rs.getObject("weekly_baseline_date", LocalDate.class));
+		user.setWeeklyBaselineEquity(nz(rs.getBigDecimal("weekly_baseline_equity")));
+		user.setMonthlyBaselineDate(rs.getObject("monthly_baseline_date", LocalDate.class));
+		user.setMonthlyBaselineEquity(nz(rs.getBigDecimal("monthly_baseline_equity")));
 		user.setCurrencyHoldings(parseHoldings(rs.getString("currency_holdings")));
 		user.setSchemaVersion(rs.getInt("schema_version"));
-		String lastReplenish = rs.getString("last_replenish_date");
-		if (lastReplenish != null) user.setLastReplenishDate(LocalDate.parse(lastReplenish));
+		user.setLastReplenishDate(rs.getObject("last_replenish_date", LocalDate.class));
 		user.setMorningDigestEnabled(rs.getBoolean("morning_digest_enabled"));
 		return user;
 	}
 
-	private Map<String, Double> parseHoldings(String json) {
+	private Map<String, BigDecimal> parseHoldings(String json) {
 		if (json == null || json.isBlank()) return new HashMap<>();
 		try {
-			return MAPPER.readValue(json, new TypeReference<Map<String, Double>>() {});
+			return MAPPER.readValue(json, new TypeReference<Map<String, BigDecimal>>() {});
 		} catch (Exception e) {
 			// Повреждённая запись не должна делать пользователя нечитаемым целиком
 			log.warn("Не удалось разобрать currency_holdings ({}), валютные остатки прочитаны как пустые: {}",
@@ -107,7 +104,7 @@ public class SandboxUserRepository extends BaseRepository {
 		}
 	}
 
-	private String serializeHoldings(Map<String, Double> holdings) {
+	private String serializeHoldings(Map<String, BigDecimal> holdings) {
 		if (holdings == null || holdings.isEmpty()) return "{}";
 		try {
 			return MAPPER.writeValueAsString(holdings);

@@ -139,7 +139,7 @@ public class SandboxTradingService implements
 		try {
 			SandboxUser existing = users.findById(userId);
 			if (existing != null) return "Вы уже зарегистрированы в песочнице.";
-			SandboxUser user = new SandboxUser(userId, userName, startBalance.doubleValue());
+			SandboxUser user = new SandboxUser(userId, userName, startBalance);
 			recordBaseline(user);
 			users.save(userId, user);
 			return "✅ Регистрация успешна. Стартовый баланс: " + formatter.format(startBalance) + " ₽";
@@ -165,10 +165,11 @@ public class SandboxTradingService implements
 				long daysLeft = ChronoUnit.DAYS.between(today, user.getLastReplenishDate().plusDays(30));
 				return "⏳ Пополнение доступно раз в 30 дней. Следующее — через **" + daysLeft + " дн.**";
 			}
-			user.setCash(user.getCash() + amount);
+			user.setCash(user.getCash().add(BigDecimal.valueOf(amount)));
 			user.setLastReplenishDate(today);
 			users.save(userId, user);
-			return String.format("💰 Счёт пополнен на **%.0f ₽**. Новый баланс: **%.0f ₽**. Следующее пополнение через 30 дней.", amount, user.getCash());
+			return String.format("💰 Счёт пополнен на **%.0f ₽**. Новый баланс: **%.0f ₽**. Следующее пополнение через 30 дней.",
+					amount, user.getCash().doubleValue());
 		} finally {
 			lock.unlock();
 		}
@@ -245,7 +246,7 @@ public class SandboxTradingService implements
 		Position posInCache = positions.findById(pKey);
 		Position pos = posInCache != null
 				? posInCache
-				: new Position(userId, upperTicker, share.getUid(), 0, 0.0);
+				: new Position(userId, upperTicker, share.getUid(), 0, ZERO);
 
 		if (!buy && pos.getQuantity() < qty) return "Недостаточно бумаг в портфеле.";
 
@@ -256,9 +257,9 @@ public class SandboxTradingService implements
 		BigDecimal feeRaw = turnover.multiply(commissionRate).setScale(2, RoundingMode.HALF_UP);
 		BigDecimal fee = feeRaw.compareTo(ONE) < 0 ? ONE : feeRaw;
 
-		BigDecimal origCash = BigDecimal.valueOf(user.getCash());
-		BigDecimal origTotalFees = BigDecimal.valueOf(user.getTotalFees());
-		BigDecimal origAvgPrice = BigDecimal.valueOf(pos.getAvgPrice());
+		BigDecimal origCash = user.getCash();
+		BigDecimal origTotalFees = user.getTotalFees();
+		BigDecimal origAvgPrice = pos.getAvgPrice();
 
 		// Все записи идут одной транзакцией: раньше позиция, пользователь и сделка
 		// сохранялись независимо, и сбой между ними оставлял портфель рассогласованным
@@ -266,17 +267,17 @@ public class SandboxTradingService implements
 		boolean[] marginCalled = {false};
 		String result = transactions.execute(status -> {
 			if (buy) {
-				user.setCash(origCash.subtract(turnover).subtract(fee).doubleValue());
+				user.setCash(origCash.subtract(turnover).subtract(fee));
 				int newQty = pos.getQuantity() + qty;
 				BigDecimal newAvg = origAvgPrice
 						.multiply(BigDecimal.valueOf(pos.getQuantity()))
 						.add(turnover)
 						.divide(BigDecimal.valueOf(newQty), SCALE, RoundingMode.HALF_UP);
 				pos.setQuantity(newQty);
-				pos.setAvgPrice(newAvg.doubleValue());
+				pos.setAvgPrice(newAvg);
 				positions.save(pKey, pos);
 			} else {
-				user.setCash(origCash.add(turnover).subtract(fee).doubleValue());
+				user.setCash(origCash.add(turnover).subtract(fee));
 				pos.setQuantity(pos.getQuantity() - qty);
 				if (pos.getQuantity() == 0) {
 					positions.delete(pKey);
@@ -285,12 +286,12 @@ public class SandboxTradingService implements
 					positions.save(pKey, pos);
 				}
 			}
-			user.setTotalFees(origTotalFees.add(fee).doubleValue());
+			user.setTotalFees(origTotalFees.add(fee));
 			rebalanceDebt(user, userId);
 
 			BigDecimal eq = equity(userId, user);
 			BigDecimal gross = grossPositionValue(userId);
-			BigDecimal borrowed = BigDecimal.valueOf(user.getBorrowed());
+			BigDecimal borrowed = user.getBorrowed();
 			RiskCheckResult risk = riskManager.evaluate(eq, gross, borrowed);
 
 			// EQUITY_ZERO и LEVERAGE_EXCEEDED — откат сделки целиком: транзакция
@@ -307,7 +308,7 @@ public class SandboxTradingService implements
 			users.save(userId, user);
 			String tradeId = UUID.randomUUID().toString();
 			trades.save(tradeId, new TradeRecord(tradeId, userId, upperTicker, buy ? TradeSide.BUY : TradeSide.SELL, qty,
-					price.doubleValue(), fee.doubleValue(), Instant.now()));
+					price, fee, Instant.now()));
 			String cur = formatter.currencySymbol(share.getCurrency());
 			return (buy ? "🟢 Куплено " : "🔴 Продано ") + qty + " " + upperTicker + " по " + formatter.format(price)
 					+ " " + cur + ". Комиссия " + formatter.format(fee) + " " + cur;
@@ -334,7 +335,7 @@ public class SandboxTradingService implements
 				ps.stream().map(Position::getInstrumentId).collect(Collectors.toSet()));
 		for (Position p : ps) {
 			BigDecimal price = prices.getOrDefault(p.getInstrumentId(), ZERO);
-			BigDecimal avgPrice = BigDecimal.valueOf(p.getAvgPrice());
+			BigDecimal avgPrice = p.getAvgPrice();
 			BigDecimal pnl = price.subtract(avgPrice)
 					.multiply(BigDecimal.valueOf(p.getQuantity()))
 					.setScale(2, RoundingMode.HALF_UP);
@@ -372,11 +373,11 @@ public class SandboxTradingService implements
 		String roiSign = roi.compareTo(ZERO) >= 0 ? "+" : "";
 
 		StringBuilder result = new StringBuilder();
-		result.append("💰 Рублёвый счёт: ").append(formatter.format(BigDecimal.valueOf(user.getCash()))).append(" ₽\n");
+		result.append("💰 Рублёвый счёт: ").append(formatter.format(user.getCash())).append(" ₽\n");
 		String ccyLine = currencyService.currencyBalanceLine(userId);
 		if (ccyLine != null && !ccyLine.isBlank()) result.append(ccyLine).append("\n");
 		result.append("📈 Стоимость акций: ").append(formatter.format(gross)).append(" ₽\n")
-				.append("💳 Заём: ").append(formatter.format(BigDecimal.valueOf(user.getBorrowed()))).append(" ₽\n")
+				.append("💳 Заём: ").append(formatter.format(user.getBorrowed())).append(" ₽\n")
 				.append("📊 Equity (итого): ").append(formatter.format(eq)).append(" ₽\n")
 				.append("📉 ROI от старта: ").append(roiSign).append(roi.toPlainString()).append("%\n")
 				.append("⚖️ Плечо: x").append(lev.setScale(2, RoundingMode.HALF_UP).toPlainString())
@@ -389,7 +390,7 @@ public class SandboxTradingService implements
 		if (user == null) return "Сначала выполните +регистрация";
 
 		BigDecimal eq = equity(userId, user);
-		BigDecimal borrowed = BigDecimal.valueOf(user.getBorrowed());
+		BigDecimal borrowed = user.getBorrowed();
 		if (borrowed.compareTo(ZERO) <= 0) return "Маржи нет. Заём = 0.";
 
 		BigDecimal level = eq.divide(borrowed, SCALE, RoundingMode.HALF_UP);
@@ -461,8 +462,8 @@ public class SandboxTradingService implements
 		List<BigDecimal> realizedPnlList = new ArrayList<>();
 
 		for (TradeRecord r : sorted) {
-			BigDecimal rPrice = BigDecimal.valueOf(r.getPrice());
-			BigDecimal rFee = BigDecimal.valueOf(r.getFee());
+			BigDecimal rPrice = r.getPrice();
+			BigDecimal rFee = r.getFee();
 			if (r.getSide() == TradeSide.BUY) {
 				BigDecimal prevAvg = avgCostByTicker.getOrDefault(r.getTicker(), ZERO);
 				int prevQty = qtyByTicker.getOrDefault(r.getTicker(), 0);
@@ -529,8 +530,8 @@ public class SandboxTradingService implements
 			String side = r.getSide() == TradeSide.BUY ? "🟢 Покупка" : "🔴 Продажа";
 			sb.append(dt).append(" | ").append(side).append(" ").append(r.getQty())
 					.append(" ").append(r.getTicker())
-					.append(" @ ").append(formatter.format(BigDecimal.valueOf(r.getPrice()))).append(" ₽")
-					.append(" (комиссия ").append(formatter.format(BigDecimal.valueOf(r.getFee()))).append(" ₽)\n");
+					.append(" @ ").append(formatter.format(r.getPrice())).append(" ₽")
+					.append(" (комиссия ").append(formatter.format(r.getFee())).append(" ₽)\n");
 		}
 		if (page < totalPages) {
 			sb.append("➡️ +история ").append(page + 1).append(" — следующая страница");
@@ -563,7 +564,7 @@ public class SandboxTradingService implements
 				}
 			}
 			String id = UUID.randomUUID().toString();
-			stopOrders.save(id, new StopOrder(id, userId, ticker, type, triggerPrice.doubleValue(), Instant.now()));
+			stopOrders.save(id, new StopOrder(id, userId, ticker, type, triggerPrice, Instant.now()));
 			String typeName = type == StopOrderType.SL ? "Стоп-лосс" : "Тейк-профит";
 			return "✅ " + typeName + " на " + ticker + " установлен: " + formatter.format(triggerPrice) + " ₽";
 		} finally {
@@ -592,7 +593,7 @@ public class SandboxTradingService implements
 		long existingCount = limitOrders.countByUserAndTicker(userId, ticker);
 		if (existingCount >= 10) return "❌ Максимум 10 лимитных ордеров на один тикер.";
 		String id = UUID.randomUUID().toString();
-		limitOrders.save(id, new LimitOrder(id, userId, userName, ticker, side, qty, limitPrice.doubleValue(), Instant.now()));
+		limitOrders.save(id, new LimitOrder(id, userId, userName, ticker, side, qty, limitPrice, Instant.now()));
 		String sideLabel = side == TradeSide.BUY ? "покупку" : "продажу";
 		return "✅ Лимитная заявка на " + sideLabel + " " + qty + " " + ticker
 				+ " @ " + formatter.format(limitPrice) + " ₽ принята (ID: " + id.substring(0, 8) + "...)";
@@ -616,7 +617,7 @@ public class SandboxTradingService implements
 			sb.append("[").append(o.getId().substring(0, 8)).append("] ")
 					.append(dt).append(" | ").append(sideLabel).append(" ")
 					.append(o.getQty()).append(" ").append(o.getTicker())
-					.append(" @ ").append(formatter.format(BigDecimal.valueOf(o.getLimitPrice()))).append(" ₽\n");
+					.append(" @ ").append(formatter.format(o.getLimitPrice())).append(" ₽\n");
 		}
 		return sb.toString().trim();
 	}
@@ -636,7 +637,7 @@ public class SandboxTradingService implements
 		limitOrders.delete(fullKey);
 		return "✅ Заявка [" + fullKey.substring(0, 8) + "] отменена: "
 				+ found.getSide() + " " + found.getQty() + " " + found.getTicker()
-				+ " @ " + formatter.format(BigDecimal.valueOf(found.getLimitPrice())) + " ₽";
+				+ " @ " + formatter.format(found.getLimitPrice()) + " ₽";
 	}
 
 	public String setAlert(String userId, String ticker, BigDecimal targetPrice) {
@@ -649,7 +650,7 @@ public class SandboxTradingService implements
 		BigDecimal currentPrice = priceService.loadPriceSafe(share.getUid());
 		boolean above = currentPrice.compareTo(ZERO) <= 0 || targetPrice.compareTo(currentPrice) > 0;
 		String id = UUID.randomUUID().toString();
-		priceAlerts.save(id, new PriceAlert(id, userId, ticker, targetPrice.doubleValue(), above, Instant.now()));
+		priceAlerts.save(id, new PriceAlert(id, userId, ticker, targetPrice, above, Instant.now()));
 		String direction = above ? "достигнет или превысит" : "упадёт до";
 		return "🔔 Алерт установлен: уведомлю когда " + ticker + " " + direction + " " + formatter.format(targetPrice) + " ₽";
 	}
@@ -670,30 +671,30 @@ public class SandboxTradingService implements
 	// ── Internal helpers ─────────────────────────────────────────────────────
 
 	private void rebalanceDebt(SandboxUser user, String userId) {
-		BigDecimal cash = BigDecimal.valueOf(user.getCash());
-		BigDecimal borrowed = BigDecimal.valueOf(user.getBorrowed());
+		BigDecimal cash = user.getCash();
+		BigDecimal borrowed = user.getBorrowed();
 		if (cash.compareTo(ZERO) < 0) {
 			BigDecimal loanAmount = cash.abs();
-			user.setBorrowed(borrowed.add(loanAmount).doubleValue());
-			user.setCash(0.0);
+			user.setBorrowed(borrowed.add(loanAmount));
+			user.setCash(ZERO);
 			log.warn("Пользователь {} взял заём: {} ₽ (итого долг: {} ₽)",
 					userId, loanAmount.setScale(2, RoundingMode.HALF_UP),
-					BigDecimal.valueOf(user.getBorrowed()).setScale(2, RoundingMode.HALF_UP));
+					user.getBorrowed().setScale(2, RoundingMode.HALF_UP));
 		} else if (borrowed.compareTo(ZERO) > 0 && cash.compareTo(ZERO) > 0) {
 			BigDecimal repay = cash.min(borrowed);
-			user.setCash(cash.subtract(repay).doubleValue());
-			user.setBorrowed(borrowed.subtract(repay).doubleValue());
+			user.setCash(cash.subtract(repay));
+			user.setBorrowed(borrowed.subtract(repay));
 		}
 		users.save(userId, user);
 	}
 
 	private void liquidate(String userId, SandboxUser user) {
 		List<Position> ps = userPositions(userId);
-		BigDecimal cash = BigDecimal.valueOf(user.getCash());
+		BigDecimal cash = user.getCash();
 		Map<String, BigDecimal> prices = priceService.loadPrices(
 				ps.stream().map(Position::getInstrumentId).collect(Collectors.toSet()));
 		for (Position p : ps) {
-			BigDecimal avgPrice = BigDecimal.valueOf(p.getAvgPrice());
+			BigDecimal avgPrice = p.getAvgPrice();
 			BigDecimal price = prices.getOrDefault(p.getInstrumentId(), ZERO);
 			if (price.compareTo(ZERO) <= 0) price = avgPrice;
 			BigDecimal turnover = price.multiply(BigDecimal.valueOf(p.getQuantity()));
@@ -704,7 +705,7 @@ public class SandboxTradingService implements
 			positions.delete(posKey(userId, p.getTicker()));
 			stopOrders.deleteByUserAndTicker(userId, p.getTicker());
 		}
-		user.setCash(cash.doubleValue());
+		user.setCash(cash);
 		rebalanceDebt(user, userId);
 		users.save(userId, user);
 	}
@@ -714,18 +715,18 @@ public class SandboxTradingService implements
 		BigDecimal eq = equity(u.getUserId(), u);
 		if (u.getDailyBaselineDate() == null || !now.equals(u.getDailyBaselineDate())) {
 			u.setDailyBaselineDate(now);
-			u.setDailyBaselineEquity(eq.doubleValue());
+			u.setDailyBaselineEquity(eq);
 		}
 		// Сравниваем неделю и месяц вместе с годом, иначе та же неделя/месяц
 		// следующего года не сбрасывают baseline
 		if (u.getWeeklyBaselineDate() == null || !sameIsoWeek(u.getWeeklyBaselineDate(), now)) {
 			u.setWeeklyBaselineDate(now);
-			u.setWeeklyBaselineEquity(eq.doubleValue());
+			u.setWeeklyBaselineEquity(eq);
 		}
 		if (u.getMonthlyBaselineDate() == null ||
 				!java.time.YearMonth.from(u.getMonthlyBaselineDate()).equals(java.time.YearMonth.from(now))) {
 			u.setMonthlyBaselineDate(now);
-			u.setMonthlyBaselineEquity(eq.doubleValue());
+			u.setMonthlyBaselineEquity(eq);
 		}
 		users.save(u.getUserId(), u);
 	}
@@ -738,9 +739,9 @@ public class SandboxTradingService implements
 	private BigDecimal metric(SandboxUser u, String period) {
 		BigDecimal eq = equity(u.getUserId(), u);
 		return switch (period.toLowerCase(Locale.ROOT)) {
-			case "день"   -> safeRoi(eq, BigDecimal.valueOf(u.getDailyBaselineEquity()));
-			case "неделя" -> safeRoi(eq, BigDecimal.valueOf(u.getWeeklyBaselineEquity()));
-			case "месяц"  -> safeRoi(eq, BigDecimal.valueOf(u.getMonthlyBaselineEquity()));
+			case "день"   -> safeRoi(eq, u.getDailyBaselineEquity());
+			case "неделя" -> safeRoi(eq, u.getWeeklyBaselineEquity());
+			case "месяц"  -> safeRoi(eq, u.getMonthlyBaselineEquity());
 			default       -> safeRoi(eq, startBalance);
 		};
 	}
@@ -766,9 +767,9 @@ public class SandboxTradingService implements
 	}
 
 	private BigDecimal equity(String userId, SandboxUser user) {
-		return BigDecimal.valueOf(user.getCash())
+		return user.getCash()
 				.add(grossPositionValue(userId))
-				.subtract(BigDecimal.valueOf(user.getBorrowed()));
+				.subtract(user.getBorrowed());
 	}
 
 	private String posKey(String userId, String ticker) {

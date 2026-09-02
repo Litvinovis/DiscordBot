@@ -58,7 +58,7 @@ public class PositionRepository extends BaseRepository {
 				rs.getString("ticker"),
 				rs.getString("instrument_id"),
 				rs.getInt("quantity"),
-				rs.getDouble("avg_price")
+				nz(rs.getBigDecimal("avg_price"))
 		);
 		p.setSchemaVersion(rs.getInt("schema_version"));
 		return p;

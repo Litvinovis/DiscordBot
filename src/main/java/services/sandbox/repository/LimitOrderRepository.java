@@ -67,7 +67,7 @@ public class LimitOrderRepository extends BaseRepository {
 				rs.getString("ticker"),
 				TradeSide.valueOf(rs.getString("trade_side")),
 				rs.getInt("qty"),
-				rs.getDouble("limit_price"),
+				nz(rs.getBigDecimal("limit_price")),
 				Instant.ofEpochMilli(rs.getLong("created_at"))
 		);
 		order.setSchemaVersion(rs.getInt("schema_version"));

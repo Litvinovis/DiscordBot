@@ -78,7 +78,7 @@ public class SandboxOrderProcessor {
 			BigDecimal price = prices.getOrDefault(share.getUid(), BigDecimal.ZERO);
 			if (price.compareTo(BigDecimal.ZERO) <= 0) continue;
 
-			BigDecimal triggerPrice = BigDecimal.valueOf(so.getTriggerPrice());
+			BigDecimal triggerPrice = so.getTriggerPrice();
 			boolean triggered = so.getType() == StopOrderType.SL
 					? price.compareTo(triggerPrice) <= 0
 					: price.compareTo(triggerPrice) >= 0;
@@ -128,7 +128,7 @@ public class SandboxOrderProcessor {
 			BigDecimal price = prices.getOrDefault(share.getUid(), BigDecimal.ZERO);
 			if (price.compareTo(BigDecimal.ZERO) <= 0) continue;
 
-			BigDecimal loLimitPrice = BigDecimal.valueOf(lo.getLimitPrice());
+			BigDecimal loLimitPrice = lo.getLimitPrice();
 			boolean isBuy = lo.getSide() == TradeSide.BUY;
 			boolean triggered = isBuy
 					? price.compareTo(loLimitPrice) <= 0
@@ -172,7 +172,7 @@ public class SandboxOrderProcessor {
 			BigDecimal price = prices.getOrDefault(share.getUid(), BigDecimal.ZERO);
 			if (price.compareTo(BigDecimal.ZERO) <= 0) continue;
 
-			BigDecimal alertTarget = BigDecimal.valueOf(alert.getTargetPrice());
+			BigDecimal alertTarget = alert.getTargetPrice();
 			boolean triggered = alert.isAbove()
 					? price.compareTo(alertTarget) >= 0
 					: price.compareTo(alertTarget) <= 0;

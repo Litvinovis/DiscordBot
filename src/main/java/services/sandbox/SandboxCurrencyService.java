@@ -82,7 +82,7 @@ public class SandboxCurrencyService {
 				return "Не удалось получить курс " + code + " от ЦБ РФ. Попробуйте позже.";
 			}
 
-			BigDecimal cash = BigDecimal.valueOf(user.getCash());
+			BigDecimal cash = user.getCash();
 			if (cash.compareTo(rubAmount) < 0) {
 				return "Недостаточно рублей. Доступно: " + fmt(cash) + " ₽";
 			}
@@ -90,15 +90,15 @@ public class SandboxCurrencyService {
 			BigDecimal currencyAmount = rubAmount.divide(rate, SCALE, RoundingMode.HALF_UP);
 
 			// Update cash
-			user.setCash(cash.subtract(rubAmount).doubleValue());
+			user.setCash(cash.subtract(rubAmount));
 
 			// Update holdings
-			Map<String, Double> holdings = user.getCurrencyHoldings();
+			Map<String, BigDecimal> holdings = user.getCurrencyHoldings();
 			if (holdings == null) {
 				holdings = new HashMap<>();
 			}
-			double prev = holdings.getOrDefault(code, 0.0);
-			holdings.put(code, prev + currencyAmount.doubleValue());
+			BigDecimal prev = holdings.getOrDefault(code, BigDecimal.ZERO);
+			holdings.put(code, prev.add(currencyAmount));
 			user.setCurrencyHoldings(holdings);
 
 			users.save(userId, user);
@@ -142,12 +142,12 @@ public class SandboxCurrencyService {
 				return "Сначала выполните +регистрация";
 			}
 
-			Map<String, Double> holdings = user.getCurrencyHoldings();
+			Map<String, BigDecimal> holdings = user.getCurrencyHoldings();
 			if (holdings == null) {
 				holdings = new HashMap<>();
 			}
-			double held = holdings.getOrDefault(code, 0.0);
-			BigDecimal heldBD = BigDecimal.valueOf(held);
+			BigDecimal held = holdings.getOrDefault(code, BigDecimal.ZERO);
+			BigDecimal heldBD = held;
 
 			if (heldBD.compareTo(currencyAmount) < 0) {
 				return "Недостаточно " + code + ". В наличии: " + fmtCcy(heldBD);
@@ -166,13 +166,13 @@ public class SandboxCurrencyService {
 			if (newHeld.compareTo(ZERO) <= 0) {
 				holdings.remove(code);
 			} else {
-				holdings.put(code, newHeld.doubleValue());
+				holdings.put(code, newHeld);
 			}
 			user.setCurrencyHoldings(holdings);
 
 			// Update cash
-			BigDecimal cash = BigDecimal.valueOf(user.getCash());
-			user.setCash(cash.add(rubReceived).doubleValue());
+			BigDecimal cash = user.getCash();
+			user.setCash(cash.add(rubReceived));
 
 			users.save(userId, user);
 
@@ -202,7 +202,7 @@ public class SandboxCurrencyService {
 			return "Сначала выполните +регистрация";
 		}
 
-		Map<String, Double> holdings = user.getCurrencyHoldings();
+		Map<String, BigDecimal> holdings = user.getCurrencyHoldings();
 		if (holdings == null || holdings.isEmpty()) {
 			return "Валютных позиций нет.";
 		}
@@ -212,9 +212,9 @@ public class SandboxCurrencyService {
 		StringBuilder sb = new StringBuilder("Валютные позиции:\n");
 		BigDecimal totalRubValue = ZERO;
 
-		for (Map.Entry<String, Double> entry : holdings.entrySet()) {
+		for (Map.Entry<String, BigDecimal> entry : holdings.entrySet()) {
 			String code = entry.getKey();
-			BigDecimal amount = BigDecimal.valueOf(entry.getValue());
+			BigDecimal amount = entry.getValue();
 			if (amount.compareTo(ZERO) <= 0) continue;
 
 			BigDecimal rate = rates.getOrDefault(code, ZERO);
@@ -249,7 +249,7 @@ public class SandboxCurrencyService {
 		SandboxUser user = users.findById(userId);
 		if (user == null) return "";
 
-		Map<String, Double> holdings = user.getCurrencyHoldings();
+		Map<String, BigDecimal> holdings = user.getCurrencyHoldings();
 		if (holdings == null || holdings.isEmpty()) return "";
 
 		Map<String, BigDecimal> rates = cbrRateService.fetchRates();
@@ -258,9 +258,9 @@ public class SandboxCurrencyService {
 		boolean first = true;
 		BigDecimal totalRub = ZERO;
 
-		for (Map.Entry<String, Double> entry : holdings.entrySet()) {
+		for (Map.Entry<String, BigDecimal> entry : holdings.entrySet()) {
 			String code = entry.getKey();
-			BigDecimal amount = BigDecimal.valueOf(entry.getValue());
+			BigDecimal amount = entry.getValue();
 			if (amount.compareTo(ZERO) <= 0) continue;
 
 			BigDecimal rate = rates.getOrDefault(code, ZERO);
@@ -286,13 +286,13 @@ public class SandboxCurrencyService {
 		SandboxUser user = users.findById(userId);
 		if (user == null) return ZERO;
 
-		Map<String, Double> holdings = user.getCurrencyHoldings();
+		Map<String, BigDecimal> holdings = user.getCurrencyHoldings();
 		if (holdings == null || holdings.isEmpty()) return ZERO;
 
 		Map<String, BigDecimal> rates = cbrRateService.fetchRates();
 		BigDecimal total = ZERO;
-		for (Map.Entry<String, Double> entry : holdings.entrySet()) {
-			BigDecimal amount = BigDecimal.valueOf(entry.getValue());
+		for (Map.Entry<String, BigDecimal> entry : holdings.entrySet()) {
+			BigDecimal amount = entry.getValue();
 			BigDecimal rate = rates.getOrDefault(entry.getKey(), ZERO);
 			total = total.add(amount.multiply(rate));
 		}

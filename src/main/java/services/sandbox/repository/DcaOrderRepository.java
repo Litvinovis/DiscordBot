@@ -63,7 +63,7 @@ public class DcaOrderRepository extends BaseRepository {
         DcaOrder order = new DcaOrder(
                 rs.getString("user_id"),
                 rs.getString("ticker"),
-                rs.getDouble("amount_rub"),
+                nz(rs.getBigDecimal("amount_rub")),
                 rs.getString("frequency"),
                 Instant.ofEpochMilli(rs.getLong("next_execution")),
                 Instant.ofEpochMilli(rs.getLong("created_at")),

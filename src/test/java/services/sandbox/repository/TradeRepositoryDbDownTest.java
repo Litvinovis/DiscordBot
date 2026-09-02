@@ -7,6 +7,7 @@ import services.sandbox.model.TradeRecord;
 import services.sandbox.model.TradeSide;
 
 import javax.sql.DataSource;
+import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.time.Instant;
 
@@ -49,7 +50,7 @@ class TradeRepositoryDbDownTest {
 	@Test
 	void save_whenDbDown_throws() throws SQLException {
 		TradeRepository repo = new TradeRepository(brokenJdbc());
-		TradeRecord trade = new TradeRecord("id1", "user1", "SBER", TradeSide.BUY, 10, 300.0, 1.0, Instant.now());
+		TradeRecord trade = new TradeRecord("id1", "user1", "SBER", TradeSide.BUY, 10, BigDecimal.valueOf(300.0), BigDecimal.ONE, Instant.now());
 		assertThrows(DataAccessException.class, () -> repo.save("id1", trade),
 				"Молчаливый провал записи расходился с ответом бота «Куплено»");
 	}

@@ -1,5 +1,6 @@
 package services.sandbox.model;
 
+import java.math.BigDecimal;
 import java.io.Serializable;
 import java.time.Instant;
 
@@ -20,7 +21,7 @@ public class LimitOrder implements Serializable {
 	private TradeSide side;
 	private int qty;
 	/** Target price at which the order should be executed */
-	private double limitPrice;
+	private BigDecimal limitPrice;
 	private Instant createdAt;
 
 	public LimitOrder() {
@@ -28,7 +29,7 @@ public class LimitOrder implements Serializable {
 
 	public LimitOrder(String id, String userId, String userName,
 					  String ticker, TradeSide side, int qty,
-					  double limitPrice, Instant createdAt) {
+					  BigDecimal limitPrice, Instant createdAt) {
 		this.id = id;
 		this.userId = userId;
 		this.userName = userName;
@@ -45,7 +46,7 @@ public class LimitOrder implements Serializable {
 	public String getTicker() { return ticker; }
 	public TradeSide getSide() { return side; }
 	public int getQty() { return qty; }
-	public double getLimitPrice() { return limitPrice; }
+	public BigDecimal getLimitPrice() { return limitPrice; }
 	public Instant getCreatedAt() { return createdAt; }
 
 	public int getSchemaVersion() { return schemaVersion; }
