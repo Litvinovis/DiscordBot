@@ -30,6 +30,8 @@ import com.discord.stonks.config.SandboxProperties;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import services.sandbox.model.LimitOrder;
 import services.sandbox.model.Position;
 import services.sandbox.model.PriceAlert;
@@ -75,6 +77,7 @@ public class SandboxTradingService implements
 	private final Map<String, Share> shareByTicker;
 	private final BigDecimal startBalance;
 	private final BigDecimal commissionRate;
+	private final TransactionTemplate transactions;
 
 	public final ConcurrentHashMap<String, ReentrantLock> userLocks = new ConcurrentHashMap<>();
 
@@ -94,7 +97,8 @@ public class SandboxTradingService implements
 								  PriceAlertRepository priceAlerts,
 								  SandboxPriceService priceService,
 								  SandboxMessageFormatter formatter,
-								  SandboxRiskManager riskManager) {
+								  SandboxRiskManager riskManager,
+								  PlatformTransactionManager transactionManager) {
 		this.users = users;
 		this.positions = positions;
 		this.trades = trades;
@@ -104,6 +108,7 @@ public class SandboxTradingService implements
 		this.priceService = priceService;
 		this.formatter = formatter;
 		this.riskManager = riskManager;
+		this.transactions = new TransactionTemplate(transactionManager);
 		this.startBalance = props.startBalance();
 		this.commissionRate = props.commissionRate();
 
@@ -220,8 +225,8 @@ public class SandboxTradingService implements
 		if (user.getUserName() == null || !user.getUserName().equals(userName)) {
 			user.setUserName(userName);
 		}
-		ticker = ticker.toUpperCase(Locale.ROOT);
-		Share share = shareByTicker.get(ticker);
+		String upperTicker = ticker.toUpperCase(Locale.ROOT);
+		Share share = shareByTicker.get(upperTicker);
 		if (share == null) return "Тикер не доступен в песочнице.";
 		recordBaseline(user);
 
@@ -229,18 +234,18 @@ public class SandboxTradingService implements
 		try {
 			price = priceService.loadPrice(share.getUid());
 		} catch (Exception e) {
-			log.warn("Не удалось загрузить цену для {} : {}", ticker, e.getMessage());
-			return "⚠️ Не удалось получить текущую цену для " + ticker + ". Торговля временно недоступна.";
+			log.warn("Не удалось загрузить цену для {} : {}", upperTicker, e.getMessage());
+			return "⚠️ Не удалось получить текущую цену для " + upperTicker + ". Торговля временно недоступна.";
 		}
 		if (price.compareTo(ZERO) <= 0) {
-			return "⚠️ Цена для " + ticker + " недоступна (получено 0.0). Торговля заблокирована до восстановления котировок.";
+			return "⚠️ Цена для " + upperTicker + " недоступна (получено 0.0). Торговля заблокирована до восстановления котировок.";
 		}
 
-		String pKey = posKey(userId, ticker);
+		String pKey = posKey(userId, upperTicker);
 		Position posInCache = positions.findById(pKey);
 		Position pos = posInCache != null
 				? posInCache
-				: new Position(userId, ticker, share.getUid(), 0, 0.0);
+				: new Position(userId, upperTicker, share.getUid(), 0, 0.0);
 
 		if (!buy && pos.getQuantity() < qty) return "Недостаточно бумаг в портфеле.";
 
@@ -248,78 +253,71 @@ public class SandboxTradingService implements
 		BigDecimal turnover = price.multiply(qtyBD);
 		// Комиссия считается от точного оборота и округляется до копеек:
 		// прогон через double терял точность ровно там, где её обещал сохранить
-		BigDecimal fee = turnover.multiply(commissionRate).setScale(2, RoundingMode.HALF_UP);
-		if (fee.compareTo(ONE) < 0) fee = ONE;
+		BigDecimal feeRaw = turnover.multiply(commissionRate).setScale(2, RoundingMode.HALF_UP);
+		BigDecimal fee = feeRaw.compareTo(ONE) < 0 ? ONE : feeRaw;
 
 		BigDecimal origCash = BigDecimal.valueOf(user.getCash());
-		BigDecimal origBorrowed = BigDecimal.valueOf(user.getBorrowed());
 		BigDecimal origTotalFees = BigDecimal.valueOf(user.getTotalFees());
-		int origQty = pos.getQuantity();
 		BigDecimal origAvgPrice = BigDecimal.valueOf(pos.getAvgPrice());
 
-		if (buy) {
-			user.setCash(origCash.subtract(turnover).subtract(fee).doubleValue());
-			int newQty = pos.getQuantity() + qty;
-			BigDecimal newAvg = origAvgPrice
-					.multiply(BigDecimal.valueOf(pos.getQuantity()))
-					.add(turnover)
-					.divide(BigDecimal.valueOf(newQty), SCALE, RoundingMode.HALF_UP);
-			pos.setQuantity(newQty);
-			pos.setAvgPrice(newAvg.doubleValue());
-			positions.save(pKey, pos);
-		} else {
-			user.setCash(origCash.add(turnover).subtract(fee).doubleValue());
-			pos.setQuantity(pos.getQuantity() - qty);
-			if (pos.getQuantity() == 0) {
-				positions.delete(pKey);
-				stopOrders.deleteByUserAndTicker(userId, ticker);
-			} else {
+		// Все записи идут одной транзакцией: раньше позиция, пользователь и сделка
+		// сохранялись независимо, и сбой между ними оставлял портфель рассогласованным
+		// (бумаги есть — деньги не списаны, или наоборот).
+		boolean[] marginCalled = {false};
+		String result = transactions.execute(status -> {
+			if (buy) {
+				user.setCash(origCash.subtract(turnover).subtract(fee).doubleValue());
+				int newQty = pos.getQuantity() + qty;
+				BigDecimal newAvg = origAvgPrice
+						.multiply(BigDecimal.valueOf(pos.getQuantity()))
+						.add(turnover)
+						.divide(BigDecimal.valueOf(newQty), SCALE, RoundingMode.HALF_UP);
+				pos.setQuantity(newQty);
+				pos.setAvgPrice(newAvg.doubleValue());
 				positions.save(pKey, pos);
+			} else {
+				user.setCash(origCash.add(turnover).subtract(fee).doubleValue());
+				pos.setQuantity(pos.getQuantity() - qty);
+				if (pos.getQuantity() == 0) {
+					positions.delete(pKey);
+					stopOrders.deleteByUserAndTicker(userId, upperTicker);
+				} else {
+					positions.save(pKey, pos);
+				}
 			}
-		}
-		user.setTotalFees(origTotalFees.add(fee).doubleValue());
-		rebalanceDebt(user, userId);
+			user.setTotalFees(origTotalFees.add(fee).doubleValue());
+			rebalanceDebt(user, userId);
 
-		BigDecimal eq = equity(userId, user);
-		BigDecimal gross = grossPositionValue(userId);
-		BigDecimal borrowed = BigDecimal.valueOf(user.getBorrowed());
-		RiskCheckResult risk = riskManager.evaluate(eq, gross, borrowed);
+			BigDecimal eq = equity(userId, user);
+			BigDecimal gross = grossPositionValue(userId);
+			BigDecimal borrowed = BigDecimal.valueOf(user.getBorrowed());
+			RiskCheckResult risk = riskManager.evaluate(eq, gross, borrowed);
 
-		// EQUITY_ZERO и LEVERAGE_EXCEEDED — просто откат сделки. Ликвидация здесь
-		// недопустима: liquidate() удалял ВСЕ позиции, а rollbackTrade() затем
-		// возвращал только торгуемую и исходный кэш — остальной портфель исчезал безвозвратно
-		if (risk == RiskCheckResult.EQUITY_ZERO || risk == RiskCheckResult.LEVERAGE_EXCEEDED) {
-			rollbackTrade(pos, posInCache, pKey, origQty, origAvgPrice, user, userId, origCash, origBorrowed, origTotalFees);
-			return "❌ Сделка отклонена: превышен риск/плечо.";
-		}
-		if (risk == RiskCheckResult.MARGIN_CALL) {
-			liquidate(userId, user);
+			// EQUITY_ZERO и LEVERAGE_EXCEEDED — откат сделки целиком: транзакция
+			// отменяет и позицию, и изменения счёта, ручной откат больше не нужен
+			if (risk == RiskCheckResult.EQUITY_ZERO || risk == RiskCheckResult.LEVERAGE_EXCEEDED) {
+				status.setRollbackOnly();
+				return "❌ Сделка отклонена: превышен риск/плечо.";
+			}
+			if (risk == RiskCheckResult.MARGIN_CALL) {
+				liquidate(userId, user);
+				marginCalled[0] = true;
+			}
+
+			users.save(userId, user);
+			String tradeId = UUID.randomUUID().toString();
+			trades.save(tradeId, new TradeRecord(tradeId, userId, upperTicker, buy ? TradeSide.BUY : TradeSide.SELL, qty,
+					price.doubleValue(), fee.doubleValue(), Instant.now()));
+			String cur = formatter.currencySymbol(share.getCurrency());
+			return (buy ? "🟢 Куплено " : "🔴 Продано ") + qty + " " + upperTicker + " по " + formatter.format(price)
+					+ " " + cur + ". Комиссия " + formatter.format(fee) + " " + cur;
+		});
+
+		// Discord дёргаем уже после коммита, а не внутри транзакции
+		if (marginCalled[0]) {
 			sendDm(userId, "🚨 Margin call / Ликвидация! Ваши позиции принудительно закрыты.");
 		}
-
-		users.save(userId, user);
-		String tradeId = UUID.randomUUID().toString();
-		trades.save(tradeId, new TradeRecord(tradeId, userId, ticker, buy ? TradeSide.BUY : TradeSide.SELL, qty,
-				price.doubleValue(), fee.doubleValue(), Instant.now()));
-		String cur = formatter.currencySymbol(share.getCurrency());
-		return (buy ? "🟢 Куплено " : "🔴 Продано ") + qty + " " + ticker + " по " + formatter.format(price)
-				+ " " + cur + ". Комиссия " + formatter.format(fee) + " " + cur;
-	}
-
-	private void rollbackTrade(Position pos, Position posInCache, String pKey,
-								int origQty, BigDecimal origAvgPrice,
-								SandboxUser user, String userId,
-								BigDecimal origCash, BigDecimal origBorrowed, BigDecimal origTotalFees) {
-		if (posInCache == null) positions.delete(pKey);
-		else {
-			pos.setQuantity(origQty);
-			pos.setAvgPrice(origAvgPrice.doubleValue());
-			positions.save(pKey, pos);
-		}
-		user.setCash(origCash.doubleValue());
-		user.setBorrowed(origBorrowed.doubleValue());
-		user.setTotalFees(origTotalFees.doubleValue());
-		users.save(userId, user);
+		return result;
 	}
 
 	// ── Portfolio queries ────────────────────────────────────────────────────

@@ -38,55 +38,37 @@ public class SandboxUserRepository extends BaseRepository {
 	// Thread-safety: no in-memory cache; all persistence is via PostgreSQL ON CONFLICT DO UPDATE
 	// which provides atomic upsert at the DB level. No additional synchronization needed here.
 	public void save(String key, SandboxUser user) {
-		try {
-			jdbc.update(UPSERT,
-					key,
-					user.getUserName(),
-					user.getCash(),
-					user.getBorrowed(),
-					user.getTotalFees(),
-					user.getDailyBaselineDate() != null ? user.getDailyBaselineDate().toString() : null,
-					user.getDailyBaselineEquity(),
-					user.getWeeklyBaselineDate() != null ? user.getWeeklyBaselineDate().toString() : null,
-					user.getWeeklyBaselineEquity(),
-					user.getMonthlyBaselineDate() != null ? user.getMonthlyBaselineDate().toString() : null,
-					user.getMonthlyBaselineEquity(),
-					serializeHoldings(user.getCurrencyHoldings()),
-					user.getSchemaVersion(),
-					user.getLastReplenishDate() != null ? user.getLastReplenishDate().toString() : null,
-					user.isMorningDigestEnabled()
-			);
-		} catch (Exception e) {
-			log.error("SandboxUserRepository.save({}) failed: {}", key, e.getMessage(), e);
-		}
+		jdbc.update(UPSERT,
+				key,
+				user.getUserName(),
+				user.getCash(),
+				user.getBorrowed(),
+				user.getTotalFees(),
+				user.getDailyBaselineDate() != null ? user.getDailyBaselineDate().toString() : null,
+				user.getDailyBaselineEquity(),
+				user.getWeeklyBaselineDate() != null ? user.getWeeklyBaselineDate().toString() : null,
+				user.getWeeklyBaselineEquity(),
+				user.getMonthlyBaselineDate() != null ? user.getMonthlyBaselineDate().toString() : null,
+				user.getMonthlyBaselineEquity(),
+				serializeHoldings(user.getCurrencyHoldings()),
+				user.getSchemaVersion(),
+				user.getLastReplenishDate() != null ? user.getLastReplenishDate().toString() : null,
+				user.isMorningDigestEnabled()
+		);
 	}
 
 	public SandboxUser findById(String key) {
-		try {
-			List<SandboxUser> results = jdbc.query(
-					"SELECT * FROM sandbox_users WHERE user_id = ?", this::mapRow, key);
-			return results.isEmpty() ? null : results.getFirst();
-		} catch (Exception e) {
-			log.error("SandboxUserRepository.findById({}) failed: {}", key, e.getMessage(), e);
-			return null;
-		}
+		List<SandboxUser> results = jdbc.query(
+				"SELECT * FROM sandbox_users WHERE user_id = ?", this::mapRow, key);
+		return results.isEmpty() ? null : results.getFirst();
 	}
 
 	public List<SandboxUser> findAll() {
-		try {
-			return jdbc.query("SELECT * FROM sandbox_users", this::mapRow);
-		} catch (Exception e) {
-			log.error("SandboxUserRepository.findAll() failed: {}", e.getMessage(), e);
-			return List.of();
-		}
+		return jdbc.query("SELECT * FROM sandbox_users", this::mapRow);
 	}
 
 	public void delete(String key) {
-		try {
-			jdbc.update("DELETE FROM sandbox_users WHERE user_id = ?", key);
-		} catch (Exception e) {
-			log.error("SandboxUserRepository.delete({}) failed: {}", key, e.getMessage(), e);
-		}
+		jdbc.update("DELETE FROM sandbox_users WHERE user_id = ?", key);
 	}
 
 	private SandboxUser mapRow(ResultSet rs, int rowNum) throws SQLException {
@@ -118,7 +100,9 @@ public class SandboxUserRepository extends BaseRepository {
 		try {
 			return MAPPER.readValue(json, new TypeReference<Map<String, Double>>() {});
 		} catch (Exception e) {
-			log.warn("Failed to parse currency_holdings JSON: {}", e.getMessage());
+			// Повреждённая запись не должна делать пользователя нечитаемым целиком
+			log.warn("Не удалось разобрать currency_holdings ({}), валютные остатки прочитаны как пустые: {}",
+					json, e.getMessage());
 			return new HashMap<>();
 		}
 	}
@@ -128,8 +112,8 @@ public class SandboxUserRepository extends BaseRepository {
 		try {
 			return MAPPER.writeValueAsString(holdings);
 		} catch (Exception e) {
-			log.warn("Failed to serialize currency_holdings: {}", e.getMessage());
-			return "{}";
+			// Раньше сюда подставлялся "{}" — валютные остатки молча обнулялись в БД
+			throw new IllegalStateException("Не удалось сериализовать валютные остатки", e);
 		}
 	}
 }

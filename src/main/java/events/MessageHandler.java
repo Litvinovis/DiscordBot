@@ -59,6 +59,13 @@ public class MessageHandler extends ListenerAdapter {
 			// Раньше терялся стектрейс главного обработчика команд
 			logger.error("Ошибка обработки команды '{}' (пользователь {})",
 					msg, event.getAuthor().getId(), e);
+			try {
+				// Молчание в ответ на сбой хуже ошибки: пользователь повторял команду,
+				// не зная, прошла операция или нет
+				event.getChannel().sendMessage("⚠️ Команда не выполнена из-за внутренней ошибки. Попробуйте позже.").submit();
+			} catch (Exception sendEx) {
+				logger.warn("Не удалось отправить сообщение об ошибке в канал", sendEx);
+			}
 		}
 	}
 

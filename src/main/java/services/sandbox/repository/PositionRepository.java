@@ -23,56 +23,33 @@ public class PositionRepository extends BaseRepository {
 	}
 
 	public void save(String key, Position position) {
-		try {
-			jdbc.update(UPSERT,
-					key,
-					position.getUserId(),
-					position.getTicker(),
-					position.getInstrumentId(),
-					position.getQuantity(),
-					position.getAvgPrice(),
-					position.getSchemaVersion()
-			);
-		} catch (Exception e) {
-			log.error("PositionRepository.save({}) failed: {}", key, e.getMessage(), e);
-		}
+		jdbc.update(UPSERT,
+				key,
+				position.getUserId(),
+				position.getTicker(),
+				position.getInstrumentId(),
+				position.getQuantity(),
+				position.getAvgPrice(),
+				position.getSchemaVersion()
+		);
 	}
 
 	public Position findById(String key) {
-		try {
-			List<Position> results = jdbc.query(
-					"SELECT * FROM sandbox_positions WHERE position_key = ?", this::mapRow, key);
-			return results.isEmpty() ? null : results.getFirst();
-		} catch (Exception e) {
-			log.error("PositionRepository.findById({}) failed: {}", key, e.getMessage(), e);
-			return null;
-		}
+		List<Position> results = jdbc.query(
+				"SELECT * FROM sandbox_positions WHERE position_key = ?", this::mapRow, key);
+		return results.isEmpty() ? null : results.getFirst();
 	}
 
 	public List<Position> findAll() {
-		try {
-			return jdbc.query("SELECT * FROM sandbox_positions", this::mapRow);
-		} catch (Exception e) {
-			log.error("PositionRepository.findAll() failed: {}", e.getMessage(), e);
-			return List.of();
-		}
+		return jdbc.query("SELECT * FROM sandbox_positions", this::mapRow);
 	}
 
 	public List<Position> findByUserId(String userId) {
-		try {
-			return jdbc.query("SELECT * FROM sandbox_positions WHERE user_id = ?", this::mapRow, userId);
-		} catch (Exception e) {
-			log.error("PositionRepository.findByUserId({}) failed: {}", userId, e.getMessage(), e);
-			return List.of();
-		}
+		return jdbc.query("SELECT * FROM sandbox_positions WHERE user_id = ?", this::mapRow, userId);
 	}
 
 	public void delete(String key) {
-		try {
-			jdbc.update("DELETE FROM sandbox_positions WHERE position_key = ?", key);
-		} catch (Exception e) {
-			log.error("PositionRepository.delete({}) failed: {}", key, e.getMessage(), e);
-		}
+		jdbc.update("DELETE FROM sandbox_positions WHERE position_key = ?", key);
 	}
 
 	private Position mapRow(ResultSet rs, int rowNum) throws SQLException {
