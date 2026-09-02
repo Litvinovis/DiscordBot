@@ -19,7 +19,7 @@ import static org.mockito.Mockito.*;
 /**
  * Unit tests for {@link SandboxCurrencyService}.
  *
- * All Ignite and CBR dependencies are mocked.
+ * Репозитории и сервис курсов ЦБ замоканы.
  */
 @SuppressWarnings("unchecked")
 class SandboxCurrencyServiceTest {
