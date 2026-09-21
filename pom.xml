@@ -27,7 +27,7 @@
         <postgresql.version>42.7.11</postgresql.version>
         <jda.version>6.6.0</jda.version>
         <tinkoff.sdk.version>1.49.7</tinkoff.sdk.version>
-        <protobuf.version>4.36.1</protobuf.version>
+        <protobuf.version>4.36.2</protobuf.version>
         <lombok.version>1.18.48</lombok.version>
         <mockito.version>5.23.0</mockito.version>
     </properties>
