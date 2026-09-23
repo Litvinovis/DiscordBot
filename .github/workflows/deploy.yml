@@ -42,6 +42,10 @@ jobs:
           BACKUP="${DEPLOY_DIR}/${JAR_NAME}.backup.$(date +%Y%m%d_%H%M)"
           sudo cp ${DEPLOY_DIR}/${JAR_NAME} ${BACKUP} 2>/dev/null || true
 
+          # Ротация: для отката нужен только свежий бэкап, остальные копились без предела
+          # (по 25–60 МБ за деплой). Оставляем три последних.
+          ls -t ${DEPLOY_DIR}/${JAR_NAME}.backup.* 2>/dev/null | tail -n +4 | sudo xargs -r rm -f
+
           # Deploy new jar
           sudo cp target/${JAR_NAME} ${DEPLOY_DIR}/${JAR_NAME}
 
@@ -56,7 +60,10 @@ jobs:
           STATUS=$(sudo systemctl is-active bot-discord)
           if [ "$STATUS" != "active" ]; then
             echo "❌ Bot failed to start, rolling back..."
-            sudo cp /opt/DiscordBot/DiscordBot.jar.backup.* /opt/DiscordBot/DiscordBot.jar 2>/dev/null | tail -1 || true
+            # Раньше здесь был cp всех бэкапов разом в один файл: при двух и более бэкапах cp
+            # падал («target is not a directory»), а «|| true» это глушил — отката не было.
+            LATEST_BACKUP=$(ls -t /opt/DiscordBot/DiscordBot.jar.backup.* 2>/dev/null | head -1)
+            [ -n "$LATEST_BACKUP" ] && sudo cp "$LATEST_BACKUP" /opt/DiscordBot/DiscordBot.jar
             sudo systemctl restart bot-discord
             exit 1
           fi
@@ -64,7 +71,9 @@ jobs:
           ERRORS=$(sudo journalctl -u bot-discord -n 20 --no-pager | grep -c "ERROR\|FATAL\|Exception in thread" || true)
           if [ "$ERRORS" -gt 2 ]; then
             echo "❌ Too many errors in logs ($ERRORS), rolling back..."
-            LATEST_BACKUP=$(ls -t /opt/DiscordBot/DiscordBot.jar.backup.* 2>/dev/null | sed -n '2p')
+            # Самый свежий бэкап — это jar, работавший до деплоя (бэкап делается ДО копирования
+            # нового). '2p' откатывало на две версии назад.
+            LATEST_BACKUP=$(ls -t /opt/DiscordBot/DiscordBot.jar.backup.* 2>/dev/null | head -1)
             if [ -n "$LATEST_BACKUP" ]; then
               sudo cp "$LATEST_BACKUP" /opt/DiscordBot/DiscordBot.jar
               sudo systemctl restart bot-discord
