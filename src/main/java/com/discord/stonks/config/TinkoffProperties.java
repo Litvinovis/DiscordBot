@@ -10,6 +10,7 @@ public record TinkoffProperties(
 ) {
 	public TinkoffProperties {
 		if (apiMode == null) apiMode = "prod";
-		if (target == null)  target  = "dns:///invest-public-api.tinkoff.ru:443";
+		// Старый endpoint tinkoff.ru не проходит PKIX-проверку вшитого в SDK truststore
+		if (target == null)  target  = "dns:///invest-public-api.tbank.ru:443";
 	}
 }
