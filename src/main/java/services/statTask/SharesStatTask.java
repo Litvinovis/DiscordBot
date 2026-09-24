@@ -48,7 +48,7 @@ public class SharesStatTask {
 		this.discordProperties = discordProperties;
 	}
 
-	@Scheduled(cron = "${reports.shares-cron}")
+	@Scheduled(cron = "${reports.shares-cron}", zone = "Asia/Yekaterinburg")
 	public void run() {
 		try {
 			String message = this.createMessage();

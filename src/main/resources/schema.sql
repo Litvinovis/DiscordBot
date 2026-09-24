@@ -103,3 +103,6 @@ ALTER TABLE sandbox_limit_orders ALTER COLUMN limit_price  TYPE NUMERIC(19,8) US
 ALTER TABLE sandbox_stop_orders  ALTER COLUMN trigger_price TYPE NUMERIC(19,8) USING trigger_price::numeric;
 ALTER TABLE sandbox_price_alerts ALTER COLUMN target_price  TYPE NUMERIC(19,8) USING target_price::numeric;
 ALTER TABLE dca_orders           ALTER COLUMN amount_rub    TYPE NUMERIC(19,8) USING amount_rub::numeric;
+
+-- Пополнения засчитывались в ROI как доход; сумма пополнений нужна, чтобы их вычитать
+ALTER TABLE sandbox_users ADD COLUMN IF NOT EXISTS total_deposits NUMERIC(19,8) NOT NULL DEFAULT 0;

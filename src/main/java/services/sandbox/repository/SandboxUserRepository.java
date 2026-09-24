@@ -22,15 +22,16 @@ public class SandboxUserRepository extends BaseRepository {
 	private static final String UPSERT =
 			"INSERT INTO sandbox_users (user_id, user_name, cash, borrowed, total_fees, " +
 			"daily_baseline_date, daily_baseline_equity, weekly_baseline_date, weekly_baseline_equity, " +
-			"monthly_baseline_date, monthly_baseline_equity, currency_holdings, schema_version, last_replenish_date, morning_digest_enabled) " +
-			"VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) " +
+			"monthly_baseline_date, monthly_baseline_equity, currency_holdings, schema_version, last_replenish_date, morning_digest_enabled, total_deposits) " +
+			"VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) " +
 			"ON CONFLICT (user_id) DO UPDATE SET user_name=EXCLUDED.user_name, cash=EXCLUDED.cash, " +
 			"borrowed=EXCLUDED.borrowed, total_fees=EXCLUDED.total_fees, " +
 			"daily_baseline_date=EXCLUDED.daily_baseline_date, daily_baseline_equity=EXCLUDED.daily_baseline_equity, " +
 			"weekly_baseline_date=EXCLUDED.weekly_baseline_date, weekly_baseline_equity=EXCLUDED.weekly_baseline_equity, " +
 			"monthly_baseline_date=EXCLUDED.monthly_baseline_date, monthly_baseline_equity=EXCLUDED.monthly_baseline_equity, " +
 			"currency_holdings=EXCLUDED.currency_holdings, schema_version=EXCLUDED.schema_version, " +
-			"last_replenish_date=EXCLUDED.last_replenish_date, morning_digest_enabled=EXCLUDED.morning_digest_enabled";
+			"last_replenish_date=EXCLUDED.last_replenish_date, morning_digest_enabled=EXCLUDED.morning_digest_enabled, " +
+			"total_deposits=EXCLUDED.total_deposits";
 
 	public SandboxUserRepository(JdbcTemplate jdbc) {
 		super(jdbc);
@@ -54,7 +55,8 @@ public class SandboxUserRepository extends BaseRepository {
 				serializeHoldings(user.getCurrencyHoldings()),
 				user.getSchemaVersion(),
 				user.getLastReplenishDate(),
-				user.isMorningDigestEnabled()
+				user.isMorningDigestEnabled(),
+				user.getTotalDeposits()
 		);
 	}
 
@@ -89,6 +91,7 @@ public class SandboxUserRepository extends BaseRepository {
 		user.setSchemaVersion(rs.getInt("schema_version"));
 		user.setLastReplenishDate(rs.getObject("last_replenish_date", LocalDate.class));
 		user.setMorningDigestEnabled(rs.getBoolean("morning_digest_enabled"));
+		user.setTotalDeposits(nz(rs.getBigDecimal("total_deposits")));
 		return user;
 	}
 

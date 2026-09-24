@@ -3,6 +3,7 @@ package com.discord.stonks.config;
 import events.MessageHandler;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
+import net.dv8tion.jda.api.exceptions.InvalidTokenException;
 import net.dv8tion.jda.api.entities.Activity;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import org.slf4j.Logger;
@@ -63,6 +64,9 @@ public class JdaConfig {
 			} catch (InterruptedException e) {
 				Thread.currentThread().interrupt();
 				throw e;
+			} catch (InvalidTokenException e) {
+				// Повтор с тем же токеном бессмыслен — падаем, чтобы systemd и smoke-тест деплоя это увидели
+				throw new IllegalStateException("Неверный токен Discord (DISCORD_BOT_TOKEN)", e);
 			} catch (Exception e) {
 				log.warn("Не удалось подключиться к Discord ({}), повтор через {} сек", e.getMessage(), delaySec);
 				Thread.sleep(delaySec * 1000L);
