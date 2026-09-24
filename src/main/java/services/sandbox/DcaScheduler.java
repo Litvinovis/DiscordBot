@@ -69,8 +69,15 @@ public class DcaScheduler {
                 return;
             }
 
+            // Сумма DCA в рублях, а цена — в валюте бумаги: без пересчёта на $-акции
+            // покупалось в ~90 раз больше бумаг, чем позволяла сумма
+            BigDecimal rubPrice = tradingService.rubPrice(share, price);
+            if (rubPrice == null || rubPrice.compareTo(BigDecimal.ZERO) <= 0) {
+                log.warn("DCA: нет курса валюты для {}, повторим позже id={}", order.getTicker(), order.getId());
+                return;
+            }
             BigDecimal amount = order.getAmountRub();
-            int qty = amount.divide(price, 0, RoundingMode.DOWN).intValue();
+            int qty = amount.divide(rubPrice, 0, RoundingMode.DOWN).intValue();
             if (qty <= 0) {
                 log.warn("DCA: недостаточно суммы {} для покупки {} (цена {}), пропускаем id={}",
                         amount, order.getTicker(), price, order.getId());
@@ -87,10 +94,14 @@ public class DcaScheduler {
             String result = tradingService.buy(order.getUserId(), user.getUserName(), order.getTicker(), qty);
             log.info("DCA исполнен: user={} ticker={} qty={} result={}", order.getUserId(), order.getTicker(), qty, result);
 
+            if (result != null && result.startsWith("⚠️")) {
+                // Цена/курс временно недоступны — повторим на следующем проходе, не пропуская период
+                return;
+            }
             advanceNextExecution(order);
-
-            tradingService.sendDm(order.getUserId(),
-                    "🤖 DCA: куплено " + qty + " " + order.getTicker() + " на " + amount.toPlainString() + " ₽\n" + result);
+            tradingService.sendDm(order.getUserId(), SandboxTradingService.isExecuted(result)
+                    ? "🤖 DCA: куплено " + qty + " " + order.getTicker() + " на " + amount.toPlainString() + " ₽\n" + result
+                    : "🤖 DCA: покупка " + order.getTicker() + " не выполнена: " + result);
 
         } catch (Exception e) {
             log.error("DCA: ошибка исполнения ордера id={}: {}", order.getId(), e.getMessage(), e);

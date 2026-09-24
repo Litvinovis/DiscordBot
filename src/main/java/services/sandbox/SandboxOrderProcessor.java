@@ -100,8 +100,10 @@ public class SandboxOrderProcessor {
 						continue;
 					}
 					String typeName = so.getType() == StopOrderType.SL ? "Стоп-лосс" : "Тейк-профит";
-					notifications.add(new Notification(so.getUserId(),
-							"⚡ " + typeName + " сработал! " + so.getTicker() + " @ " + formatter.format(price) + " ₽ → " + result));
+					// Отказ сделки раньше выдавался за срабатывание: «сработал! → ❌ Сделка отклонена»
+					notifications.add(new Notification(so.getUserId(), SandboxTradingService.isExecuted(result)
+							? "⚡ " + typeName + " сработал! " + so.getTicker() + " @ " + formatter.format(price) + " → " + result
+							: "❌ " + typeName + " по " + so.getTicker() + " не исполнен и снят: " + result));
 					toRemove.add(so.getId());
 				} finally {
 					lock.unlock();
@@ -145,9 +147,12 @@ public class SandboxOrderProcessor {
 						continue;
 					}
 					String sideLabel = isBuy ? "покупка" : "продажа";
-					notifications.add(new Notification(lo.getUserId(),
-							"✅ Лимитная заявка исполнена: " + sideLabel + " " + lo.getQty() + " " + lo.getTicker()
-									+ " @ " + formatter.format(price) + " ₽\n" + result));
+					// Раньше «✅ исполнена» приходило и при отказе (риск/плечо, нет бумаг)
+					notifications.add(new Notification(lo.getUserId(), SandboxTradingService.isExecuted(result)
+							? "✅ Лимитная заявка исполнена: " + sideLabel + " " + lo.getQty() + " " + lo.getTicker()
+									+ " @ " + formatter.format(price) + "\n" + result
+							: "❌ Лимитная заявка (" + sideLabel + " " + lo.getQty() + " " + lo.getTicker()
+									+ ") не исполнена и снята: " + result));
 					toRemove.add(lo.getId());
 				} finally {
 					lock.unlock();

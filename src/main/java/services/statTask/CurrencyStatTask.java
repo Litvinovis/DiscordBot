@@ -42,7 +42,7 @@ public class CurrencyStatTask {
 		this.discordProperties = discordProperties;
 	}
 
-	@Scheduled(cron = "${reports.currency-cron}")
+	@Scheduled(cron = "${reports.currency-cron}", zone = "Asia/Yekaterinburg")
 	public void run() {
 		try {
 			String message = this.createMessage();

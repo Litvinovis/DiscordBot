@@ -14,6 +14,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.net.URI;
 import java.net.URL;
+import java.net.URLConnection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -39,7 +40,11 @@ public class CbrRateService {
 	private static final int SCALE = 6;
 
 	/** Last successfully fetched rates; used as fallback when CBR is unavailable. */
+	/** ЦБ публикует курсы раз в день — часового кэша достаточно. */
+	static final long CACHE_TTL_MS = 60 * 60 * 1000L;
+	private static final int TIMEOUT_MS = 5_000;
 	private volatile Map<String, BigDecimal> cachedRates = new HashMap<>();
+	private volatile long cachedAt = 0;
 
 	/** Returns true when the last fetchRates() call failed and the cache is being served. */
 	private volatile boolean stale = false;
@@ -55,10 +60,19 @@ public class CbrRateService {
 	 * @return map from ISO code to RUB price for 1 unit
 	 */
 	public Map<String, BigDecimal> fetchRates() {
+		// Раньше каждый +баланс/+портфель ходил на cbr.ru; теперь курсы нужны и в каждой
+		// сделке и оценке портфеля — без кэша это десятки запросов на один рейтинг
+		if (!cachedRates.isEmpty() && System.currentTimeMillis() - cachedAt < CACHE_TTL_MS) {
+			return new HashMap<>(cachedRates);
+		}
 		Map<String, BigDecimal> result = new HashMap<>();
 		try {
 			URL url = URI.create(CBR_URL).toURL();
-			try (InputStream is = url.openStream()) {
+			// Без таймаутов зависший cbr.ru вешал поток вместе с захваченной блокировкой пользователя
+			URLConnection connection = url.openConnection();
+			connection.setConnectTimeout(TIMEOUT_MS);
+			connection.setReadTimeout(TIMEOUT_MS);
+			try (InputStream is = connection.getInputStream()) {
 				DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 				// Disable XXE
 				factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
@@ -81,6 +95,7 @@ public class CbrRateService {
 				}
 			}
 			cachedRates = result;
+			cachedAt = System.currentTimeMillis();
 			stale = false;
 		} catch (Exception e) {
 			log.warn("Failed to fetch CBR exchange rates: {}. Returning cached rates (stale={})",

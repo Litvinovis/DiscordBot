@@ -33,6 +33,8 @@ public class SandboxUser implements Serializable {
 	private BigDecimal monthlyBaselineEquity;
 
 	private LocalDate lastReplenishDate;
+	/** Сумма всех пополнений: для ROI это вложенные деньги, а не доход. */
+	private BigDecimal totalDeposits = BigDecimal.ZERO;
 	private boolean morningDigestEnabled = false;
 
 	/** Currency holdings: ISO code (e.g. "USD") -> amount held */
@@ -136,6 +138,14 @@ public class SandboxUser implements Serializable {
 
 	public void setMonthlyBaselineEquity(BigDecimal monthlyBaselineEquity) {
 		this.monthlyBaselineEquity = monthlyBaselineEquity;
+	}
+
+	public BigDecimal getTotalDeposits() {
+		return totalDeposits != null ? totalDeposits : BigDecimal.ZERO;
+	}
+
+	public void setTotalDeposits(BigDecimal totalDeposits) {
+		this.totalDeposits = totalDeposits;
 	}
 
 	public LocalDate getLastReplenishDate() {
