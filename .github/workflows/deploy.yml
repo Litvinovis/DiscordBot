@@ -38,16 +38,18 @@ jobs:
           JAR_NAME=DiscordBot.jar
           SERVICE=bot-discord
 
-          # Backup current jar
-          BACKUP="${DEPLOY_DIR}/${JAR_NAME}.backup.$(date +%Y%m%d_%H%M)"
-          sudo cp ${DEPLOY_DIR}/${JAR_NAME} ${BACKUP} 2>/dev/null || true
+          JAR_PATH="$DEPLOY_DIR/$JAR_NAME"
+          if [ -f "$JAR_PATH" ]; then
+            sudo cp "$JAR_PATH" "$JAR_PATH.backup.$(date +%Y%m%d_%H%M%S)"
+            ls -t "$JAR_PATH".backup.* | tail -n +4 | sudo xargs -r rm -f
+          fi
 
-          # Ротация: для отката нужен только свежий бэкап, остальные копились без предела
-          # (по 25–60 МБ за деплой). Оставляем три последних.
-          ls -t ${DEPLOY_DIR}/${JAR_NAME}.backup.* 2>/dev/null | tail -n +4 | sudo xargs -r rm -f
-
-          # Deploy new jar
-          sudo cp target/${JAR_NAME} ${DEPLOY_DIR}/${JAR_NAME}
+          # Старая JVM может читать JAR до завершения. Атомарная замена
+          # оставляет старый файл доступным через уже открытый дескриптор.
+          STAGED_JAR=$(sudo mktemp "$JAR_PATH.XXXXXX")
+          trap 'sudo rm -f -- "$STAGED_JAR"' EXIT
+          sudo install -m 644 target/$JAR_NAME "$STAGED_JAR"
+          sudo mv -fT -- "$STAGED_JAR" "$JAR_PATH"
 
           # Restart service
           sudo systemctl restart ${SERVICE}
@@ -55,32 +57,34 @@ jobs:
       - name: Smoke test
         if: github.event_name != 'pull_request'
         run: |
+          rollback() {
+            JAR_PATH=/opt/DiscordBot/DiscordBot.jar
+            LATEST_BACKUP=$({ ls -t "$JAR_PATH".backup.* 2>/dev/null || true; } | sed -n '1p')
+            if [ -n "$LATEST_BACKUP" ]; then
+              STAGED_JAR=$(sudo mktemp "$JAR_PATH.XXXXXX")
+              trap 'sudo rm -f -- "$STAGED_JAR"' EXIT
+              sudo install -m 644 "$LATEST_BACKUP" "$STAGED_JAR"
+              sudo mv -fT -- "$STAGED_JAR" "$JAR_PATH"
+              sudo systemctl restart bot-discord
+            fi
+          }
+
           echo "Waiting for bot to start..."
           RESTARTS_BEFORE=$(systemctl show -p NRestarts --value bot-discord)
           sleep 15
-          STATUS=$(sudo systemctl is-active bot-discord)
+          STATUS=$(sudo systemctl is-active bot-discord || true)
           RESTARTS_AFTER=$(systemctl show -p NRestarts --value bot-discord)
           # Restart=always: падающий в цикле сервис может попасть на момент "active"
           if [ "$STATUS" != "active" ] || [ "$RESTARTS_AFTER" != "$RESTARTS_BEFORE" ]; then
             echo "❌ Bot failed to start (status=$STATUS, restarts $RESTARTS_BEFORE→$RESTARTS_AFTER), rolling back..."
-            # Раньше здесь был cp всех бэкапов разом в один файл: при двух и более бэкапах cp
-            # падал («target is not a directory»), а «|| true» это глушил — отката не было.
-            LATEST_BACKUP=$(ls -t /opt/DiscordBot/DiscordBot.jar.backup.* 2>/dev/null | head -1)
-            [ -n "$LATEST_BACKUP" ] && sudo cp "$LATEST_BACKUP" /opt/DiscordBot/DiscordBot.jar
-            sudo systemctl restart bot-discord
+            rollback
             exit 1
           fi
           # Check for fatal errors in logs
           ERRORS=$(sudo journalctl -u bot-discord -n 20 --no-pager | grep -c "ERROR\|FATAL\|Exception in thread" || true)
           if [ "$ERRORS" -gt 2 ]; then
             echo "❌ Too many errors in logs ($ERRORS), rolling back..."
-            # Самый свежий бэкап — это jar, работавший до деплоя (бэкап делается ДО копирования
-            # нового). '2p' откатывало на две версии назад.
-            LATEST_BACKUP=$(ls -t /opt/DiscordBot/DiscordBot.jar.backup.* 2>/dev/null | head -1)
-            if [ -n "$LATEST_BACKUP" ]; then
-              sudo cp "$LATEST_BACKUP" /opt/DiscordBot/DiscordBot.jar
-              sudo systemctl restart bot-discord
-            fi
+            rollback
             exit 1
           fi
           echo "✅ Bot is running fine"
